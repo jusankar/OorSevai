@@ -1,0 +1,6 @@
+{
+  "name": "Ooran",
+  "description": "Ooran - Your Village Partner. Hyperlocal equipment rental and agricultural labor platform with smart AI recommendations, maintenance logs, and geofenced delivery zones.",
+  "requestFramePermissions": ["geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
