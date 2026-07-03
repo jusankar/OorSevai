@@ -169,7 +169,7 @@ export default function App() {
     {
       id: "msg-1",
       sender: "ai",
-      text: "Vanakkam! I am your Ooran Farming & Equipment Assistant. How can I assist you today? I can help predict rental prices, recommend tools for your land size, or share weather-based farming suggestions.",
+      text: "Vanakkam! I am your OorSevai Farming & Equipment Assistant. How can I assist you today? I can help predict rental prices, recommend tools for your land size, or share weather-based farming suggestions.",
       timestamp: "10:00 AM"
     }
   ]);
@@ -589,8 +589,8 @@ export default function App() {
                 <span className="text-[#3E5C31] font-black text-lg">O</span>
               </div>
               <div>
-                <h1 className="text-sm font-black tracking-tight leading-none text-white">Ooran</h1>
-                <span className="text-[8px] uppercase tracking-wider text-white/70 font-bold">Your Village Partner</span>
+                <h1 className="text-sm font-black tracking-tight leading-none text-white">OorSevai</h1>
+                <span className="text-[8px] uppercase tracking-wider text-white/70 font-bold">All Village Services in One App.</span>
               </div>
             </div>
             
@@ -825,7 +825,7 @@ export default function App() {
                       <div>
                         <h5 className="text-xs font-bold text-[#2D2D2A]">{selectedEquipment.ownerName}</h5>
                         <span className="text-[9px] text-[#3E5C31] font-black flex items-center">
-                          🛡️ Verified Ooran Partner
+                          🛡️ Verified OorSevai Partner
                         </span>
                       </div>
                     </div>
@@ -1365,7 +1365,7 @@ export default function App() {
                   <form onSubmit={handleSendChatMessage} className="flex items-center space-x-2 border-t border-[#E8E6E1] pt-3 shrink-0">
                     <input
                       type="text"
-                      placeholder="Ask Ooran AI Advisor anything..."
+                      placeholder="Ask OorSevai AI Advisor anything..."
                       value={chatInput}
                       onChange={(e) => setChatInput(e.target.value)}
                       className="flex-1 bg-[#FAF7F2] text-[#2D2D2A] text-xs px-3.5 py-2.5 rounded-xl border border-[#E8E6E1] focus:outline-none focus:ring-1 focus:ring-[#3E5C31] focus:bg-white"
@@ -2432,7 +2432,7 @@ export default function App() {
               <button 
                 onClick={() => {
                   const num = "918072462520";
-                  alert(`Connecting you directly to Ooran Support Desk...\nPhone helpline: +${num}`);
+                  alert(`Connecting you directly to OorSevai Support Desk...\nPhone helpline: +${num}`);
                 }}
                 className="flex flex-col items-center gap-0.5 cursor-pointer text-[#8A867E]"
               >

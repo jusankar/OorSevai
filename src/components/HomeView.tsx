@@ -74,8 +74,8 @@ export default function HomeView({
 
         <div className="space-y-1.5">
           <div className="flex items-center space-x-1.5">
-            <span className="text-[9px] font-black tracking-widest text-[#3E5C31] uppercase bg-[#3E5C31]/10 px-2 py-0.5 rounded-md">Ooran</span>
-            <span className="text-[10px] font-bold text-[#8A867E]">Your Village Partner</span>
+            <span className="text-[9px] font-black tracking-widest text-[#3E5C31] uppercase bg-[#3E5C31]/10 px-2 py-0.5 rounded-md">OorSevai</span>
+            <span className="text-[10px] font-bold text-[#8A867E]">All Village Services in One App.</span>
           </div>
           <h1 className="text-2xl font-black text-[#2D2D2A] tracking-tight leading-tight">
             Rent Anything.<br />
