@@ -338,7 +338,8 @@ export const DEFAULT_LABORERS: Laborer[] = [
     distance: 2.1,
     availability: "available",
     experience: "8 Years",
-    verified: true
+    verified: true,
+    gender: "Male"
   },
   {
     id: "lb-2",
@@ -352,7 +353,8 @@ export const DEFAULT_LABORERS: Laborer[] = [
     distance: 1.5,
     availability: "available",
     experience: "12 Years",
-    verified: true
+    verified: true,
+    gender: "Male"
   },
   {
     id: "lb-3",
@@ -366,7 +368,8 @@ export const DEFAULT_LABORERS: Laborer[] = [
     distance: 3.2,
     availability: "available",
     experience: "10 Years",
-    verified: true
+    verified: true,
+    gender: "Male"
   },
   {
     id: "lb-4",
@@ -380,7 +383,8 @@ export const DEFAULT_LABORERS: Laborer[] = [
     distance: 2.5,
     availability: "available",
     experience: "6 Years",
-    verified: true
+    verified: true,
+    gender: "Male"
   }
 ];
 
@@ -403,6 +407,6 @@ export const CATEGORIES_METADATA = {
   },
   labor: {
     title: "Labor Services",
-    subCategories: ["Farm labor", "Mason", "Carpenter", "Electrician", "Plumber", "Painter", "Welder", "Driver", "Crane operator", "Event helpers", "House shifting labor"]
+    subCategories: ["General", "Farm labor", "Mason", "Carpenter", "Electrician", "Plumber", "Painter", "Welder", "Driver", "Crane operator", "Event helpers", "House shifting labor"]
   }
 };

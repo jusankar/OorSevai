@@ -50,6 +50,9 @@ export interface Laborer {
   availability: "available" | "unavailable";
   experience: string; // e.g. "5 Years"
   verified: boolean;
+  gender?: "Male" | "Female" | "Other";
+  kycDocName?: string;
+  kycStatus?: "pending" | "verified" | "rejected" | "none";
 }
 
 export interface Booking {

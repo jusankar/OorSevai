@@ -2,9 +2,85 @@ import React, { useState } from "react";
 import { motion } from "motion/react";
 import { 
   Search, Sprout, HardHat, Wrench, Tent, Users, 
-  MapPin, Bell, Shield, BadgePercent, ThumbsUp, Sparkles, ArrowRight
+  MapPin, Bell, Shield, BadgePercent, ThumbsUp, Sparkles, ArrowRight,
+  Cloud, Sun, CloudRain, CloudLightning, CloudSun, Droplets, Thermometer, Loader2, Locate
 } from "lucide-react";
 import { Equipment } from "../types";
+
+// Helper function to interpret WMO weather codes and provide agricultural guidance
+const getWeatherDetails = (code: number, rainSum: number = 0) => {
+  if (code === 0) {
+    return {
+      label: "Sunny & Clear",
+      icon: Sun,
+      advice: "Perfect for seed sowing, pesticide spraying, and harvesting. Keep crops well-irrigated to prevent heat stress.",
+      bgColor: "bg-amber-50 border-amber-100",
+      iconColor: "text-amber-500",
+      accentBg: "bg-amber-500/10",
+    };
+  }
+  if (code === 1 || code === 2 || code === 3) {
+    return {
+      label: "Partly Cloudy",
+      icon: CloudSun,
+      advice: "Favorable conditions for tilling, weeding, and transplanting young crops. Low evapotranspiration rate helps root settling.",
+      bgColor: "bg-slate-50 border-slate-200",
+      iconColor: "text-sky-500",
+      accentBg: "bg-sky-500/10",
+    };
+  }
+  if (code === 45 || code === 48) {
+    return {
+      label: "Foggy / Misty",
+      icon: Cloud,
+      advice: "High air moisture. Check for early pest or fungal attacks. Hold off on early morning sensitive crop harvests.",
+      bgColor: "bg-zinc-50 border-zinc-200",
+      iconColor: "text-[#8A867E]",
+      accentBg: "bg-zinc-500/10",
+    };
+  }
+  if (code >= 51 && code <= 57) {
+    return {
+      label: "Light Drizzle",
+      icon: Droplets,
+      advice: "Gentle drizzle. Excellent for soil moisture replenishment and fertilizer application. Ideal time for planting saplings.",
+      bgColor: "bg-teal-50 border-teal-200",
+      iconColor: "text-teal-500",
+      accentBg: "bg-teal-500/10",
+    };
+  }
+  if ((code >= 61 && code <= 67) || (code >= 80 && code <= 82)) {
+    const isHeavy = rainSum > 10;
+    return {
+      label: isHeavy ? "Heavy Rainfall" : "Moderate Rain",
+      icon: CloudRain,
+      advice: isHeavy 
+        ? "Heavy rain warning! Clear farm drainage pathways to prevent waterlogging. Postpone sowing or pesticide spray."
+        : "Moderate rain. Great for natural rainfed crops. Postpone spraying chemicals and dry-harvest operations.",
+      bgColor: "bg-blue-50 border-blue-200",
+      iconColor: "text-blue-500",
+      accentBg: "bg-blue-500/10",
+    };
+  }
+  if (code >= 95 && code <= 99) {
+    return {
+      label: "Thunderstorms",
+      icon: CloudLightning,
+      advice: "Severe storm warning! Secure lightweight farm machinery. Seek safe indoor shelter for workers and livestock.",
+      bgColor: "bg-red-50 border-red-200",
+      iconColor: "text-red-500",
+      accentBg: "bg-red-500/10",
+    };
+  }
+  return {
+    label: "Mild Weather",
+    icon: CloudSun,
+    advice: "Stable weather conditions. Continue general agricultural activities, weeding, and routine crop irrigation.",
+    bgColor: "bg-emerald-50 border-emerald-200",
+    iconColor: "text-emerald-500",
+    accentBg: "bg-[#3E5C31]/10",
+  };
+};
 
 interface HomeViewProps {
   popularEquipment: Equipment[];
@@ -24,6 +100,175 @@ export default function HomeView({
   onNavigate
 }: HomeViewProps) {
   const [searchQuery, setSearchQuery] = useState("");
+  const [weatherLoading, setWeatherLoading] = useState(false);
+  const [weatherError, setWeatherError] = useState<string | null>(null);
+  const [weatherData, setWeatherData] = useState<any[] | null>(null);
+  const [selectedWeatherDayIndex, setSelectedWeatherDayIndex] = useState(0);
+  const [weatherLocation, setWeatherLocation] = useState({
+    name: "Coimbatore, TN (Default)",
+    latitude: 11.0168,
+    longitude: 76.9558,
+  });
+
+  const fetchWeather = async (lat: number, lon: number, customName?: string) => {
+    setWeatherLoading(true);
+    setWeatherError(null);
+    try {
+      const response = await fetch(
+        `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=weathercode,temperature_2m_max,temperature_2m_min,rain_sum&timezone=auto`
+      );
+      if (!response.ok) {
+        throw new Error("Unable to retrieve weather forecast");
+      }
+      const data = await response.json();
+      
+      if (data.daily) {
+        const days = [];
+        const limit = 3; // 3-day forecast
+        for (let i = 0; i < limit; i++) {
+          const dateStr = data.daily.time[i];
+          const parsedDate = new Date(dateStr);
+          const formattedDate = parsedDate.toLocaleDateString("en-US", {
+            weekday: "short",
+            month: "short",
+            day: "numeric",
+          });
+          
+          const code = data.daily.weathercode[i];
+          const maxTemp = data.daily.temperature_2m_max[i];
+          const minTemp = data.daily.temperature_2m_min[i];
+          const rain = data.daily.rain_sum[i];
+          
+          days.push({
+            date: formattedDate,
+            tempMax: Math.round(maxTemp),
+            tempMin: Math.round(minTemp),
+            rain: rain,
+            code: code,
+          });
+        }
+        setWeatherData(days);
+        if (customName) {
+          setWeatherLocation({ name: customName, latitude: lat, longitude: lon });
+        }
+      } else {
+        throw new Error("Daily forecast data is currently unavailable");
+      }
+    } catch (err: any) {
+      console.error(err);
+      setWeatherError(err.message || "Failed to retrieve farming weather forecast");
+    } finally {
+      setWeatherLoading(false);
+    }
+  };
+
+  const handleDetectLocation = () => {
+    if (!navigator.geolocation) {
+      setWeatherError("Geolocation is not supported by your browser");
+      return;
+    }
+    setWeatherLoading(true);
+    setWeatherError(null);
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        let detectedName = `Near ${latitude.toFixed(2)}°N, ${longitude.toFixed(2)}°E`;
+        try {
+          const geoRes = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&accept-language=en`
+          );
+          if (geoRes.ok) {
+            const geoData = await geoRes.json();
+            const city =
+              geoData.address.city ||
+              geoData.address.town ||
+              geoData.address.village ||
+              geoData.address.suburb ||
+              geoData.address.county ||
+              "Your Location";
+            const state = geoData.address.state
+              ? `, ${geoData.address.state.replace(" State", "")}`
+              : "";
+            detectedName = `${city}${state}`;
+          }
+        } catch (e) {
+          console.error("Reverse geocoding failed, using coordinates:", e);
+        }
+        fetchWeather(latitude, longitude, detectedName);
+      },
+      (error) => {
+        console.error("Geolocation error:", error);
+        setWeatherError("Location access denied or unavailable. Using default Coimbatore forecast.");
+        fetchWeather(11.0168, 76.9558, "Coimbatore, TN (Default)");
+      },
+      { enableHighAccuracy: true, timeout: 5000 }
+    );
+  };
+
+  React.useEffect(() => {
+    const detectAndFetch = async () => {
+      setWeatherLoading(true);
+      try {
+        // Try IP Geolocation first for a silent and instant city-level load
+        const ipRes = await fetch("https://ipapi.co/json/");
+        if (ipRes.ok) {
+          const ipData = await ipRes.json();
+          if (ipData.latitude && ipData.longitude) {
+            const cityName = ipData.city 
+              ? `${ipData.city}${ipData.region_code ? `, ${ipData.region_code}` : ""}`
+              : `${ipData.latitude.toFixed(2)}°N, ${ipData.longitude.toFixed(2)}°E`;
+            await fetchWeather(ipData.latitude, ipData.longitude, cityName);
+            return;
+          }
+        }
+      } catch (e) {
+        console.error("IP Geolocation failed:", e);
+      }
+
+      // Fallback 1: Browser Geolocation
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          async (position) => {
+            const { latitude, longitude } = position.coords;
+            let detectedName = `Near ${latitude.toFixed(2)}°N, ${longitude.toFixed(2)}°E`;
+            try {
+              const geoRes = await fetch(
+                `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&accept-language=en`
+              );
+              if (geoRes.ok) {
+                const geoData = await geoRes.json();
+                const city =
+                  geoData.address.city ||
+                  geoData.address.town ||
+                  geoData.address.village ||
+                  geoData.address.suburb ||
+                  geoData.address.county ||
+                  "Your Location";
+                const state = geoData.address.state
+                  ? `, ${geoData.address.state.replace(" State", "")}`
+                  : "";
+                detectedName = `${city}${state}`;
+              }
+            } catch (e) {
+              console.error("Nominatim reverse geocoding failed on init:", e);
+            }
+            fetchWeather(latitude, longitude, detectedName);
+          },
+          (error) => {
+            console.error("Browser Geolocation failed on init:", error);
+            // Fallback 2: Default to Coimbatore
+            fetchWeather(11.0168, 76.9558, "Coimbatore, TN (Default)");
+          },
+          { enableHighAccuracy: true, timeout: 3000 }
+        );
+      } else {
+        // Fallback 2: Default to Coimbatore
+        fetchWeather(11.0168, 76.9558, "Coimbatore, TN (Default)");
+      }
+    };
+
+    detectAndFetch();
+  }, []);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -158,6 +403,138 @@ export default function HomeView({
             <Sparkles className="h-3.5 w-3.5" />
           </div>
           <span className="text-[9px] font-bold text-[#2D2D2A]">Secure Escrow</span>
+        </div>
+      </div>
+
+      {/* Local Farming Weather Widget */}
+      <div id="farming-weather-widget" className="mx-4 bg-white border border-[#E8E6E1] rounded-3xl p-4 shadow-xs space-y-3.5">
+        <div className="flex justify-between items-center">
+          <div className="flex items-center space-x-2">
+            <div className="bg-[#3E5C31]/10 text-[#3E5C31] p-1.5 rounded-xl">
+              <Sun className="h-4 w-4" />
+            </div>
+            <div>
+              <h3 className="font-extrabold text-[#2D2D2A] text-xs uppercase tracking-wider">Local Farming Weather</h3>
+              <p className="text-[10px] text-[#8A867E] flex items-center mt-0.5">
+                <MapPin className="h-3 w-3 mr-0.5 text-[#3E5C31]" />
+                <span className="font-semibold text-slate-700">{weatherLocation.name}</span>
+              </p>
+            </div>
+          </div>
+          <button 
+            onClick={handleDetectLocation}
+            disabled={weatherLoading}
+            className="flex items-center space-x-1 bg-[#FAF7F2] hover:bg-[#F3F1ED] border border-[#E8E6E1] text-[#3E5C31] text-[10px] font-bold px-2.5 py-1.5 rounded-xl transition-all shadow-2xs active:scale-95 disabled:opacity-50 cursor-pointer"
+          >
+            {weatherLoading ? (
+              <Loader2 className="h-3 w-3 animate-spin" />
+            ) : (
+              <Locate className="h-3 w-3" />
+            )}
+            <span>{weatherLoading ? "Locating..." : "Use My Location"}</span>
+          </button>
+        </div>
+
+        {weatherError && (
+          <div className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 p-2.5 rounded-xl font-medium">
+            ⚠️ {weatherError}
+          </div>
+        )}
+
+        {weatherLoading && !weatherData && (
+          <div className="flex flex-col items-center justify-center py-6 space-y-2 text-[#8A867E]">
+            <Loader2 className="h-6 w-6 animate-spin text-[#3E5C31]" />
+            <span className="text-xs font-semibold">Retrieving farming forecast...</span>
+          </div>
+        )}
+
+        {weatherData && (
+          <div className="space-y-3">
+            {/* 3-Day Horizontal Grid */}
+            <div className="grid grid-cols-3 gap-2">
+              {weatherData.map((day, idx) => {
+                const details = getWeatherDetails(day.code, day.rain);
+                const DayIcon = details.icon;
+                const isSelected = selectedWeatherDayIndex === idx;
+                
+                return (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => setSelectedWeatherDayIndex(idx)}
+                    className={`p-2 rounded-2xl border text-center transition-all flex flex-col items-center justify-between space-y-1 cursor-pointer relative ${
+                      isSelected 
+                        ? "bg-[#3E5C31]/5 border-[#3E5C31] ring-1 ring-[#3E5C31]/30 shadow-xs" 
+                        : "bg-[#FAF7F2] border-[#E8E6E1] hover:bg-[#F3F1ED]"
+                    }`}
+                  >
+                    {idx === 0 && (
+                      <span className="absolute -top-1.5 left-1/2 transform -translate-x-1/2 text-[7px] font-black tracking-wider uppercase bg-[#3E5C31] text-white px-1.5 py-0.5 rounded-full shadow-xs">
+                        Today
+                      </span>
+                    )}
+                    
+                    <span className="text-[9px] font-bold text-[#8A867E] mt-1">{day.date}</span>
+                    
+                    <div className={`p-1.5 rounded-xl ${details.accentBg} ${details.iconColor} flex items-center justify-center`}>
+                      <DayIcon className="h-4 w-4" />
+                    </div>
+
+                    <div className="space-y-0.5">
+                      <div className="text-[10px] font-black text-[#2D2D2A] flex items-center justify-center">
+                        <Thermometer className="h-2.5 w-2.5 text-red-500 mr-0.5" />
+                        <span>{day.tempMax}°C</span>
+                      </div>
+                      <div className="text-[8px] font-bold text-sky-600">
+                        {day.rain > 0 ? `💧 ${day.rain.toFixed(1)}mm` : "No Rain"}
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Selected Day Crop & Planting Guidance details */}
+            {weatherData[selectedWeatherDayIndex] && (() => {
+              const selectedDay = weatherData[selectedWeatherDayIndex];
+              const details = getWeatherDetails(selectedDay.code, selectedDay.rain);
+              const DayIcon = details.icon;
+              
+              return (
+                <div className={`p-3 rounded-2xl border ${details.bgColor} transition-all space-y-2`}>
+                  <div className="flex justify-between items-center">
+                    <span className="text-[9px] font-black tracking-wider uppercase text-slate-500">
+                      Farming Guidance ({selectedDay.date})
+                    </span>
+                    <div className="flex items-center space-x-1 bg-white/75 backdrop-blur-xs px-2 py-0.5 rounded-md border border-[#E8E6E1] text-[9px] font-extrabold text-[#2D2D2A]">
+                      <DayIcon className={`h-3 w-3 ${details.iconColor}`} />
+                      <span>{details.label}</span>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-start space-x-2">
+                    <div className="bg-[#3E5C31]/10 text-[#3E5C31] p-1.5 rounded-lg shrink-0 text-[10px] font-bold mt-0.5">
+                      🌾 Advice
+                    </div>
+                    <p className="text-[11px] text-[#2D2D2A] leading-relaxed font-semibold">
+                      {details.advice}
+                    </p>
+                  </div>
+
+                  {/* Highlighting specific weather conditions */}
+                  <div className="grid grid-cols-2 gap-2 pt-1 border-t border-slate-200/50 text-[9px] text-slate-600 font-medium">
+                    <div>🌡️ Temp range: <span className="font-extrabold text-[#2D2D2A]">{selectedDay.tempMin}°C - {selectedDay.tempMax}°C</span></div>
+                    <div>🌧️ Rainfall: <span className="font-extrabold text-[#2D2D2A]">{selectedDay.rain.toFixed(1)} mm</span></div>
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+        )}
+        
+        <div className="flex items-center justify-between text-[9px] text-[#8A867E] pt-1.5 border-t border-[#E8E6E1]/60">
+          <span>⚡ Live Open-Meteo API</span>
+          <span className="font-semibold text-[#3E5C31]">Smart Sowing & Protection Advice</span>
         </div>
       </div>
 

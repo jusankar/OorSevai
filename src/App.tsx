@@ -200,9 +200,12 @@ export default function App() {
 
   // New Labor Registration State
   const [newLaborName, setNewLaborName] = useState("");
-  const [newLaborCategory, setNewLaborCategory] = useState("Mason");
+  const [newLaborCategory, setNewLaborCategory] = useState("General");
   const [newLaborPrice, setNewLaborPrice] = useState("");
   const [newLaborExperience, setNewLaborExperience] = useState("5 Years");
+  const [newLaborGender, setNewLaborGender] = useState<"Male" | "Female" | "Other">("Male");
+  const [newLaborKycDocType, setNewLaborKycDocType] = useState("Aadhaar Card");
+  const [newLaborKycFileName, setNewLaborKycFileName] = useState("");
   const [isLaborRegistered, setIsLaborRegistered] = useState(false);
 
   // KYC Verifications for Admin Panel
@@ -445,11 +448,21 @@ export default function App() {
     e.preventDefault();
     if (!newLaborName || !newLaborPrice) return;
 
+    // Use a custom image depending on gender selection
+    let defaultImg = "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=150&q=80"; // male default
+    if (newLaborGender === "Female") {
+      defaultImg = "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=150&q=80"; // female default
+    } else if (newLaborGender === "Other") {
+      defaultImg = "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80";
+    }
+
+    const docDescription = `${newLaborKycDocType}${newLaborKycFileName ? ` (${newLaborKycFileName})` : ""}`;
+
     const newLb: Laborer = {
       id: `lb-${Date.now()}`,
       name: newLaborName,
       category: newLaborCategory,
-      image: "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=150&q=80",
+      image: defaultImg,
       pricePerDay: parseFloat(newLaborPrice),
       rating: 5.0,
       reviewsCount: 0,
@@ -457,7 +470,10 @@ export default function App() {
       distance: 1.0,
       availability: "available",
       experience: newLaborExperience,
-      verified: false
+      verified: false,
+      gender: newLaborGender,
+      kycDocName: docDescription,
+      kycStatus: "pending"
     };
 
     setLaborersList((prev) => [newLb, ...prev]);
@@ -465,10 +481,21 @@ export default function App() {
     // Add to KYC approvals
     setKycRequests((prev) => [
       ...prev,
-      { id: `kyc-${Date.now()}`, name: newLaborName, type: "Labor", document: "ID Proof & License", status: "pending" }
+      { 
+        id: `kyc-${Date.now()}`, 
+        name: newLaborName, 
+        type: "Labor", 
+        document: docDescription, 
+        status: "pending" 
+      }
     ]);
 
     setIsLaborRegistered(true);
+    
+    // Reset fields
+    setNewLaborName("");
+    setNewLaborPrice("");
+    setNewLaborKycFileName("");
   };
 
   // Toggle equipment status (Active / Inactive)
@@ -527,7 +554,47 @@ export default function App() {
 
   // Admin approval KYC
   const handleApproveKYC = (kycId: string) => {
-    setKycRequests((prev) => prev.map(k => k.id === kycId ? { ...k, status: "approved" } : k));
+    let approvedName = "";
+    let approvedType = "";
+    setKycRequests((prev) => prev.map(k => {
+      if (k.id === kycId) {
+        approvedName = k.name;
+        approvedType = k.type;
+        return { ...k, status: "approved" };
+      }
+      return k;
+    }));
+
+    if (approvedType === "Labor") {
+      setLaborersList((prev) => prev.map(l => {
+        if (l.name === approvedName) {
+          return { ...l, verified: true, kycStatus: "verified" };
+        }
+        return l;
+      }));
+    }
+  };
+
+  const handleRejectKYC = (kycId: string) => {
+    let rejectedName = "";
+    let rejectedType = "";
+    setKycRequests((prev) => prev.map(k => {
+      if (k.id === kycId) {
+        rejectedName = k.name;
+        rejectedType = k.type;
+        return { ...k, status: "rejected" };
+      }
+      return k;
+    }));
+
+    if (rejectedType === "Labor") {
+      setLaborersList((prev) => prev.map(l => {
+        if (l.name === rejectedName) {
+          return { ...l, verified: false, kycStatus: "rejected" };
+        }
+        return l;
+      }));
+    }
   };
 
   // Admin approval Equipment
@@ -905,18 +972,38 @@ export default function App() {
                       </div>
                       <span className="text-[10px] text-[#3E5C31] font-bold block mt-0.5">✓ 100% On-time Completion</span>
                     </div>
-                    <div className="text-[#8A867E] text-[10px] font-bold">
-                      Availability: <span className="text-emerald-600 font-black">Ready Today</span>
-                    </div>
+                    {(() => {
+                      const currentLaborer = laborersList.find(l => l.id === selectedLaborer.id) || selectedLaborer;
+                      return (
+                        <div className="text-[#8A867E] text-[10px] font-bold">
+                          Availability: {currentLaborer.availability === "available" ? (
+                            <span className="text-emerald-600 font-black">Ready Today</span>
+                          ) : (
+                            <span className="text-amber-600 font-black">Busy / Unavailable</span>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </div>
 
-                  <button 
-                    onClick={() => handleHireLaborer(selectedLaborer)}
-                    className="w-full bg-[#3E5C31] hover:bg-[#3E5C31]/95 text-white font-extrabold text-sm py-3.5 rounded-2xl shadow-md transition-all active:scale-98 flex items-center justify-center space-x-2 cursor-pointer"
-                  >
-                    <CheckCircle className="h-4 w-4" />
-                    <span>Hire {selectedLaborer.name} Now</span>
-                  </button>
+                  {(() => {
+                    const currentLaborer = laborersList.find(l => l.id === selectedLaborer.id) || selectedLaborer;
+                    const isAvailable = currentLaborer.availability === "available";
+                    return (
+                      <button 
+                        onClick={() => isAvailable && handleHireLaborer(currentLaborer)}
+                        disabled={!isAvailable}
+                        className={`w-full font-extrabold text-sm py-3.5 rounded-2xl shadow-md transition-all flex items-center justify-center space-x-2 cursor-pointer ${
+                          isAvailable 
+                            ? "bg-[#3E5C31] hover:bg-[#3E5C31]/95 text-white active:scale-98" 
+                            : "bg-gray-200 text-gray-500 cursor-not-allowed shadow-none"
+                        }`}
+                      >
+                        <CheckCircle className="h-4 w-4" />
+                        <span>{isAvailable ? `Hire ${selectedLaborer.name} Now` : `${selectedLaborer.name} is Busy`}</span>
+                      </button>
+                    );
+                  })()}
                 </div>
               )}
 
@@ -2013,18 +2100,64 @@ export default function App() {
                     <h3 className="font-extrabold text-sm text-[#2D2D2A]">My Availability</h3>
                     <p className="text-[10px] text-[#8A867E]">Toggle to start receiving hyperlocal job bookings.</p>
                   </div>
-                  <span className="bg-emerald-100 text-emerald-800 text-[9px] font-black uppercase px-2 py-1 rounded-md">
-                    ● Available
-                  </span>
+                  {(() => {
+                    const raju = laborersList.find(l => l.id === "lb-4" || l.name === "Raju Krishnan");
+                    const isAvailable = raju ? raju.availability === "available" : true;
+                    return isAvailable ? (
+                      <span className="bg-emerald-100 text-emerald-800 text-[9px] font-black uppercase px-2 py-1 rounded-md">
+                        ● Available
+                      </span>
+                    ) : (
+                      <span className="bg-amber-100 text-amber-800 text-[9px] font-black uppercase px-2 py-1 rounded-md">
+                        ● Busy
+                      </span>
+                    );
+                  })()}
                 </div>
 
                 <div className="flex space-x-2">
-                  <button className="flex-1 bg-[#3E5C31] text-white text-xs font-black py-2.5 rounded-xl">
-                    Set Available
-                  </button>
-                  <button className="flex-1 bg-[#F3F1ED] text-slate-600 text-xs font-bold py-2.5 rounded-xl hover:bg-slate-200">
-                    Set Busy
-                  </button>
+                  {(() => {
+                    const raju = laborersList.find(l => l.id === "lb-4" || l.name === "Raju Krishnan");
+                    const isAvailable = raju ? raju.availability === "available" : true;
+                    return (
+                      <>
+                        <button 
+                          onClick={() => {
+                            setLaborersList(prev => prev.map(l => {
+                              if (l.id === "lb-4" || l.name === "Raju Krishnan") {
+                                return { ...l, availability: "available" };
+                              }
+                              return l;
+                            }));
+                          }}
+                          className={`flex-1 text-xs font-black py-2.5 rounded-xl border transition-all cursor-pointer ${
+                            isAvailable 
+                              ? "bg-[#3E5C31] text-white border-[#3E5C31] shadow-sm" 
+                              : "bg-[#FAF7F2] text-slate-500 border-[#E8E6E1] hover:bg-slate-100"
+                          }`}
+                        >
+                          Set Available
+                        </button>
+                        <button 
+                          onClick={() => {
+                            setLaborersList(prev => prev.map(l => {
+                              if (l.id === "lb-4" || l.name === "Raju Krishnan") {
+                                return { ...l, availability: "unavailable" };
+                              }
+                              return l;
+                            }));
+                          }}
+                          className={`flex-1 text-xs font-black py-2.5 rounded-xl border transition-all cursor-pointer ${
+                            !isAvailable 
+                              ? "bg-[#D97706] text-white border-[#D97706] shadow-sm" 
+                              : "bg-[#FAF7F2] text-slate-500 border-[#E8E6E1] hover:bg-slate-100"
+                          }`}
+                        >
+                          Set Busy
+                        </button>
+                      </>
+                    );
+                  })()}
                 </div>
               </div>
 
@@ -2147,13 +2280,18 @@ export default function App() {
                           onChange={(e) => setNewLaborCategory(e.target.value)}
                           className="w-full bg-[#FAF7F2] text-[#2D2D2A] p-2 rounded-lg border border-[#E8E6E1]"
                         >
+                          <option>General</option>
+                          <option>Farm labor</option>
                           <option>Mason</option>
                           <option>Carpenter</option>
                           <option>Electrician</option>
                           <option>Plumber</option>
+                          <option>Painter</option>
                           <option>Welder</option>
-                          <option>Farm Labor</option>
-                          <option>Tractor Driver</option>
+                          <option>Driver</option>
+                          <option>Crane operator</option>
+                          <option>Event helpers</option>
+                          <option>House shifting labor</option>
                         </select>
                       </div>
 
@@ -2170,22 +2308,95 @@ export default function App() {
                       </div>
                     </div>
 
-                    <div>
-                      <label className="block text-[9px] font-bold text-[#8A867E] uppercase mb-0.5">Work Experience</label>
-                      <select
-                        value={newLaborExperience}
-                        onChange={(e) => setNewLaborExperience(e.target.value)}
-                        className="w-full bg-[#FAF7F2] text-[#2D2D2A] p-2 rounded-lg border border-[#E8E6E1]"
-                      >
-                        <option>Under 2 Years</option>
-                        <option>2 - 5 Years</option>
-                        <option>5 - 10 Years</option>
-                        <option>10+ Years</option>
-                      </select>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-[9px] font-bold text-[#8A867E] uppercase mb-0.5">Gender Selection</label>
+                        <select
+                          value={newLaborGender}
+                          onChange={(e) => setNewLaborGender(e.target.value as any)}
+                          className="w-full bg-[#FAF7F2] text-[#2D2D2A] p-2 rounded-lg border border-[#E8E6E1]"
+                        >
+                          <option value="Male">Male</option>
+                          <option value="Female">Female</option>
+                          <option value="Other">Other</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-[9px] font-bold text-[#8A867E] uppercase mb-0.5">Work Experience</label>
+                        <select
+                          value={newLaborExperience}
+                          onChange={(e) => setNewLaborExperience(e.target.value)}
+                          className="w-full bg-[#FAF7F2] text-[#2D2D2A] p-2 rounded-lg border border-[#E8E6E1]"
+                        >
+                          <option>Under 2 Years</option>
+                          <option>2 - 5 Years</option>
+                          <option>5 - 10 Years</option>
+                          <option>10+ Years</option>
+                        </select>
+                      </div>
                     </div>
 
-                    <div className="bg-[#FAF7F2] p-2 rounded-xl border border-[#E8E6E1] text-[9px] text-[#8A867E]">
-                      💡 <strong>Govt KYC note:</strong> Please upload a copy of your Aadhaar card or regional electrical license under the verification tab once requested.
+                    <div className="bg-[#FAF7F2] p-2.5 rounded-xl border border-[#E8E6E1] space-y-2">
+                      <div className="flex justify-between items-center">
+                        <label className="block text-[9px] font-bold text-[#8A867E] uppercase">KYC Document Type</label>
+                        <span className="text-[8px] text-[#3E5C31] font-bold uppercase">Required Verification</span>
+                      </div>
+                      
+                      <select
+                        value={newLaborKycDocType}
+                        onChange={(e) => setNewLaborKycDocType(e.target.value)}
+                        className="w-full bg-white text-[#2D2D2A] p-2 rounded-lg border border-[#E8E6E1] text-[11px]"
+                      >
+                        <option>Aadhaar Card</option>
+                        <option>Voter ID</option>
+                        <option>Electrical License</option>
+                        <option>Driving License</option>
+                        <option>MGNREGA Job Card</option>
+                        <option>Other Govt ID Proof</option>
+                      </select>
+
+                      <div className="relative border border-dashed border-[#3E5C31]/40 rounded-xl p-3 bg-white hover:bg-[#3E5C31]/5 transition-all text-center">
+                        <input 
+                          type="file" 
+                          id="labor-kyc-upload" 
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                          onChange={(e) => {
+                            if (e.target.files && e.target.files[0]) {
+                              setNewLaborKycFileName(e.target.files[0].name);
+                            } else {
+                              setNewLaborKycFileName("kyc_doc_upload.pdf");
+                            }
+                          }}
+                        />
+                        <div className="space-y-1">
+                          <span className="text-base block">📁</span>
+                          <p className="text-[10px] font-black text-[#3E5C31] truncate">
+                            {newLaborKycFileName ? `✓ ${newLaborKycFileName}` : "Click or Drag to Upload KYC"}
+                          </p>
+                          <p className="text-[8px] text-[#8A867E]">PDF, PNG, JPG up to 5MB</p>
+                        </div>
+                      </div>
+
+                      {/* Simulation helpers */}
+                      {!newLaborKycFileName && (
+                        <div className="flex gap-1.5 justify-center">
+                          <button
+                            type="button"
+                            onClick={() => setNewLaborKycFileName("aadhaar_front_back.pdf")}
+                            className="bg-white hover:bg-slate-50 text-slate-600 text-[8px] font-bold px-2 py-1 rounded border border-slate-200 cursor-pointer"
+                          >
+                            📄 Simulate Aadhaar
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setNewLaborKycFileName("license_copy.jpg")}
+                            className="bg-white hover:bg-slate-50 text-slate-600 text-[8px] font-bold px-2 py-1 rounded border border-slate-200 cursor-pointer"
+                          >
+                            📄 Simulate License
+                          </button>
+                        </div>
+                      )}
                     </div>
 
                     <button
@@ -2277,21 +2488,24 @@ export default function App() {
                           <div className="flex space-x-1">
                             <button 
                               onClick={() => handleApproveKYC(k.id)}
-                              className="bg-emerald-50 text-emerald-700 p-1 rounded-lg border border-emerald-100 font-bold text-[10px]"
+                              className="bg-emerald-50 text-emerald-700 px-2 py-1 rounded-lg border border-emerald-100 font-bold text-[10px] cursor-pointer hover:bg-emerald-100 transition-colors"
                             >
                               Approve
                             </button>
                             <button 
                               onClick={() => {
-                                alert("KYC document flagged as incomplete.");
+                                handleRejectKYC(k.id);
+                                alert("KYC document flagged as incomplete and profile rejected.");
                               }}
-                              className="bg-rose-50 text-rose-700 p-1 rounded-lg border border-rose-100 font-bold text-[10px]"
+                              className="bg-rose-50 text-rose-700 px-2 py-1 rounded-lg border border-rose-100 font-bold text-[10px] cursor-pointer hover:bg-rose-100 transition-colors"
                             >
                               Reject
                             </button>
                           </div>
+                        ) : k.status === "approved" ? (
+                          <span className="text-emerald-600 font-bold text-[10px] bg-emerald-50 px-2 py-1 rounded border border-emerald-100">✓ Approved</span>
                         ) : (
-                          <span className="text-emerald-600 font-bold text-[10px]">✓ Approved</span>
+                          <span className="text-rose-600 font-bold text-[10px] bg-rose-50 px-2 py-1 rounded border border-rose-100">✗ Rejected</span>
                         )}
                       </div>
                     </div>

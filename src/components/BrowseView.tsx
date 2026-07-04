@@ -351,9 +351,25 @@ export default function BrowseView({
                 {/* Content Section */}
                 <div className="flex-1 min-w-0 space-y-1">
                   <div className="flex justify-between items-start">
-                    <span className="text-[9px] bg-[#F3F1ED] text-[#5C5952] font-bold px-1.5 py-0.5 rounded capitalize">
-                      {isLabor ? "Skilled Labor" : (item as Equipment).subCategory}
-                    </span>
+                    <div className="flex flex-wrap gap-1 items-center">
+                      <span className="text-[9px] bg-[#F3F1ED] text-[#5C5952] font-bold px-1.5 py-0.5 rounded capitalize">
+                        {isLabor ? (item as Laborer).category : (item as Equipment).subCategory}
+                      </span>
+                      {isLabor && (item as Laborer).gender && (
+                        <span className="text-[8px] bg-slate-100 text-slate-600 font-black px-1.5 py-0.5 rounded uppercase">
+                          {(item as Laborer).gender}
+                        </span>
+                      )}
+                      {isLabor && (
+                        <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded ${
+                          (item as Laborer).availability === "available"
+                            ? "bg-emerald-100 text-emerald-800"
+                            : "bg-amber-100 text-amber-800"
+                        }`}>
+                          ● {(item as Laborer).availability === "available" ? "Ready Today" : "Busy"}
+                        </span>
+                      )}
+                    </div>
                     <span className="text-[10px] text-[#8A867E] font-semibold flex items-center">
                       <MapPin className="h-3 w-3 text-[#3E5C31] mr-0.5 shrink-0" />
                       {item.distance} km
