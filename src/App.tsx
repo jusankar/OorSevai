@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { 
   Sprout, HardHat, Wrench, Tent, Users, MapPin, Search, Bell, Shield, 
@@ -27,6 +27,32 @@ export default function App() {
   // Core Data Lists (In-memory persistent state)
   const [equipmentList, setEquipmentList] = useState<Equipment[]>(DEFAULT_EQUIPMENT);
   const [laborersList, setLaborersList] = useState<Laborer[]>(DEFAULT_LABORERS);
+
+  // Admin Service Location and Radius Geofence (surrounding distance KM)
+  const [adminLocation, setAdminLocation] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("admin_location") || "Coimbatore, Tamil Nadu";
+    }
+    return "Coimbatore, Tamil Nadu";
+  });
+  const [adminDistance, setAdminDistance] = useState<number>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("admin_distance");
+      return saved ? parseInt(saved, 10) : 15; // default 15 KM
+    }
+    return 15;
+  });
+
+
+
+  // Dynamically filter active equipment and laborers based on Admin configured location distance
+  const filteredEquipmentList = useMemo(() => {
+    return equipmentList.filter(item => item.distance <= adminDistance);
+  }, [equipmentList, adminDistance]);
+
+  const filteredLaborersList = useMemo(() => {
+    return laborersList.filter(item => item.distance <= adminDistance);
+  }, [laborersList, adminDistance]);
 
   // PWA (Progressive Web App) states
   const [isOnline, setIsOnline] = useState(typeof window !== "undefined" ? navigator.onLine : true);
@@ -865,6 +891,8 @@ export default function App() {
           )}
         </AnimatePresence>
 
+
+
         {/* MAIN BODY AREA SCROLLABLE */}
         <div className="flex-1 overflow-y-auto pb-24 scrollbar-none">
           
@@ -873,7 +901,7 @@ export default function App() {
             <>
               {activeTab === "home" && activeView === "home" && (
                 <HomeView 
-                  popularEquipment={equipmentList.slice(0, 4)}
+                  popularEquipment={filteredEquipmentList.slice(0, 4)}
                   onSelectCategory={handleSelectCategory}
                   onSelectEquipment={handleSelectEquipment}
                   onStartSearch={handleStartSearch}
@@ -889,6 +917,8 @@ export default function App() {
                       setActiveTab("dashboard");
                     }
                   }}
+                  adminLocation={adminLocation}
+                  adminDistance={adminDistance}
                 />
               )}
 
@@ -896,12 +926,14 @@ export default function App() {
                 <BrowseView 
                   initialCategory={browseCategory}
                   searchQuery={searchQuery}
-                  allEquipment={equipmentList}
-                  allLaborers={laborersList}
+                  allEquipment={filteredEquipmentList}
+                  allLaborers={filteredLaborersList}
                   bookings={bookings}
                   onBack={() => setActiveView("home")}
                   onSelectEquipment={handleSelectEquipment}
                   onSelectLaborer={handleSelectLaborer}
+                  adminLocation={adminLocation}
+                  adminDistance={adminDistance}
                 />
               )}
 
@@ -2633,6 +2665,147 @@ export default function App() {
                     <span className="text-[8px] text-[#8A867E] block font-semibold">Active Jobs</span>
                     <span className="text-xs font-black text-[#2D2D2A]">3 Rentals</span>
                   </div>
+                </div>
+              </div>
+
+              {/* Geofencing & Coverage Range Configuration */}
+              <div className="bg-white p-4 rounded-3xl border border-[#E8E6E1] shadow-xs space-y-4">
+                <div className="flex justify-between items-center pb-2 border-b border-[#E8E6E1]">
+                  <div className="flex items-center space-x-1.5">
+                    <span className="text-sm">🌐</span>
+                    <h3 className="font-extrabold text-xs text-[#2D2D2A] uppercase tracking-wider font-sans">
+                      Service Coverage & Geofencing
+                    </h3>
+                  </div>
+                  <span className="text-[8px] bg-emerald-100 text-[#3E5C31] font-black uppercase px-2 py-0.5 rounded">
+                    Operational Control
+                  </span>
+                </div>
+
+                <div className="space-y-3.5 text-xs">
+                  {/* Location Field */}
+                  <div className="space-y-1.5">
+                    <label className="block text-[10px] font-black text-[#5C5952] uppercase tracking-wider">
+                      Center Location (Where service is set)
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={adminLocation}
+                        onChange={(e) => {
+                          setAdminLocation(e.target.value);
+                          localStorage.setItem("admin_location", e.target.value);
+                        }}
+                        placeholder="Enter village, town or city..."
+                        className="w-full bg-[#FAF7F2] text-[#2D2D2A] border border-[#E8E6E1] rounded-xl px-3.5 py-2 pl-9 font-medium text-xs focus:ring-2 focus:ring-[#3E5C31] focus:bg-white outline-none transition-all font-sans"
+                      />
+                      <MapPin className="absolute left-3 top-2.5 h-3.5 w-3.5 text-[#3E5C31]" />
+                    </div>
+                    {/* Common village suggestions for demo */}
+                    <div className="flex flex-wrap gap-1.5 pt-1">
+                      {["Coimbatore, Tamil Nadu", "Pollachi, Coimbatore", "Sulur, Coimbatore", "Peedampalli, Tamil Nadu"].map((loc) => (
+                        <button
+                          key={loc}
+                          type="button"
+                          onClick={() => {
+                            setAdminLocation(loc);
+                            localStorage.setItem("admin_location", loc);
+                          }}
+                          className={`text-[9px] px-2 py-1 rounded-lg border font-bold transition-all ${
+                            adminLocation === loc
+                              ? "bg-[#3E5C31] text-white border-[#3E5C31]"
+                              : "bg-[#FAF7F2] text-[#5C5952] border-[#E8E6E1] hover:bg-[#F3F1ED]"
+                          }`}
+                        >
+                          {loc.split(",")[0]}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Distance Field (KM) */}
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between items-center">
+                      <label className="block text-[10px] font-black text-[#5C5952] uppercase tracking-wider">
+                        Service Radius (Surrounding Distance)
+                      </label>
+                      <span className="text-xs font-black text-[#3E5C31] bg-[#3E5C31]/10 px-2 py-0.5 rounded-full">
+                        {adminDistance} KM
+                      </span>
+                    </div>
+                    <div className="flex items-center space-x-3">
+                      <input
+                        type="range"
+                        min="1"
+                        max="50"
+                        value={adminDistance}
+                        onChange={(e) => {
+                          const val = parseInt(e.target.value, 10);
+                          setAdminDistance(val);
+                          localStorage.setItem("admin_distance", val.toString());
+                        }}
+                        className="flex-1 accent-[#3E5C31] h-1.5 bg-[#FAF7F2] rounded-lg border border-[#E8E6E1] cursor-pointer"
+                      />
+                      <input
+                        type="number"
+                        min="1"
+                        max="100"
+                        value={adminDistance}
+                        onChange={(e) => {
+                          const val = parseInt(e.target.value, 10) || 1;
+                          setAdminDistance(val);
+                          localStorage.setItem("admin_distance", val.toString());
+                        }}
+                        className="w-14 text-center bg-[#FAF7F2] text-[#2D2D2A] border border-[#E8E6E1] rounded-lg py-1 font-extrabold text-xs"
+                      />
+                      <span className="text-[10px] font-bold text-[#8A867E]">KM</span>
+                    </div>
+                  </div>
+
+                  {/* Geofencing Summary Metrics */}
+                  <div className="bg-[#FAF7F2] p-3 rounded-2xl border border-[#E8E6E1] space-y-1">
+                    <div className="text-[9px] font-black text-[#8A867E] uppercase tracking-wider">
+                      Surrounding App Scope summary
+                    </div>
+                    <p className="text-[10px] text-slate-700 leading-relaxed font-sans">
+                      All products & laborer services outside this <strong className="text-[#3E5C31]">{adminDistance} KM</strong> boundary are automatically geofenced (hidden) from the customer homepage.
+                    </p>
+                    <div className="grid grid-cols-2 gap-2 pt-2 text-[9px] font-bold">
+                      <div className="bg-white p-1.5 rounded-lg border border-[#E8E6E1] text-center">
+                        <span className="text-[#8A867E] block text-[8px]">Active Equipment</span>
+                        <span className="text-[#3E5C31] font-black">{filteredEquipmentList.length} / {equipmentList.length}</span>
+                      </div>
+                      <div className="bg-white p-1.5 rounded-lg border border-[#E8E6E1] text-center">
+                        <span className="text-[#8A867E] block text-[8px]">Active Laborers</span>
+                        <span className="text-[#3E5C31] font-black">{filteredLaborersList.length} / {laborersList.length}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      alert(`Geofencing Configured!\n\n📍 Center set to: ${adminLocation}\n📏 Maximum service radius: ${adminDistance} KM.\n\nThe user interface has refreshed to only offer equipment and laborers within this boundary!`);
+                    }}
+                    className="flex-1 bg-[#3E5C31] hover:bg-[#3E5C31]/95 text-white text-[10px] font-black py-2.5 rounded-xl text-center shadow-xs cursor-pointer transition-all font-sans"
+                  >
+                    💾 Save & Apply Geofence
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAdminLocation("Coimbatore, Tamil Nadu");
+                      setAdminDistance(15);
+                      localStorage.setItem("admin_location", "Coimbatore, Tamil Nadu");
+                      localStorage.setItem("admin_distance", "15");
+                      alert("Geofencing coverage reset to defaults (Coimbatore, 15 KM).");
+                    }}
+                    className="bg-[#FAF7F2] hover:bg-[#F3F1ED] border border-[#E8E6E1] text-slate-600 text-[10px] font-bold px-3 py-2.5 rounded-xl cursor-pointer transition-colors"
+                  >
+                    Reset
+                  </button>
                 </div>
               </div>
 

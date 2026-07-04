@@ -89,6 +89,8 @@ interface HomeViewProps {
   onStartSearch: (query: string) => void;
   onChangeRole: (role: "customer" | "owner" | "labor" | "admin") => void;
   onNavigate: (tab: "home" | "bookings" | "add" | "messages" | "profile") => void;
+  adminLocation?: string;
+  adminDistance?: number;
 }
 
 export default function HomeView({
@@ -97,7 +99,9 @@ export default function HomeView({
   onSelectEquipment,
   onStartSearch,
   onChangeRole,
-  onNavigate
+  onNavigate,
+  adminLocation = "Coimbatore, Tamil Nadu",
+  adminDistance = 15
 }: HomeViewProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [weatherLoading, setWeatherLoading] = useState(false);
@@ -297,8 +301,13 @@ export default function HomeView({
             </div>
             <div>
               <div className="flex items-center text-[#8A867E] text-xs">
-                <MapPin className="h-3.5 w-3.5 text-[#3E5C31] mr-1" />
-                <span className="font-semibold text-[#2D2D2A]">Coimbatore, TN</span>
+                <MapPin className="h-3.5 w-3.5 text-[#3E5C31] mr-1 shrink-0" />
+                <span className="font-semibold text-[#2D2D2A] max-w-[130px] truncate" title={adminLocation}>
+                  {adminLocation.split(",")[0]}
+                </span>
+                <span className="ml-1 text-[8px] bg-emerald-50 text-[#3E5C31] px-1.5 py-0.5 rounded font-black border border-emerald-100/60 shrink-0">
+                  {adminDistance} KM radius
+                </span>
               </div>
               <h2 className="text-sm font-semibold text-[#2D2D2A]">Hello, Udaya 👋</h2>
             </div>

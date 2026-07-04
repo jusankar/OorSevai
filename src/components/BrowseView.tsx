@@ -13,6 +13,8 @@ interface BrowseViewProps {
   onBack: () => void;
   onSelectEquipment: (eq: Equipment) => void;
   onSelectLaborer: (lb: Laborer) => void;
+  adminLocation?: string;
+  adminDistance?: number;
 }
 
 export default function BrowseView({
@@ -23,7 +25,9 @@ export default function BrowseView({
   bookings = [],
   onBack,
   onSelectEquipment,
-  onSelectLaborer
+  onSelectLaborer,
+  adminLocation = "Coimbatore, Tamil Nadu",
+  adminDistance = 15
 }: BrowseViewProps) {
   const [activeCategory, setActiveCategory] = useState<string>(initialCategory || "all");
   const [localSearch, setLocalSearch] = useState<string>(searchQuery || "");
@@ -158,6 +162,19 @@ export default function BrowseView({
             </button>
           ))}
         </div>
+      </div>
+
+      {/* Admin Operating Geofence Area Banner */}
+      <div className="mx-4 bg-emerald-50/70 border border-emerald-100 p-2.5 rounded-2xl flex items-center justify-between text-[10px]">
+        <div className="flex items-center space-x-1.5 text-emerald-800">
+          <MapPin className="h-3.5 w-3.5 text-[#3E5C31] shrink-0" />
+          <span>
+            Operating in <strong className="font-extrabold">{adminLocation}</strong> within <strong className="font-extrabold">{adminDistance} KM</strong>
+          </span>
+        </div>
+        <span className="text-[8px] bg-[#3E5C31]/10 text-[#3E5C31] font-black px-2 py-0.5 rounded-md uppercase tracking-wider shrink-0">
+          Geofence Active
+        </span>
       </div>
 
       {/* Subcategory scrollable & Sorting block */}
