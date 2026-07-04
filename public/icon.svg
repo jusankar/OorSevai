@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4E753E" />
+      <stop offset="100%" stop-color="#2D4424" />
+    </linearGradient>
+  </defs>
+  <!-- Background with slight rounded corners for app icon look -->
+  <rect width="512" height="512" rx="112" fill="url(#bgGrad)" />
+  <!-- Inner circular glow/shield -->
+  <circle cx="256" cy="256" r="210" fill="none" stroke="#FAF7F2" stroke-width="12" stroke-opacity="0.15" />
+  <!-- Clean Display Typography "O" -->
+  <text x="256" y="295" font-family="system-ui, -apple-system, sans-serif" font-size="240" font-weight="900" fill="#FAF7F2" text-anchor="middle" dominant-baseline="middle">O</text>
+  <!-- Subtitle small decoration dot -->
+  <circle cx="256" cy="400" r="16" fill="#D97706" />
+</svg>
