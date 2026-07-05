@@ -9,6 +9,8 @@ import {
 } from "lucide-react";
 import { Equipment, Laborer, Booking, ChatMessage, Dispute, AppNotification } from "./types";
 import { DEFAULT_EQUIPMENT, DEFAULT_LABORERS, CATEGORIES_METADATA } from "./data";
+import { getTranslation, Language } from "./translate";
+import { Settings } from "lucide-react";
 import HomeView from "./components/HomeView";
 import BrowseView from "./components/BrowseView";
 import GeofenceMap from "./components/GeofenceMap";
@@ -42,6 +44,30 @@ export default function App() {
     }
     return 15;
   });
+
+  // Language & Settings states with persistence
+  const [language, setLanguage] = useState<Language>(() => {
+    if (typeof window !== "undefined") {
+      return (localStorage.getItem("oorsevai_lang") as Language) || "en";
+    }
+    return "en";
+  });
+  const [darkMode, setDarkMode] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("oorsevai_dark") === "true";
+    }
+    return false;
+  });
+
+  useEffect(() => {
+    if (darkMode) {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+  }, [darkMode]);
+
+  const t = (key: Parameters<typeof getTranslation>[1]): string => getTranslation(language, key);
 
 
 
@@ -726,31 +752,62 @@ export default function App() {
     .reduce((sum, b) => sum + (b.totalAmount * 0.9), 0); // 90% goes to owner after 10% commission
 
   return (
-    <div id="main-app-container" className="min-h-screen bg-[#FAF7F2] font-sans flex flex-col items-center justify-start py-0 md:py-8">
+    <div id="main-app-container" className={`min-h-screen bg-[#FAF7F2] dark:bg-slate-950 font-sans flex flex-col items-center justify-start py-0 md:py-8 transition-colors duration-300 ${darkMode ? "dark" : ""}`}>
       
       {/* High Fidelity Screen Wrapper framing a mobile emulator feel on desktop */}
-      <div className="w-full max-w-md bg-[#FDFCF9] md:rounded-3xl md:shadow-2xl border border-[#E8E6E1] overflow-hidden flex flex-col min-h-screen md:min-h-[840px] relative">
+      <div className={`w-full max-w-md bg-[#FDFCF9] dark:bg-[#121212] dark:text-[#F1F5F9] md:rounded-3xl md:shadow-2xl border border-[#E8E6E1] dark:border-slate-800 overflow-hidden flex flex-col min-h-screen md:min-h-[840px] relative transition-all duration-300 ${darkMode ? "dark" : ""}`}>
         
         {/* TOP PLATFORM BAR & ROLE SWITCHER */}
-        <div id="top-branding-bar" className="bg-[#3E5C31] text-white px-4 py-3 border-b border-white/10 flex flex-col space-y-2.5 shadow-sm">
+        <div id="top-branding-bar" className="bg-[#3E5C31] dark:bg-[#203119] text-white px-4 py-3 border-b border-white/10 flex flex-col space-y-2.5 shadow-sm">
           <div className="flex justify-between items-center">
             <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-white rounded-xl flex items-center justify-center shadow-xs">
-                <span className="text-[#3E5C31] font-black text-lg">O</span>
+              <div className="w-8 h-8 bg-white rounded-xl overflow-hidden flex items-center justify-center shadow-xs shrink-0 p-0.5">
+                <img src="/icon.svg" alt="Oor Sevai Logo" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
               </div>
               <div>
-                <h1 className="text-sm font-black tracking-tight leading-none text-white">OorSevai</h1>
-                <span className="text-[8px] uppercase tracking-wider text-white/70 font-bold">All Village Services in One App.</span>
+                <h1 className="text-sm font-black tracking-tight leading-none text-white">{t("app_title")}</h1>
+                <span className="text-[8px] uppercase tracking-wider text-white/70 font-bold">{t("app_subtitle")}</span>
               </div>
             </div>
             
             {/* Quick Multi-Language / Support Badges & Notifications */}
             <div className="flex items-center space-x-1.5">
+              {/* Language Switcher Toggle */}
+              <button
+                type="button"
+                onClick={() => {
+                  const newLang = language === "en" ? "ta" : "en";
+                  setLanguage(newLang);
+                  localStorage.setItem("oorsevai_lang", newLang);
+                }}
+                className="text-[10px] bg-white/10 hover:bg-white/20 border border-white/10 text-white px-2.5 py-1 rounded-xl font-bold transition-all duration-200 cursor-pointer flex items-center space-x-1"
+                title={language === "en" ? "தமிழ் மொழிக்கு மாற்றவும்" : "Switch to English"}
+                id="language-toggle-btn"
+              >
+                <span>🌐</span>
+                <span className="font-extrabold">{language === "en" ? "EN" : "தம"}</span>
+              </button>
+
+              {/* Theme Switcher Toggle */}
+              <button
+                type="button"
+                onClick={() => {
+                  const newMode = !darkMode;
+                  setDarkMode(newMode);
+                  localStorage.setItem("oorsevai_dark", newMode ? "true" : "false");
+                }}
+                className="p-1.5 bg-white/10 hover:bg-white/20 border border-white/10 rounded-xl transition-all duration-200 focus:outline-none cursor-pointer flex items-center justify-center text-white text-sm select-none"
+                title={darkMode ? "Switch to Light Theme ☀️" : "Switch to Dark Theme 🌙"}
+                id="theme-toggle-btn"
+              >
+                {darkMode ? "☀️" : "🌙"}
+              </button>
+
               {/* Notification Bell Icon */}
               <button
                 type="button"
                 onClick={() => setShowNotificationsDropdown(!showNotificationsDropdown)}
-                className="relative p-1.5 hover:bg-white/10 rounded-xl transition-all duration-200 focus:outline-none cursor-pointer flex items-center justify-center mr-1"
+                className="relative p-1.5 bg-white/10 hover:bg-white/20 border border-white/10 rounded-xl transition-all duration-200 focus:outline-none cursor-pointer flex items-center justify-center"
                 title="Notifications"
               >
                 <Bell className="h-4 w-4 text-white" />
@@ -760,19 +817,16 @@ export default function App() {
                   </span>
                 )}
               </button>
-
-              <span className="text-[9px] bg-white/15 text-white/95 px-2 py-0.5 rounded-full font-bold">
-                🌐 Eng (IN)
-              </span>
-              <span className="text-[9px] bg-[#E9C46A] text-[#2D2D2A] px-2 py-0.5 rounded-full font-extrabold flex items-center space-x-0.5 shadow-xs">
-                <span>⭐ MVP</span>
+ 
+              <span className="text-[9px] bg-[#E9C46A] text-[#2D2D2A] px-2 py-1.2 rounded-xl font-extrabold flex items-center space-x-0.5 shadow-xs shrink-0">
+                <span>{t("mvp")}</span>
               </span>
             </div>
           </div>
-
+ 
           {/* Quick Role Switcher Panel */}
           <div className="bg-black/20 p-1 rounded-xl flex justify-between items-center">
-            <span className="text-[10px] text-white/80 font-bold pl-2">Role:</span>
+            <span className="text-[10px] text-white/80 font-bold pl-2">{t("role_label")}</span>
             <div className="flex space-x-1 flex-1 justify-end">
               {(["customer", "owner", "labor", "admin"] as const).map((role) => (
                 <button
@@ -793,7 +847,10 @@ export default function App() {
                       : "text-white/80 hover:text-white hover:bg-white/10"
                   }`}
                 >
-                  {role}
+                  {role === "customer" ? t("role_customer") : 
+                   role === "owner" ? t("role_owner") : 
+                   role === "labor" ? t("role_labor") : 
+                   t("role_admin")}
                 </button>
               ))}
             </div>
@@ -822,8 +879,8 @@ export default function App() {
             className="bg-[#FAF7F2] text-[#2D2D2A] p-3 border-b border-[#E8E6E1] flex items-center justify-between shadow-xs relative"
           >
             <div className="flex items-center space-x-2.5">
-              <div className="w-8 h-8 bg-[#3E5C31] text-white rounded-lg flex items-center justify-center font-black text-sm shadow-xs shrink-0">
-                O
+              <div className="w-8 h-8 bg-white rounded-xl overflow-hidden flex items-center justify-center shadow-xs shrink-0 p-0.5 border border-[#E8E6E1]">
+                <img src="/icon.svg" alt="Oor Sevai Logo" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
               </div>
               <div>
                 <p className="text-[10px] font-black leading-tight text-[#2D2D2A] flex items-center gap-1">
@@ -891,6 +948,8 @@ export default function App() {
           )}
         </AnimatePresence>
 
+        {/* Settings & Theme overlay has been simplified into the direct inline theme toggle */}
+
 
 
         {/* MAIN BODY AREA SCROLLABLE */}
@@ -919,6 +978,7 @@ export default function App() {
                   }}
                   adminLocation={adminLocation}
                   adminDistance={adminDistance}
+                  language={language}
                 />
               )}
 
@@ -934,6 +994,7 @@ export default function App() {
                   onSelectLaborer={handleSelectLaborer}
                   adminLocation={adminLocation}
                   adminDistance={adminDistance}
+                  language={language}
                 />
               )}
 
@@ -2938,7 +2999,7 @@ export default function App() {
                 className={`flex flex-col items-center gap-0.5 cursor-pointer ${activeTab === "home" ? "text-[#3E5C31] font-bold" : "text-[#8A867E]"}`}
               >
                 <div className="text-xl">🏠</div>
-                <span className="text-[9px] font-extrabold uppercase tracking-wide">Home</span>
+                <span className="text-[9px] font-extrabold uppercase tracking-wide">{t("tab_home")}</span>
               </button>
 
               <button 
@@ -2946,7 +3007,7 @@ export default function App() {
                 className={`flex flex-col items-center gap-0.5 cursor-pointer ${activeTab === "bookings" ? "text-[#3E5C31] font-bold" : "text-[#8A867E]"}`}
               >
                 <div className="text-xl">📅</div>
-                <span className="text-[9px] font-extrabold uppercase tracking-wide">Bookings</span>
+                <span className="text-[9px] font-extrabold uppercase tracking-wide">{t("tab_bookings")}</span>
               </button>
 
               <button 
@@ -2954,7 +3015,7 @@ export default function App() {
                 className={`flex flex-col items-center gap-0.5 cursor-pointer ${activeTab === "chat" ? "text-[#3E5C31] font-bold" : "text-[#8A867E]"}`}
               >
                 <div className="text-xl">💬</div>
-                <span className="text-[9px] font-extrabold uppercase tracking-wide">AI Advisor</span>
+                <span className="text-[9px] font-extrabold uppercase tracking-wide">{t("tab_ai_advisor")}</span>
               </button>
 
               <button 
@@ -2962,7 +3023,7 @@ export default function App() {
                 className="flex flex-col items-center gap-0.5 cursor-pointer text-[#8A867E]"
               >
                 <div className="text-xl">👤</div>
-                <span className="text-[9px] font-extrabold uppercase tracking-wide">Provider</span>
+                <span className="text-[9px] font-extrabold uppercase tracking-wide">{t("tab_provider")}</span>
               </button>
             </>
           ) : (
@@ -2972,7 +3033,7 @@ export default function App() {
                 className="flex flex-col items-center gap-0.5 cursor-pointer text-[#8A867E]"
               >
                 <div className="text-xl">🚜</div>
-                <span className="text-[9px] font-extrabold uppercase tracking-wide">Rent Mode</span>
+                <span className="text-[9px] font-extrabold uppercase tracking-wide">{t("tab_rent_mode")}</span>
               </button>
 
               <button 
@@ -2980,7 +3041,7 @@ export default function App() {
                 className={`flex flex-col items-center gap-0.5 cursor-pointer ${activeTab === "dashboard" ? "text-[#3E5C31] font-bold" : "text-[#8A867E]"}`}
               >
                 <div className="text-xl">📊</div>
-                <span className="text-[9px] font-extrabold uppercase tracking-wide">My Dashboard</span>
+                <span className="text-[9px] font-extrabold uppercase tracking-wide">{t("tab_dashboard")}</span>
               </button>
 
               <button 
@@ -2991,7 +3052,7 @@ export default function App() {
                 className="flex flex-col items-center gap-0.5 cursor-pointer text-[#8A867E]"
               >
                 <div className="text-xl">🎧</div>
-                <span className="text-[9px] font-extrabold uppercase tracking-wide">Support</span>
+                <span className="text-[9px] font-extrabold uppercase tracking-wide">{t("tab_support")}</span>
               </button>
             </>
           )}

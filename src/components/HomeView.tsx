@@ -6,6 +6,7 @@ import {
   Cloud, Sun, CloudRain, CloudLightning, CloudSun, Droplets, Thermometer, Loader2, Locate
 } from "lucide-react";
 import { Equipment } from "../types";
+import { getTranslation, Language } from "../translate";
 
 // Helper function to interpret WMO weather codes and provide agricultural guidance
 const getWeatherDetails = (code: number, rainSum: number = 0) => {
@@ -91,6 +92,7 @@ interface HomeViewProps {
   onNavigate: (tab: "home" | "bookings" | "add" | "messages" | "profile") => void;
   adminLocation?: string;
   adminDistance?: number;
+  language?: Language;
 }
 
 export default function HomeView({
@@ -101,8 +103,10 @@ export default function HomeView({
   onChangeRole,
   onNavigate,
   adminLocation = "Coimbatore, Tamil Nadu",
-  adminDistance = 15
+  adminDistance = 15,
+  language = "en"
 }: HomeViewProps) {
+  const t = (key: Parameters<typeof getTranslation>[1]): string => getTranslation(language, key);
   const [searchQuery, setSearchQuery] = useState("");
   const [weatherLoading, setWeatherLoading] = useState(false);
   const [weatherError, setWeatherError] = useState<string | null>(null);
@@ -282,70 +286,70 @@ export default function HomeView({
   };
 
   const categories = [
-    { id: "agriculture", name: "Agriculture", sub: "Equipment", icon: Sprout, color: "bg-[#3E5C31]/10 text-[#3E5C31] border-[#E8E6E1] hover:bg-[#3E5C31]/20" },
-    { id: "construction", name: "Construction", sub: "Equipment", icon: HardHat, color: "bg-[#D97706]/10 text-[#D97706] border-[#E8E6E1] hover:bg-[#D97706]/20" },
-    { id: "tools", name: "Tools &", sub: "Machines", icon: Wrench, color: "bg-[#2D2D2A]/10 text-[#2D2D2A] border-[#E8E6E1] hover:bg-[#2D2D2A]/20" },
-    { id: "function", name: "Function", sub: "Materials", icon: Tent, color: "bg-[#E9C46A]/15 text-[#8A867E] border-[#E8E6E1] hover:bg-[#E9C46A]/30" },
-    { id: "labor", name: "Labor", sub: "Services", icon: Users, color: "bg-[#3E5C31]/5 text-[#3E5C31] border-[#E8E6E1] hover:bg-[#3E5C31]/15" },
+    { id: "agriculture", name: t("agriculture"), sub: t("machines"), icon: Sprout, color: "bg-[#3E5C31]/10 dark:bg-emerald-950/20 text-[#3E5C31] dark:text-emerald-400 border-[#E8E6E1] dark:border-slate-800 hover:bg-[#3E5C31]/20 dark:hover:bg-emerald-950/40" },
+    { id: "construction", name: t("construction"), sub: t("machines"), icon: HardHat, color: "bg-[#D97706]/10 dark:bg-amber-950/20 text-[#D97706] dark:text-amber-400 border-[#E8E6E1] dark:border-slate-800 hover:bg-[#D97706]/20 dark:hover:bg-amber-950/40" },
+    { id: "tools", name: t("tools"), sub: t("machines"), icon: Wrench, color: "bg-[#2D2D2A]/10 dark:bg-slate-800/40 text-[#2D2D2A] dark:text-slate-300 border-[#E8E6E1] dark:border-slate-800 hover:bg-[#2D2D2A]/20 dark:hover:bg-slate-800/60" },
+    { id: "function", name: t("function"), sub: t("materials"), icon: Tent, color: "bg-[#E9C46A]/15 dark:bg-yellow-950/20 text-[#8A867E] dark:text-yellow-400 border-[#E8E6E1] dark:border-slate-800 hover:bg-[#E9C46A]/30 dark:hover:bg-yellow-950/40" },
+    { id: "labor", name: t("labor"), sub: t("services"), icon: Users, color: "bg-[#3E5C31]/5 dark:bg-emerald-900/10 text-[#3E5C31] dark:text-emerald-400 border-[#E8E6E1] dark:border-slate-800 hover:bg-[#3E5C31]/15 dark:hover:bg-emerald-900/20" },
   ];
 
   return (
-    <div id="home-view-container" className="space-y-6 max-w-lg mx-auto bg-[#FDFCF9] min-h-screen pb-20 text-[#2D2D2A]">
+    <div id="home-view-container" className="space-y-6 max-w-lg mx-auto bg-[#FDFCF9] dark:bg-[#111613] min-h-screen pb-20 text-[#2D2D2A] dark:text-slate-100">
       
       {/* Header Section */}
-      <div id="home-header" className="bg-white px-4 pt-6 pb-5 rounded-b-3xl shadow-xs border-b border-[#E8E6E1] space-y-4">
+      <div id="home-header" className="bg-white dark:bg-[#1C2420] px-4 pt-6 pb-5 rounded-b-3xl shadow-xs border-b border-[#E8E6E1] dark:border-slate-800 space-y-4">
         <div className="flex justify-between items-center">
           <div className="flex items-center space-x-2">
-            <div className="bg-[#3E5C31] h-9 w-9 rounded-xl flex items-center justify-center text-white font-black text-lg shadow-sm">
-              O
+            <div className="bg-white h-9 w-9 rounded-xl overflow-hidden flex items-center justify-center shadow-sm p-0.5 border border-[#E8E6E1] dark:border-slate-800 shrink-0">
+              <img src="/icon.svg" alt="Oor Sevai Logo" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
             </div>
             <div>
-              <div className="flex items-center text-[#8A867E] text-xs">
-                <MapPin className="h-3.5 w-3.5 text-[#3E5C31] mr-1 shrink-0" />
-                <span className="font-semibold text-[#2D2D2A] max-w-[130px] truncate" title={adminLocation}>
+              <div className="flex items-center text-[#8A867E] dark:text-slate-300 text-xs">
+                <MapPin className="h-3.5 w-3.5 text-[#3E5C31] dark:text-emerald-400 mr-1 shrink-0" />
+                <span className="font-semibold text-[#2D2D2A] dark:text-slate-100 max-w-[130px] truncate" title={adminLocation}>
                   {adminLocation.split(",")[0]}
                 </span>
-                <span className="ml-1 text-[8px] bg-emerald-50 text-[#3E5C31] px-1.5 py-0.5 rounded font-black border border-emerald-100/60 shrink-0">
-                  {adminDistance} KM radius
+                <span className="ml-1 text-[8px] bg-emerald-50 dark:bg-[#3E5C31]/20 text-[#3E5C31] dark:text-emerald-400 px-1.5 py-0.5 rounded font-black border border-emerald-100/60 dark:border-[#3E5C31]/30 shrink-0">
+                  {adminDistance} KM {t("radius")}
                 </span>
               </div>
-              <h2 className="text-sm font-semibold text-[#2D2D2A]">Hello, Udaya 👋</h2>
+              <h2 className="text-sm font-semibold text-[#2D2D2A] dark:text-slate-100">{t("hello_user")}</h2>
             </div>
           </div>
           <div className="flex items-center space-x-2">
-            <button className="relative bg-[#F3F1ED] p-2 rounded-full text-[#2D2D2A] hover:bg-slate-200">
-               <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-[#D97706] rounded-full border border-white"></span>
+            <button className="relative bg-[#F3F1ED] dark:bg-[#25302A] p-2 rounded-full text-[#2D2D2A] dark:text-slate-100 hover:bg-slate-200 dark:hover:bg-[#2E3C34]">
+               <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-[#D97706] rounded-full border border-white dark:border-slate-800"></span>
               <Bell className="h-4 w-4" />
             </button>
             <div 
-              className="bg-[#3E5C31]/10 text-[#3E5C31] px-2.5 py-1 rounded-lg text-xs font-bold cursor-pointer hover:bg-[#3E5C31]/20"
+              className="bg-[#3E5C31]/10 dark:bg-emerald-500/10 text-[#3E5C31] dark:text-emerald-400 px-2.5 py-1 rounded-lg text-xs font-bold cursor-pointer hover:bg-[#3E5C31]/20 dark:hover:bg-emerald-500/20"
               onClick={() => onNavigate("profile")}
             >
-              Demo Profile
+              {t("demo_profile")}
             </div>
           </div>
         </div>
 
         <div className="space-y-1.5">
           <div className="flex items-center space-x-1.5">
-            <span className="text-[9px] font-black tracking-widest text-[#3E5C31] uppercase bg-[#3E5C31]/10 px-2 py-0.5 rounded-md">OorSevai</span>
-            <span className="text-[10px] font-bold text-[#8A867E]">All Village Services in One App.</span>
+            <span className="text-[9px] font-black tracking-widest text-[#3E5C31] dark:text-emerald-400 uppercase bg-[#3E5C31]/10 dark:bg-[#3E5C31]/20 px-2 py-0.5 rounded-md">{t("app_title")}</span>
+            <span className="text-[10px] font-bold text-[#8A867E] dark:text-slate-400">{t("app_subtitle")}</span>
           </div>
-          <h1 className="text-2xl font-black text-[#2D2D2A] tracking-tight leading-tight">
-            Rent Anything.<br />
-            <span className="text-[#3E5C31] font-extrabold">Get Work Done.</span>
+          <h1 className="text-2xl font-black text-[#2D2D2A] dark:text-white tracking-tight leading-tight">
+            {t("rent_anything")}<br />
+            <span className="text-[#3E5C31] dark:text-emerald-400 font-extrabold">{t("get_work_done")}</span>
           </h1>
-          <p className="text-xs text-[#8A867E]">Connecting owners, local workers, and renters hyperlocally.</p>
+          <p className="text-xs text-[#8A867E] dark:text-slate-300">{t("tagline")}</p>
         </div>
 
         {/* Search Input */}
         <form onSubmit={handleSearchSubmit} className="relative flex items-center">
           <input
             type="text"
-            placeholder="Search tractors, generators, masons, drills..."
+            placeholder={t("search_placeholder")}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-[#F3F1ED] text-[#2D2D2A] pl-11 pr-12 py-3.5 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-[#3E5C31] border border-[#E8E6E1] focus:bg-white transition-all shadow-inner"
+            className="w-full bg-[#F3F1ED] dark:bg-[#252F2A] text-[#2D2D2A] dark:text-slate-100 pl-11 pr-12 py-3.5 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-[#3E5C31] dark:focus:ring-emerald-500 border border-[#E8E6E1] dark:border-slate-800 focus:bg-white dark:focus:bg-[#1C2420] transition-all shadow-inner"
           />
           <Search className="absolute left-4 h-4 w-4 text-[#8A867E]" />
           <button 
@@ -360,8 +364,8 @@ export default function HomeView({
       {/* Main Categories Panel */}
       <div id="home-categories" className="px-4 space-y-3">
         <div className="flex justify-between items-center">
-          <h3 className="font-extrabold text-slate-900 text-base">Browse Categories</h3>
-          <span className="text-xs font-semibold text-slate-400">5 Categories</span>
+          <h3 className="font-extrabold text-slate-900 dark:text-slate-100 text-base">{t("browse_categories")}</h3>
+          <span className="text-xs font-semibold text-slate-400 dark:text-slate-500">5 {t("categories_count")}</span>
         </div>
         <div className="grid grid-cols-5 gap-2.5">
           {categories.map((cat) => {
@@ -372,13 +376,13 @@ export default function HomeView({
                 onClick={() => onSelectCategory(cat.id)}
                 className={`flex flex-col items-center p-2.5 rounded-2xl border text-center transition-all cursor-pointer ${cat.color} hover:scale-105 active:scale-95`}
               >
-                <div className="p-2.5 rounded-xl bg-white shadow-sm mb-1.5 flex items-center justify-center">
+                <div className="p-2.5 rounded-xl bg-white dark:bg-slate-800 shadow-sm mb-1.5 flex items-center justify-center text-slate-850 dark:text-slate-200">
                   <Icon className="h-5 w-5" />
                 </div>
-                <span className="text-[10px] font-bold tracking-tight leading-none text-slate-800 break-words w-full">
+                <span className="text-[10px] font-bold tracking-tight leading-none text-slate-800 dark:text-slate-200 break-words w-full">
                   {cat.name}
                 </span>
-                <span className="text-[9px] text-slate-500 mt-0.5 leading-none font-medium">
+                <span className="text-[9px] text-slate-500 dark:text-slate-400 mt-0.5 leading-none font-medium">
                   {cat.sub}
                 </span>
               </button>
@@ -388,59 +392,59 @@ export default function HomeView({
       </div>
 
       {/* Trust & Verification badging */}
-      <div id="trust-banner" className="mx-4 bg-white border border-[#E8E6E1] rounded-2xl p-3 grid grid-cols-4 gap-1 text-center shadow-xs">
+      <div id="trust-banner" className="mx-4 bg-white dark:bg-[#1C2420] border border-[#E8E6E1] dark:border-slate-800 rounded-2xl p-3 grid grid-cols-4 gap-1 text-center shadow-xs">
         <div className="flex flex-col items-center">
-          <div className="bg-[#3E5C31]/10 text-[#3E5C31] p-1.5 rounded-lg mb-1">
+          <div className="bg-[#3E5C31]/10 dark:bg-emerald-500/10 text-[#3E5C31] dark:text-emerald-400 p-1.5 rounded-lg mb-1">
             <Shield className="h-3.5 w-3.5" />
           </div>
-          <span className="text-[9px] font-bold text-[#2D2D2A]">Verified Owners</span>
+          <span className="text-[9px] font-bold text-[#2D2D2A] dark:text-slate-200">{t("verified_owners")}</span>
         </div>
         <div className="flex flex-col items-center">
-          <div className="bg-[#D97706]/10 text-[#D97706] p-1.5 rounded-lg mb-1">
+          <div className="bg-[#D97706]/10 dark:bg-amber-500/10 text-[#D97706] dark:text-amber-400 p-1.5 rounded-lg mb-1">
             <ThumbsUp className="h-3.5 w-3.5" />
           </div>
-          <span className="text-[9px] font-bold text-[#2D2D2A]">Quality Assured</span>
+          <span className="text-[9px] font-bold text-[#2D2D2A] dark:text-slate-200">{t("quality_assured")}</span>
         </div>
         <div className="flex flex-col items-center">
-          <div className="bg-amber-50 text-[#D97706] p-1.5 rounded-lg mb-1">
+          <div className="bg-amber-50 dark:bg-amber-500/10 text-[#D97706] dark:text-amber-400 p-1.5 rounded-lg mb-1">
             <BadgePercent className="h-3.5 w-3.5" />
           </div>
-          <span className="text-[9px] font-bold text-[#2D2D2A]">Best Prices</span>
+          <span className="text-[9px] font-bold text-[#2D2D2A] dark:text-slate-200">{t("best_prices")}</span>
         </div>
         <div className="flex flex-col items-center">
-          <div className="bg-purple-50 text-purple-600 p-1.5 rounded-lg mb-1">
+          <div className="bg-purple-50 dark:bg-purple-500/10 text-purple-600 dark:text-purple-400 p-1.5 rounded-lg mb-1">
             <Sparkles className="h-3.5 w-3.5" />
           </div>
-          <span className="text-[9px] font-bold text-[#2D2D2A]">Secure Escrow</span>
+          <span className="text-[9px] font-bold text-[#2D2D2A] dark:text-slate-200">{t("secure_escrow")}</span>
         </div>
       </div>
 
       {/* Local Farming Weather Widget */}
-      <div id="farming-weather-widget" className="mx-4 bg-white border border-[#E8E6E1] rounded-3xl p-4 shadow-xs space-y-3.5">
+      <div id="farming-weather-widget" className="mx-4 bg-white dark:bg-[#1C2420] border border-[#E8E6E1] dark:border-slate-800 rounded-3xl p-4 shadow-xs space-y-3.5">
         <div className="flex justify-between items-center">
           <div className="flex items-center space-x-2">
-            <div className="bg-[#3E5C31]/10 text-[#3E5C31] p-1.5 rounded-xl">
+            <div className="bg-[#3E5C31]/10 dark:bg-[#3E5C31]/20 text-[#3E5C31] dark:text-emerald-400 p-1.5 rounded-xl">
               <Sun className="h-4 w-4" />
             </div>
             <div>
-              <h3 className="font-extrabold text-[#2D2D2A] text-xs uppercase tracking-wider">Local Farming Weather</h3>
-              <p className="text-[10px] text-[#8A867E] flex items-center mt-0.5">
-                <MapPin className="h-3 w-3 mr-0.5 text-[#3E5C31]" />
-                <span className="font-semibold text-slate-700">{weatherLocation.name}</span>
+              <h3 className="font-extrabold text-[#2D2D2A] dark:text-slate-100 text-xs uppercase tracking-wider">{t("local_farming_weather")}</h3>
+              <p className="text-[10px] text-[#8A867E] dark:text-slate-300 flex items-center mt-0.5">
+                <MapPin className="h-3 w-3 mr-0.5 text-[#3E5C31] dark:text-emerald-400" />
+                <span className="font-semibold text-slate-700 dark:text-slate-200">{weatherLocation.name}</span>
               </p>
             </div>
           </div>
           <button 
             onClick={handleDetectLocation}
             disabled={weatherLoading}
-            className="flex items-center space-x-1 bg-[#FAF7F2] hover:bg-[#F3F1ED] border border-[#E8E6E1] text-[#3E5C31] text-[10px] font-bold px-2.5 py-1.5 rounded-xl transition-all shadow-2xs active:scale-95 disabled:opacity-50 cursor-pointer"
+            className="flex items-center space-x-1 bg-[#FAF7F2] dark:bg-[#25302A] hover:bg-[#F3F1ED] dark:hover:bg-[#2E3C34] border border-[#E8E6E1] dark:border-slate-800 text-[#3E5C31] dark:text-emerald-400 text-[10px] font-bold px-2.5 py-1.5 rounded-xl transition-all shadow-2xs active:scale-95 disabled:opacity-50 cursor-pointer"
           >
             {weatherLoading ? (
               <Loader2 className="h-3 w-3 animate-spin" />
             ) : (
               <Locate className="h-3 w-3" />
             )}
-            <span>{weatherLoading ? "Locating..." : "Use My Location"}</span>
+            <span>{weatherLoading ? t("locating") : t("use_my_location")}</span>
           </button>
         </div>
 
@@ -453,7 +457,7 @@ export default function HomeView({
         {weatherLoading && !weatherData && (
           <div className="flex flex-col items-center justify-center py-6 space-y-2 text-[#8A867E]">
             <Loader2 className="h-6 w-6 animate-spin text-[#3E5C31]" />
-            <span className="text-xs font-semibold">Retrieving farming forecast...</span>
+            <span className="text-xs font-semibold">{t("retrieving_forecast")}</span>
           </div>
         )}
 
@@ -479,7 +483,7 @@ export default function HomeView({
                   >
                     {idx === 0 && (
                       <span className="absolute -top-1.5 left-1/2 transform -translate-x-1/2 text-[7px] font-black tracking-wider uppercase bg-[#3E5C31] text-white px-1.5 py-0.5 rounded-full shadow-xs">
-                        Today
+                        {t("today")}
                       </span>
                     )}
                     
@@ -495,7 +499,7 @@ export default function HomeView({
                         <span>{day.tempMax}°C</span>
                       </div>
                       <div className="text-[8px] font-bold text-sky-600">
-                        {day.rain > 0 ? `💧 ${day.rain.toFixed(1)}mm` : "No Rain"}
+                        {day.rain > 0 ? `💧 ${day.rain.toFixed(1)}mm` : t("no_rain")}
                       </div>
                     </div>
                   </button>
@@ -513,9 +517,9 @@ export default function HomeView({
                 <div className={`p-3 rounded-2xl border ${details.bgColor} transition-all space-y-2`}>
                   <div className="flex justify-between items-center">
                     <span className="text-[9px] font-black tracking-wider uppercase text-slate-500">
-                      Farming Guidance ({selectedDay.date})
+                      {t("farming_guidance")} ({selectedDay.date})
                     </span>
-                    <div className="flex items-center space-x-1 bg-white/75 backdrop-blur-xs px-2 py-0.5 rounded-md border border-[#E8E6E1] text-[9px] font-extrabold text-[#2D2D2A]">
+                    <div className="flex items-center space-x-1 bg-white/75 dark:bg-[#25302A]/80 backdrop-blur-xs px-2 py-0.5 rounded-md border border-[#E8E6E1] dark:border-slate-700 text-[9px] font-extrabold text-[#2D2D2A] dark:text-slate-100">
                       <DayIcon className={`h-3 w-3 ${details.iconColor}`} />
                       <span>{details.label}</span>
                     </div>
@@ -523,17 +527,17 @@ export default function HomeView({
                   
                   <div className="flex items-start space-x-2">
                     <div className="bg-[#3E5C31]/10 text-[#3E5C31] p-1.5 rounded-lg shrink-0 text-[10px] font-bold mt-0.5">
-                      🌾 Advice
+                      🌾 {t("advice")}
                     </div>
-                    <p className="text-[11px] text-[#2D2D2A] leading-relaxed font-semibold">
+                    <p className="text-[11px] text-[#2D2D2A] dark:text-slate-100 leading-relaxed font-semibold">
                       {details.advice}
                     </p>
                   </div>
 
                   {/* Highlighting specific weather conditions */}
-                  <div className="grid grid-cols-2 gap-2 pt-1 border-t border-slate-200/50 text-[9px] text-slate-600 font-medium">
-                    <div>🌡️ Temp range: <span className="font-extrabold text-[#2D2D2A]">{selectedDay.tempMin}°C - {selectedDay.tempMax}°C</span></div>
-                    <div>🌧️ Rainfall: <span className="font-extrabold text-[#2D2D2A]">{selectedDay.rain.toFixed(1)} mm</span></div>
+                  <div className="grid grid-cols-2 gap-2 pt-1 border-t border-slate-200/50 dark:border-slate-800 text-[9px] text-slate-600 dark:text-slate-300 font-medium">
+                    <div>🌡️ Temp range: <span className="font-extrabold text-[#2D2D2A] dark:text-white">{selectedDay.tempMin}°C - {selectedDay.tempMax}°C</span></div>
+                    <div>🌧️ Rainfall: <span className="font-extrabold text-[#2D2D2A] dark:text-white">{selectedDay.rain.toFixed(1)} mm</span></div>
                   </div>
                 </div>
               );
@@ -541,21 +545,21 @@ export default function HomeView({
           </div>
         )}
         
-        <div className="flex items-center justify-between text-[9px] text-[#8A867E] pt-1.5 border-t border-[#E8E6E1]/60">
-          <span>⚡ Live Open-Meteo API</span>
-          <span className="font-semibold text-[#3E5C31]">Smart Sowing & Protection Advice</span>
+        <div className="flex items-center justify-between text-[9px] text-[#8A867E] dark:text-slate-400 pt-1.5 border-t border-[#E8E6E1]/60 dark:border-slate-800/60">
+          <span>⚡ {t("live_open_meteo")}</span>
+          <span className="font-semibold text-[#3E5C31] dark:text-emerald-400">{t("smart_sowing_advice")}</span>
         </div>
       </div>
 
       {/* Popular listings near you */}
       <div id="popular-listings" className="px-4 space-y-3">
         <div className="flex justify-between items-center">
-          <h3 className="font-extrabold text-[#2D2D2A] text-base">Popular Near You</h3>
+          <h3 className="font-extrabold text-[#2D2D2A] dark:text-white text-base">{t("popular_near_you")}</h3>
           <button 
             onClick={() => onSelectCategory("all")}
-            className="text-[#3E5C31] hover:text-[#3E5C31]/90 text-xs font-bold flex items-center space-x-0.5"
+            className="text-[#3E5C31] dark:text-emerald-400 hover:text-[#3E5C31]/90 dark:hover:text-emerald-300 text-xs font-bold flex items-center space-x-0.5 cursor-pointer"
           >
-            <span>See All</span>
+            <span>{t("see_all")}</span>
             <ArrowRight className="h-3.5 w-3.5" />
           </button>
         </div>
@@ -565,46 +569,46 @@ export default function HomeView({
             <motion.div
               key={eq.id}
               whileHover={{ y: -3 }}
-              className="bg-white rounded-2xl overflow-hidden border border-[#E8E6E1] shadow-xs cursor-pointer flex flex-col h-full"
+              className="bg-white dark:bg-[#1C2420] rounded-2xl overflow-hidden border border-[#E8E6E1] dark:border-slate-800 shadow-xs cursor-pointer flex flex-col h-full"
               onClick={() => onSelectEquipment(eq)}
             >
-              <div className="relative h-28 bg-[#F3F1ED] overflow-hidden">
+              <div className="relative h-28 bg-[#F3F1ED] dark:bg-slate-900 overflow-hidden">
                 <img 
                   src={eq.image} 
                   alt={eq.name} 
                   className="w-full h-full object-cover"
                   referrerPolicy="no-referrer"
                 />
-                <div className="absolute top-2 right-2 bg-white/90 backdrop-blur-xs text-[9px] font-extrabold px-1.5 py-0.5 rounded-md text-slate-800 flex items-center space-x-0.5 shadow-sm">
+                <div className="absolute top-2 right-2 bg-white/90 dark:bg-slate-800/90 backdrop-blur-xs text-[9px] font-extrabold px-1.5 py-0.5 rounded-md text-slate-800 dark:text-slate-200 flex items-center space-x-0.5 shadow-sm">
                   <span className="text-[#D97706]">★</span>
                   <span>{eq.rating}</span>
                 </div>
-                <div className="absolute bottom-2 left-2 bg-[#3E5C31] text-white text-[9px] font-black px-2 py-0.5 rounded-md shadow-sm">
+                <div className="absolute bottom-2 left-2 bg-[#3E5C31] dark:bg-emerald-600 text-white text-[9px] font-black px-2 py-0.5 rounded-md shadow-sm">
                   ₹{eq.pricePerDay}/day
                 </div>
               </div>
 
-              <div className="p-3 flex-1 flex flex-col justify-between space-y-1 text-[#2D2D2A]">
+              <div className="p-3 flex-1 flex flex-col justify-between space-y-1 text-[#2D2D2A] dark:text-slate-200">
                 <div>
                   <div className="flex justify-between items-start">
-                    <span className="text-[9px] font-bold uppercase tracking-wider text-[#8A867E]">
+                    <span className="text-[9px] font-bold uppercase tracking-wider text-[#8A867E] dark:text-slate-400">
                       {eq.subCategory}
                     </span>
-                    <span className="text-[9px] text-[#8A867E] font-medium">
+                    <span className="text-[9px] text-[#8A867E] dark:text-slate-400 font-medium">
                       📍 {eq.distance} km
                     </span>
                   </div>
-                  <h4 className="font-bold text-[#2D2D2A] text-xs line-clamp-1 leading-tight mt-0.5">
+                  <h4 className="font-bold text-[#2D2D2A] dark:text-white text-xs line-clamp-1 leading-tight mt-0.5">
                     {eq.name}
                   </h4>
                 </div>
 
-                <div className="pt-1.5 border-t border-[#E8E6E1] flex items-center justify-between">
-                  <span className="text-[9px] font-semibold text-[#8A867E] truncate">
+                <div className="pt-1.5 border-t border-[#E8E6E1] dark:border-slate-800/80 flex items-center justify-between">
+                  <span className="text-[9px] font-semibold text-[#8A867E] dark:text-slate-400 truncate">
                     👤 {eq.ownerName}
                   </span>
                   {eq.specs.operatorIncluded && (
-                    <span className="text-[8px] bg-[#3E5C31]/10 text-[#3E5C31] font-bold px-1 rounded">
+                    <span className="text-[8px] bg-[#3E5C31]/10 dark:bg-emerald-500/15 text-[#3E5C31] dark:text-emerald-400 font-bold px-1 rounded">
                       Driver Incl.
                     </span>
                   )}
