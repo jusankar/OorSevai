@@ -158,8 +158,8 @@ export default function BrowseView({
               onClick={() => handleCategoryChange(cat.id)}
               className={`text-xs font-bold px-3.5 py-1.5 rounded-full border transition-all shrink-0 cursor-pointer ${
                 activeCategory === cat.id
-                  ? "bg-[#3E5C31] dark:bg-emerald-600 text-white border-[#3E5C31] dark:border-emerald-600 shadow-xs"
-                  : "bg-white dark:bg-[#252F2A] text-[#5C5952] dark:text-slate-300 border-[#E8E6E1] dark:border-slate-800 hover:bg-[#FAF7F2] dark:hover:bg-[#2E3C34]"
+                  ? "bg-[#3E5C31] dark:bg-emerald-600 text-white border-[#3E5C31] dark:border-emerald-600 shadow-sm"
+                  : "bg-white dark:bg-[#252F2A] text-[#5C5952] dark:text-slate-300 border-[#E8E6E1] dark:border-slate-800 hover:bg-[#FAF7F2] dark:hover:bg-[#2E3C34] shadow-xs hover:shadow-sm"
               }`}
             >
               {cat.label}
@@ -193,8 +193,8 @@ export default function BrowseView({
                 onClick={() => setSelectedSubCategory(sub)}
                 className={`text-xs font-semibold px-4 py-1.5 rounded-xl border transition-all shrink-0 cursor-pointer ${
                   selectedSubCategory === sub
-                    ? "bg-[#2D2D2A] dark:bg-emerald-600 text-white border-[#2D2D2A] dark:border-emerald-600"
-                    : "bg-white dark:bg-[#252F2A] text-[#5C5952] dark:text-slate-300 border-[#E8E6E1] dark:border-slate-800 hover:bg-[#FAF7F2] dark:hover:bg-[#2E3C34]"
+                    ? "bg-[#2D2D2A] dark:bg-emerald-600 text-white border-[#2D2D2A] dark:border-emerald-600 shadow-sm"
+                    : "bg-white dark:bg-[#252F2A] text-[#5C5952] dark:text-slate-300 border-[#E8E6E1] dark:border-slate-800 hover:bg-[#FAF7F2] dark:hover:bg-[#2E3C34] shadow-xs hover:shadow-sm"
                 }`}
               >
                 {sub}
@@ -351,7 +351,7 @@ export default function BrowseView({
                 key={item.id}
                 initial={{ opacity: 0, y: 5 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="bg-white dark:bg-[#1C2420] rounded-2xl p-3 border border-[#E8E6E1] dark:border-slate-800/80 shadow-xs flex items-center space-x-3 hover:shadow-md transition-all cursor-pointer relative"
+                className="bg-white dark:bg-[#1C2420] rounded-2xl p-3 border border-[#E8E6E1] dark:border-slate-800/80 shadow-sm flex items-center space-x-3 hover:shadow-md transition-all cursor-pointer relative"
                 onClick={() => isLabor ? onSelectLaborer(item as Laborer) : onSelectEquipment(item as Equipment)}
               >
                 {/* Image Section */}

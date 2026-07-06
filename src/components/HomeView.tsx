@@ -333,47 +333,37 @@ export default function HomeView({
   const categories = [
     { 
       id: "agriculture", 
-      name: t("agriculture"), 
-      sub: t("machines"), 
+      title: language === "ta" ? "வேளாண் உபகரணங்கள்" : "AGRICULTURE EQUIPMENT", 
+      sub: language === "ta" ? "விவசாய இயந்திரங்கள்" : "Farming Machines", 
       icon: Sprout, 
-      englishLabel: "AGRICULTURE EQUIPMENT", 
-      tamilLabel: "வேளாண் உபகரணங்கள்", 
       image: "https://images.unsplash.com/photo-1592982537447-6f2a6a0c7c18?auto=format&fit=crop&w=350&q=80" 
     },
     { 
       id: "construction", 
-      name: t("construction"), 
-      sub: t("machines"), 
+      title: language === "ta" ? "கட்டுமான உபகரணங்கள்" : "CONSTRUCTION EQUIPMENT", 
+      sub: language === "ta" ? "கனரக இயந்திரங்கள்" : "Heavy Machinery", 
       icon: HardHat, 
-      englishLabel: "CONSTRUCTION EQUIPMENT", 
-      tamilLabel: "கட்டுமான உபகரணங்கள்", 
       image: "https://images.unsplash.com/photo-1578319439584-104c94d37305?auto=format&fit=crop&w=350&q=80" 
     },
     { 
       id: "tools", 
-      name: t("tools"), 
-      sub: t("machines"), 
+      title: language === "ta" ? "கருவிகள் & இயந்திரங்கள்" : "TOOLS & MACHINERY", 
+      sub: language === "ta" ? "மின்சாரக் கருவிகள்" : "Power Tools", 
       icon: Wrench, 
-      englishLabel: "TOOLS & MACHINERY", 
-      tamilLabel: "கருவிகள் & இயந்திரங்கள்", 
       image: "https://images.unsplash.com/photo-1504148455328-c376907d081c?auto=format&fit=crop&w=350&q=80" 
     },
     { 
       id: "function", 
-      name: t("function"), 
-      sub: t("materials"), 
+      title: language === "ta" ? "நிகழ்ச்சி & விழா பொருட்கள்" : "EVENT & FUNCTION ITEMS", 
+      sub: language === "ta" ? "விழா பந்தல் & நாற்காலிகள்" : "Canopies & Chairs", 
       icon: Tent, 
-      englishLabel: "EVENT & FUNCTION ITEMS", 
-      tamilLabel: "நிகழ்ச்சி & விழா பொருட்கள்", 
       image: "https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?auto=format&fit=crop&w=350&q=80" 
     },
     { 
       id: "labor", 
-      name: t("labor"), 
-      sub: t("services"), 
+      title: language === "ta" ? "தொழிலாளர் சேவைகள்" : "LABOR SERVICES", 
+      sub: language === "ta" ? "உள்ளூர் தொழிலாளர்கள்" : "Skilled Labors", 
       icon: Users, 
-      englishLabel: "LABOR SERVICES", 
-      tamilLabel: "தொழிலாளர் சேவைகள்", 
       image: "https://images.unsplash.com/photo-1504307651254-35680f356dfd?auto=format&fit=crop&w=350&q=80" 
     },
   ];
@@ -466,12 +456,11 @@ export default function HomeView({
 
         {/* Categories Carousel */}
         <div 
-          className="flex overflow-x-auto gap-4 pb-2 -mx-4 px-4 scroll-smooth snap-x snap-mandatory scrollbar-none"
+          className="flex overflow-x-auto gap-4 pb-2 scroll-smooth snap-x snap-mandatory scrollbar-none"
           id="categories-carousel"
         >
           {categories.map((cat) => {
             const Icon = cat.icon;
-            const localizedTitle = language === "ta" ? cat.tamilLabel : cat.englishLabel;
             
             return (
               <button
@@ -483,7 +472,7 @@ export default function HomeView({
                 <div className="relative h-[115px] w-full overflow-hidden bg-[#FAF7F2] dark:bg-slate-900">
                   <img 
                     src={cat.image} 
-                    alt={localizedTitle} 
+                    alt={cat.title} 
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     referrerPolicy="no-referrer"
                   />
@@ -506,14 +495,16 @@ export default function HomeView({
                 <div className="p-3.5 flex-1 flex flex-col justify-between space-y-2">
                   <div>
                     <h4 className="text-[12px] font-black text-[#2D2D2A] dark:text-white leading-tight group-hover:text-[#3E5C31] dark:group-hover:text-emerald-400 transition-colors uppercase tracking-tight">
-                      {localizedTitle}
+                      {cat.title}
                     </h4>
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium mt-1">
+                      {cat.sub}
+                    </p>
                   </div>
 
                   <div className="flex items-center justify-between pt-2 border-t border-[#F3F1ED] dark:border-slate-800 text-[10px] font-medium text-slate-500 dark:text-slate-400">
-                    <span className="font-bold text-[#8A867E] dark:text-slate-300">{cat.name}</span>
-                    <span className="text-[9px] bg-[#FAF7F2] dark:bg-slate-800 text-[#3E5C31] dark:text-emerald-400 px-1.5 py-0.5 rounded-md font-black uppercase shrink-0">
-                      {cat.sub}
+                    <span className="font-bold text-[#3E5C31] dark:text-emerald-400 group-hover:translate-x-1 transition-transform duration-300">
+                      {language === "ta" ? "ஆராய்" : "Explore"} →
                     </span>
                   </div>
                 </div>

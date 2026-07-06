@@ -1117,7 +1117,7 @@ export default function App() {
     <div id="main-app-container" className={`min-h-screen bg-[#FAF7F2] dark:bg-slate-950 font-sans flex flex-col items-center justify-start py-0 md:py-8 transition-colors duration-300 ${darkMode ? "dark" : ""}`}>
       
       {/* High Fidelity Screen Wrapper framing a mobile emulator feel on desktop */}
-      <div className={`w-full max-w-md bg-[#FDFCF9] dark:bg-[#121212] dark:text-[#F1F5F9] md:rounded-3xl md:shadow-2xl border border-[#E8E6E1] dark:border-slate-800 overflow-hidden flex flex-col min-h-screen md:min-h-[840px] relative transition-all duration-300 ${darkMode ? "dark" : ""}`}>
+      <div className={`w-full max-w-md bg-[#FDFCF9] dark:bg-[#121212] dark:text-[#F1F5F9] md:rounded-3xl md:shadow-2xl border border-[#E8E6E1] dark:border-slate-800 overflow-hidden flex flex-col h-screen md:h-[840px] max-h-screen md:max-h-[840px] relative transition-all duration-300 ${darkMode ? "dark" : ""}`}>
         
         {!isRegistered ? (
           <div className="flex-1 flex flex-col h-full bg-[#FAF7F2] dark:bg-slate-950 overflow-y-auto scrollbar-none">
@@ -3647,12 +3647,12 @@ export default function App() {
         </div>
 
         {/* PERSISTENT TAB BAR FOOTER */}
-        <div id="persistent-tab-bar" className="absolute bottom-0 inset-x-0 bg-white border-t border-[#E8E6E1] py-2 px-6 flex justify-between items-center z-40 shadow-lg">
+        <div id="persistent-tab-bar" className="absolute bottom-0 inset-x-0 bg-white dark:bg-[#1C2420] border-t border-[#E8E6E1] dark:border-slate-800 py-2.5 px-6 flex justify-between items-center z-40 shadow-lg">
           {userRole === "customer" ? (
             <>
               <button 
                 onClick={() => { setActiveTab("home"); setActiveView("home"); }}
-                className={`flex flex-col items-center gap-0.5 cursor-pointer ${activeTab === "home" ? "text-[#3E5C31] font-bold" : "text-[#8A867E]"}`}
+                className={`flex flex-col items-center gap-0.5 cursor-pointer transition-colors ${activeTab === "home" ? "text-[#3E5C31] dark:text-emerald-400 font-bold" : "text-[#8A867E] dark:text-slate-400"}`}
               >
                 <div className="text-xl">🏠</div>
                 <span className="text-[9px] font-extrabold uppercase tracking-wide">{t("tab_home")}</span>
@@ -3660,7 +3660,7 @@ export default function App() {
 
               <button 
                 onClick={() => setActiveTab("bookings")}
-                className={`flex flex-col items-center gap-0.5 cursor-pointer ${activeTab === "bookings" ? "text-[#3E5C31] font-bold" : "text-[#8A867E]"}`}
+                className={`flex flex-col items-center gap-0.5 cursor-pointer transition-colors ${activeTab === "bookings" ? "text-[#3E5C31] dark:text-emerald-400 font-bold" : "text-[#8A867E] dark:text-slate-400"}`}
               >
                 <div className="text-xl">📅</div>
                 <span className="text-[9px] font-extrabold uppercase tracking-wide">{t("tab_bookings")}</span>
@@ -3668,7 +3668,7 @@ export default function App() {
 
               <button 
                 onClick={() => setActiveTab("chat")}
-                className={`flex flex-col items-center gap-0.5 cursor-pointer ${activeTab === "chat" ? "text-[#3E5C31] font-bold" : "text-[#8A867E]"}`}
+                className={`flex flex-col items-center gap-0.5 cursor-pointer transition-colors ${activeTab === "chat" ? "text-[#3E5C31] dark:text-emerald-400 font-bold" : "text-[#8A867E] dark:text-slate-400"}`}
               >
                 <div className="text-xl">💬</div>
                 <span className="text-[9px] font-extrabold uppercase tracking-wide">{t("tab_ai_advisor")}</span>
@@ -3684,7 +3684,7 @@ export default function App() {
                     setShowProviderPromptModal(true);
                   }
                 }}
-                className="flex flex-col items-center gap-0.5 cursor-pointer text-[#8A867E]"
+                className="flex flex-col items-center gap-0.5 cursor-pointer text-[#8A867E] dark:text-slate-400 transition-colors"
               >
                 <div className="text-xl">👤</div>
                 <span className="text-[9px] font-extrabold uppercase tracking-wide">{t("tab_provider")}</span>
@@ -3703,7 +3703,7 @@ export default function App() {
                     setShowSettingsModal(true);
                   }
                 }}
-                className="flex flex-col items-center gap-0.5 cursor-pointer text-[#8A867E]"
+                className="flex flex-col items-center gap-0.5 cursor-pointer text-[#8A867E] dark:text-slate-400 transition-colors"
               >
                 <div className="text-xl">🚜</div>
                 <span className="text-[9px] font-extrabold uppercase tracking-wide">{t("tab_rent_mode")}</span>
@@ -3711,7 +3711,7 @@ export default function App() {
 
               <button 
                 onClick={() => setActiveTab("dashboard")}
-                className={`flex flex-col items-center gap-0.5 cursor-pointer ${activeTab === "dashboard" ? "text-[#3E5C31] font-bold" : "text-[#8A867E]"}`}
+                className={`flex flex-col items-center gap-0.5 cursor-pointer transition-colors ${activeTab === "dashboard" ? "text-[#3E5C31] dark:text-emerald-400 font-bold" : "text-[#8A867E] dark:text-slate-400"}`}
               >
                 <div className="text-xl">📊</div>
                 <span className="text-[9px] font-extrabold uppercase tracking-wide">{t("tab_dashboard")}</span>
@@ -3722,7 +3722,7 @@ export default function App() {
                   const num = "919698340357";
                   alert(`Connecting you directly to OorSevai Support Desk...\nPhone helpline: +${num}`);
                 }}
-                className="flex flex-col items-center gap-0.5 cursor-pointer text-[#8A867E]"
+                className="flex flex-col items-center gap-0.5 cursor-pointer text-[#8A867E] dark:text-slate-400 transition-colors"
               >
                 <div className="text-xl">🎧</div>
                 <span className="text-[9px] font-extrabold uppercase tracking-wide">{t("tab_support")}</span>
@@ -3740,14 +3740,14 @@ export default function App() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-black/60 z-50 flex items-end justify-center"
+              className="absolute inset-0 bg-black/60 z-50 flex items-start justify-center p-4 overflow-y-auto scrollbar-none"
             >
               <motion.div 
-                initial={{ y: "100%" }}
-                animate={{ y: 0 }}
-                exit={{ y: "100%" }}
-                transition={{ type: "spring", damping: 25, stiffness: 200 }}
-                className="w-full bg-[#FAF7F2] dark:bg-slate-900 rounded-t-3xl p-5 max-h-[85%] overflow-y-auto border-t border-[#E8E6E1] dark:border-slate-800 shadow-2xl flex flex-col scrollbar-none"
+                initial={{ opacity: 0, y: -40 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -40 }}
+                transition={{ duration: 0.25, ease: "easeOut" }}
+                className="w-full bg-[#FAF7F2] dark:bg-slate-900 rounded-2xl p-5 border border-[#E8E6E1] dark:border-slate-800 shadow-2xl flex flex-col my-2"
               >
                 {/* Header */}
                 <div className="flex justify-between items-center mb-4 border-b border-[#E8E6E1]/60 dark:border-slate-800 pb-3 shrink-0">
