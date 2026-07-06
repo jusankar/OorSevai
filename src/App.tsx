@@ -124,6 +124,29 @@ export default function App() {
     }
   }, [darkMode]);
 
+  // Load persistent datasets from serverless PostgreSQL database on mount
+  useEffect(() => {
+    const fetchDatabaseData = async () => {
+      try {
+        const [eqRes, lbRes, bRes, dRes, nRes] = await Promise.all([
+          fetch("/api/equipment").then(r => r.json()),
+          fetch("/api/laborers").then(r => r.json()),
+          fetch("/api/bookings").then(r => r.json()),
+          fetch("/api/disputes").then(r => r.json()),
+          fetch("/api/notifications").then(r => r.json()),
+        ]);
+        if (Array.isArray(eqRes)) setEquipmentList(eqRes);
+        if (Array.isArray(lbRes)) setLaborersList(lbRes);
+        if (Array.isArray(bRes)) setBookings(bRes);
+        if (Array.isArray(dRes)) setDisputes(dRes);
+        if (Array.isArray(nRes)) setNotifications(nRes);
+      } catch (err) {
+        console.error("Failed to load persistent datasets from Cloud SQL:", err);
+      }
+    };
+    fetchDatabaseData();
+  }, []);
+
   const t = (key: Parameters<typeof getTranslation>[1]): string => getTranslation(language, key);
 
 
@@ -398,6 +421,13 @@ export default function App() {
       timestamp: "Just Now"
     };
 
+    // Save to serverless PostgreSQL database
+    fetch("/api/notifications", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(newNotif)
+    }).catch(err => console.error("Failed to save notification to DB:", err));
+
     setNotifications(prev => [newNotif, ...prev]);
     setActiveBannerNotification(newNotif);
     
@@ -610,6 +640,13 @@ export default function App() {
       dateBooked: new Date().toISOString().split('T')[0]
     };
 
+    // Save to serverless PostgreSQL database
+    fetch("/api/bookings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(newBooking)
+    }).catch(err => console.error("Failed to save booking to DB:", err));
+
     setBookings((prev) => [newBooking, ...prev]);
     setActiveTab("bookings");
     setActiveView("home");
@@ -633,6 +670,13 @@ export default function App() {
       paymentStatus: "paid",
       dateBooked: new Date().toISOString().split('T')[0]
     };
+
+    // Save to serverless PostgreSQL database
+    fetch("/api/bookings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(newBooking)
+    }).catch(err => console.error("Failed to save booking to DB:", err));
 
     setBookings((prev) => [newBooking, ...prev]);
     alert(`Successfully booked ${lb.name} for ${lb.category} service! They will contact you shortly.`);
@@ -674,6 +718,13 @@ export default function App() {
         { id: `z3-${Date.now()}`, name: "Extended Rural Belt", radiusKm: 35, deliveryFee: 1400, color: "rgba(239, 68, 68, 0.12)" }
       ]
     };
+
+    // Save to serverless PostgreSQL database
+    fetch("/api/equipment", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(newEq)
+    }).catch(err => console.error("Failed to save equipment to DB:", err));
 
     setEquipmentList((prev) => [newEq, ...prev]);
     
@@ -725,6 +776,13 @@ export default function App() {
       kycStatus: "pending"
     };
 
+    // Save to serverless PostgreSQL database
+    fetch("/api/laborers", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(newLb)
+    }).catch(err => console.error("Failed to save laborer to DB:", err));
+
     setLaborersList((prev) => [newLb, ...prev]);
     
     // Add to KYC approvals
@@ -749,6 +807,16 @@ export default function App() {
 
   // Toggle equipment status (Active / Inactive)
   const handleToggleStatus = (eqId: string) => {
+    const updatedEq = equipmentList.find(eq => eq.id === eqId);
+    if (updatedEq) {
+      const newStatus = updatedEq.status === "active" ? "inactive" : "active";
+      fetch(`/api/equipment/${eqId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus })
+      }).catch(err => console.error("Failed to update status on DB:", err));
+    }
+
     setEquipmentList((prev) => prev.map(eq => {
       if (eq.id === eqId) {
         return { ...eq, status: eq.status === "active" ? "inactive" : "active" };
@@ -760,9 +828,30 @@ export default function App() {
   // Log cumulative operating/maintenance hours for equipment and update 'serviceDue' status
   const handleLogEquipmentHours = (equipmentId: string, hours: number, bookingId?: string) => {
     if (bookingId) {
+      fetch(`/api/bookings/${bookingId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ loggedHours: hours })
+      }).catch(err => console.error("Failed to update booking logged hours on DB:", err));
+
       setBookings((prev) =>
         prev.map((b) => (b.id === bookingId ? { ...b, loggedHours: hours } : b))
       );
+    }
+
+    const eq = equipmentList.find(e => e.id === equipmentId);
+    if (eq) {
+      const currentUsage = eq.usageHours || 0;
+      const newUsage = currentUsage + hours;
+      const lastService = eq.lastServiceHours || 0;
+      const interval = eq.serviceDueIntervalHours || 50;
+      const due = newUsage >= lastService + interval;
+      
+      fetch(`/api/equipment/${equipmentId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ usageHours: newUsage, serviceDue: due })
+      }).catch(err => console.error("Failed to update equipment usage hours on DB:", err));
     }
 
     setEquipmentList((prev) =>
@@ -786,6 +875,16 @@ export default function App() {
 
   // Mark equipment as serviced and reset its 'serviceDue' status back to false
   const handlePerformEquipmentService = (equipmentId: string) => {
+    const eq = equipmentList.find(e => e.id === equipmentId);
+    if (eq) {
+      const currentUsage = eq.usageHours || 0;
+      fetch(`/api/equipment/${equipmentId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ lastServiceHours: currentUsage, serviceDue: false })
+      }).catch(err => console.error("Failed to perform service update on DB:", err));
+    }
+
     setEquipmentList((prev) =>
       prev.map((eq) => {
         if (eq.id === equipmentId) {
@@ -815,6 +914,15 @@ export default function App() {
     }));
 
     if (approvedType === "Labor") {
+      const l = laborersList.find(x => x.name === approvedName);
+      if (l) {
+        fetch(`/api/laborers/${l.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ verified: true, kycStatus: "verified" })
+        }).catch(err => console.error("Failed to approve KYC on DB:", err));
+      }
+
       setLaborersList((prev) => prev.map(l => {
         if (l.name === approvedName) {
           return { ...l, verified: true, kycStatus: "verified" };
@@ -837,6 +945,15 @@ export default function App() {
     }));
 
     if (rejectedType === "Labor") {
+      const l = laborersList.find(x => x.name === rejectedName);
+      if (l) {
+        fetch(`/api/laborers/${l.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ verified: false, kycStatus: "rejected" })
+        }).catch(err => console.error("Failed to reject KYC on DB:", err));
+      }
+
       setLaborersList((prev) => prev.map(l => {
         if (l.name === rejectedName) {
           return { ...l, verified: false, kycStatus: "rejected" };
@@ -853,11 +970,21 @@ export default function App() {
 
   // Dispute Resolution
   const handleResolveDispute = (disId: string) => {
+    fetch(`/api/disputes/${disId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "resolved" })
+    }).catch(err => console.error("Failed to resolve dispute on DB:", err));
+
     setDisputes((prev) => prev.map(d => d.id === disId ? { ...d, status: "resolved" } : d));
   };
 
   // Notification actions
   const handleMarkNotificationRead = (notifId: string) => {
+    fetch(`/api/notifications/${notifId}/read`, {
+      method: "PUT"
+    }).catch(err => console.error("Failed to mark notification read on DB:", err));
+
     setNotifications(prev => prev.map(n => n.id === notifId ? { ...n, isRead: true } : n));
   };
 
@@ -2219,6 +2346,14 @@ export default function App() {
                                         status: "open",
                                         date: new Date().toISOString().split('T')[0]
                                       };
+
+                                      // Save to serverless PostgreSQL database
+                                      fetch("/api/disputes", {
+                                        method: "POST",
+                                        headers: { "Content-Type": "application/json" },
+                                        body: JSON.stringify(newDis)
+                                      }).catch(err => console.error("Failed to save dispute to DB:", err));
+
                                       setDisputes(prev => [...prev, newDis]);
                                       alert("Dispute lodged successfully. Our admin team will investigate and contact you within 24 hours.");
                                     }
@@ -2400,6 +2535,12 @@ export default function App() {
                               type="button"
                               onClick={() => {
                                 // Transition booking status to 'ongoing'
+                                fetch(`/api/bookings/${b.id}`, {
+                                  method: "PUT",
+                                  headers: { "Content-Type": "application/json" },
+                                  body: JSON.stringify({ status: "ongoing" })
+                                }).catch(err => console.error("Failed to update booking status:", err));
+
                                 setBookings(prev => prev.map(x => x.id === b.id ? { ...x, status: "ongoing" } : x));
                                 // Push notification
                                 triggerNotification(
@@ -2421,6 +2562,12 @@ export default function App() {
                               type="button"
                               onClick={() => {
                                 // Transition booking status to 'completed'
+                                fetch(`/api/bookings/${b.id}`, {
+                                  method: "PUT",
+                                  headers: { "Content-Type": "application/json" },
+                                  body: JSON.stringify({ status: "completed" })
+                                }).catch(err => console.error("Failed to update booking status:", err));
+
                                 setBookings(prev => prev.map(x => x.id === b.id ? { ...x, status: "completed" } : x));
                                 // Push notification
                                 triggerNotification(
@@ -3069,6 +3216,12 @@ export default function App() {
                             disabled={isNotified}
                             onClick={() => {
                               // Transition booking status to 'ongoing'
+                              fetch(`/api/bookings/${b.id}`, {
+                                method: "PUT",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ status: "ongoing" })
+                              }).catch(err => console.error("Failed to update booking status:", err));
+
                               setBookings(prev => prev.map(x => x.id === b.id ? { ...x, status: "ongoing" } : x));
                               // Push notification
                               triggerNotification(

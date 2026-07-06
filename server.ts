@@ -3,6 +3,8 @@ import path from "path";
 import dotenv from "dotenv";
 import { GoogleGenAI, Type } from "@google/genai";
 import { createServer as createViteServer } from "vite";
+import { autoSeed } from "./src/db/seed-auto.ts";
+import * as dbService from "./src/db/db-service.ts";
 
 dotenv.config();
 
@@ -11,6 +13,14 @@ async function startServer() {
   const PORT = 3000;
 
   app.use(express.json());
+
+  // Run database auto-seeding on startup
+  try {
+    console.log("Checking database and running auto-seeding if needed...");
+    await autoSeed();
+  } catch (seedErr) {
+    console.error("Database initialization / auto-seeding failed:", seedErr);
+  }
 
   // Initialize Gemini SDK with telemetry User-Agent
   const ai = new GoogleGenAI({
@@ -25,6 +35,195 @@ async function startServer() {
   // Health check API
   app.get("/api/health", (req, res) => {
     res.json({ status: "ok", time: new Date().toISOString() });
+  });
+
+  // ------------------------------------------
+  // Users APIs
+  // ------------------------------------------
+  app.get("/api/users/:id", async (req, res) => {
+    try {
+      const user = await dbService.getUser(req.params.id);
+      res.json(user || {});
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/users", async (req, res) => {
+    try {
+      const user = await dbService.upsertUser(req.body);
+      res.json(user);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ------------------------------------------
+  // Equipment APIs
+  // ------------------------------------------
+  app.get("/api/equipment", async (req, res) => {
+    try {
+      const items = await dbService.getEquipmentList();
+      res.json(items);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/equipment", async (req, res) => {
+    try {
+      const item = await dbService.addEquipmentItem(req.body);
+      res.json(item);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.put("/api/equipment/:id", async (req, res) => {
+    try {
+      const item = await dbService.updateEquipmentItem(req.params.id, req.body);
+      res.json(item);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.delete("/api/equipment/:id", async (req, res) => {
+    try {
+      const item = await dbService.deleteEquipmentItem(req.params.id);
+      res.json(item);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ------------------------------------------
+  // Laborers APIs
+  // ------------------------------------------
+  app.get("/api/laborers", async (req, res) => {
+    try {
+      const items = await dbService.getLaborersList();
+      res.json(items);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/laborers", async (req, res) => {
+    try {
+      const item = await dbService.addLaborerItem(req.body);
+      res.json(item);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.put("/api/laborers/:id", async (req, res) => {
+    try {
+      const item = await dbService.updateLaborerItem(req.params.id, req.body);
+      res.json(item);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.delete("/api/laborers/:id", async (req, res) => {
+    try {
+      const item = await dbService.deleteLaborerItem(req.params.id);
+      res.json(item);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ------------------------------------------
+  // Bookings APIs
+  // ------------------------------------------
+  app.get("/api/bookings", async (req, res) => {
+    try {
+      const items = await dbService.getBookingsList();
+      res.json(items);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/bookings", async (req, res) => {
+    try {
+      const item = await dbService.addBookingItem(req.body);
+      res.json(item);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.put("/api/bookings/:id", async (req, res) => {
+    try {
+      const item = await dbService.updateBookingItem(req.params.id, req.body);
+      res.json(item);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ------------------------------------------
+  // Disputes APIs
+  // ------------------------------------------
+  app.get("/api/disputes", async (req, res) => {
+    try {
+      const items = await dbService.getDisputesList();
+      res.json(items);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/disputes", async (req, res) => {
+    try {
+      const item = await dbService.addDisputeItem(req.body);
+      res.json(item);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.put("/api/disputes/:id", async (req, res) => {
+    try {
+      const item = await dbService.updateDisputeItem(req.params.id, req.body);
+      res.json(item);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ------------------------------------------
+  // Notifications APIs
+  // ------------------------------------------
+  app.get("/api/notifications", async (req, res) => {
+    try {
+      const items = await dbService.getNotificationsList();
+      res.json(items);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/notifications", async (req, res) => {
+    try {
+      const item = await dbService.addNotificationItem(req.body);
+      res.json(item);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.put("/api/notifications/:id/read", async (req, res) => {
+    try {
+      const item = await dbService.markNotificationAsRead(req.params.id);
+      res.json(item);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
   });
 
   // AI Chatbot / Farming Advisory API
