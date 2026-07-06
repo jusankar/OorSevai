@@ -3,7 +3,8 @@ import { motion } from "motion/react";
 import { 
   Search, Sprout, HardHat, Wrench, Tent, Users, 
   MapPin, Bell, Shield, BadgePercent, ThumbsUp, Sparkles, ArrowRight,
-  Cloud, Sun, CloudRain, CloudLightning, CloudSun, Droplets, Thermometer, Loader2, Locate
+  Cloud, Sun, CloudRain, CloudLightning, CloudSun, Droplets, Thermometer, Loader2, Locate,
+  Mic, MicOff
 } from "lucide-react";
 import { Equipment } from "../types";
 import { getTranslation, Language } from "../translate";
@@ -110,6 +111,94 @@ export default function HomeView({
 }: HomeViewProps) {
   const t = (key: Parameters<typeof getTranslation>[1]): string => getTranslation(language, key);
   const [searchQuery, setSearchQuery] = useState("");
+  const [isListening, setIsListening] = useState(false);
+  const [speechError, setSpeechError] = useState<string | null>(null);
+  const [recognitionInstance, setRecognitionInstance] = useState<any | null>(null);
+
+  const startListening = () => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert("Speech recognition is not supported in this browser. Please try Chrome, Edge, or Safari.");
+      return;
+    }
+
+    setSpeechError(null);
+    try {
+      const recognition = new SpeechRecognition();
+      recognition.continuous = false;
+      recognition.interimResults = false;
+      recognition.lang = language === "ta" ? "ta-IN" : "en-IN";
+
+      recognition.onstart = () => {
+        setIsListening(true);
+      };
+
+      recognition.onerror = (event: any) => {
+        console.error("Speech recognition error:", event.error);
+        if (event.error === "not-allowed") {
+          setSpeechError(language === "ta" ? "மைக்ரோஃபோன் அணுகல் மறுக்கப்பட்டது." : "Microphone access denied.");
+        } else if (event.error === "no-speech") {
+          setSpeechError(language === "ta" ? "பேச்சு எதுவும் கண்டறியப்படவில்லை." : "No speech detected.");
+        } else {
+          setSpeechError(language === "ta" ? `பிழை: ${event.error}` : `Error: ${event.error}`);
+        }
+        setIsListening(false);
+      };
+
+      recognition.onend = () => {
+        setIsListening(false);
+      };
+
+      recognition.onresult = (event: any) => {
+        const transcript = event.results[0][0].transcript;
+        if (transcript) {
+          let cleanText = transcript.trim();
+          if (cleanText.endsWith(".")) {
+            cleanText = cleanText.slice(0, -1).trim();
+          }
+          setSearchQuery(cleanText);
+          onStartSearch(cleanText);
+        }
+      };
+
+      recognition.start();
+      setRecognitionInstance(recognition);
+    } catch (err) {
+      console.error("Failed to start speech recognition:", err);
+      setIsListening(false);
+    }
+  };
+
+  const stopListening = () => {
+    if (recognitionInstance) {
+      try {
+        recognitionInstance.stop();
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    setIsListening(false);
+  };
+
+  const toggleListening = () => {
+    if (isListening) {
+      stopListening();
+    } else {
+      startListening();
+    }
+  };
+
+  React.useEffect(() => {
+    return () => {
+      if (recognitionInstance) {
+        try {
+          recognitionInstance.stop();
+        } catch (e) {
+          // ignore
+        }
+      }
+    };
+  }, [recognitionInstance]);
   const [weatherLoading, setWeatherLoading] = useState(false);
   const [weatherError, setWeatherError] = useState<string | null>(null);
   const [weatherData, setWeatherData] = useState<any[] | null>(null);
@@ -422,22 +511,94 @@ export default function HomeView({
         </div>
 
         {/* Search Input */}
-        <form onSubmit={handleSearchSubmit} className="relative flex items-center">
-          <input
-            type="text"
-            placeholder={t("search_placeholder")}
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-[#F3F1ED] dark:bg-[#252F2A] text-[#2D2D2A] dark:text-slate-100 pl-11 pr-12 py-3.5 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-[#3E5C31] dark:focus:ring-emerald-500 border border-[#E8E6E1] dark:border-slate-800 focus:bg-white dark:focus:bg-[#1C2420] transition-all shadow-inner"
-          />
-          <Search className="absolute left-4 h-4 w-4 text-[#8A867E]" />
-          <button 
-            type="submit"
-            className="absolute right-2 bg-[#3E5C31] hover:bg-[#3E5C31]/95 text-white p-2.5 rounded-xl transition-all"
-          >
-            <Search className="h-4 w-4" />
-          </button>
-        </form>
+        <div className="space-y-2">
+          <form onSubmit={handleSearchSubmit} className="relative flex items-center">
+            <input
+              type="text"
+              placeholder={t("search_placeholder")}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-[#F3F1ED] dark:bg-[#252F2A] text-[#2D2D2A] dark:text-slate-100 pl-11 pr-[96px] py-3.5 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-[#3E5C31] dark:focus:ring-emerald-500 border border-[#E8E6E1] dark:border-slate-800 focus:bg-white dark:focus:bg-[#1C2420] transition-all shadow-inner"
+            />
+            <Search className="absolute left-4 h-4 w-4 text-[#8A867E]" />
+            
+            {/* Listening HUD overlay replaces input interaction elegantly during listening */}
+            {isListening && (
+              <div className="absolute inset-0 bg-[#3E5C31]/10 dark:bg-emerald-950/20 backdrop-blur-xs rounded-2xl flex items-center justify-between px-11 pr-[96px] text-xs font-semibold text-[#3E5C31] dark:text-emerald-400 animate-pulse">
+                <span className="flex items-center space-x-2">
+                  <span className="relative flex h-2.5 w-2.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500 animate-pulse"></span>
+                  </span>
+                  <span className="font-extrabold tracking-tight">
+                    {language === "ta" ? "கேட்கிறது... பேசவும்" : "Listening... Speak category"}
+                  </span>
+                </span>
+                
+                {/* Audio Soundwave animation */}
+                <div className="flex space-x-1 items-center">
+                  {[0, 1, 2, 3, 4].map((i) => (
+                    <motion.span
+                      key={i}
+                      className="w-1 bg-[#3E5C31] dark:bg-emerald-400 rounded-full"
+                      style={{ height: 8 }}
+                      animate={{
+                        height: [8, 18, 8],
+                      }}
+                      transition={{
+                        duration: 0.6,
+                        repeat: Infinity,
+                        delay: i * 0.12,
+                        ease: "easeInOut"
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Speech Recognition Mic Button */}
+            <button 
+              type="button"
+              onClick={toggleListening}
+              className={`absolute right-[52px] p-2.5 rounded-xl transition-all ${
+                isListening 
+                  ? "bg-red-500 hover:bg-red-600 text-white shadow-md shadow-red-500/20" 
+                  : "bg-[#FAF7F2] dark:bg-[#25302A] hover:bg-[#F3F1ED] dark:hover:bg-[#2E3C34] text-[#3E5C31] dark:text-emerald-400 border border-[#E8E6E1] dark:border-slate-800"
+              }`}
+              title={language === "ta" ? "குரல் தேடல்" : "Voice Search"}
+            >
+              {isListening ? (
+                <MicOff className="h-4 w-4 animate-bounce" />
+              ) : (
+                <Mic className="h-4 w-4" />
+              )}
+            </button>
+
+            {/* Standard Submit Button */}
+            <button 
+              type="submit"
+              className="absolute right-2 bg-[#3E5C31] hover:bg-[#3E5C31]/95 text-white p-2.5 rounded-xl transition-all"
+            >
+              <Search className="h-4 w-4" />
+            </button>
+          </form>
+
+          {/* Speech Recognition Error Banner */}
+          {speechError && (
+            <div className="text-[10px] text-amber-800 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/20 border border-amber-200/50 dark:border-amber-900/30 p-2.5 rounded-xl flex justify-between items-center animate-fade-in">
+              <span className="font-semibold flex items-center">
+                <span className="mr-1.5">⚠️</span> {speechError}
+              </span>
+              <button 
+                onClick={() => setSpeechError(null)} 
+                className="text-amber-900 dark:text-amber-300 font-extrabold hover:underline"
+              >
+                Dismiss
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Main Categories Panel */}
