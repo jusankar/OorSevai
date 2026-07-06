@@ -18,7 +18,64 @@ import NotificationCenter from "./components/NotificationCenter";
 
 export default function App() {
   // Application Roles
-  const [userRole, setUserRole] = useState<"customer" | "owner" | "labor" | "admin">("customer");
+  const [userRole, setUserRole] = useState<"customer" | "owner" | "labor" | "admin">(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const roles = localStorage.getItem("oorsevai_user_roles");
+        const parsed: ("customer" | "owner" | "labor" | "admin")[] = roles ? JSON.parse(roles) : [];
+        if (parsed.includes("admin")) return "admin";
+        if (parsed.includes("customer")) return "customer";
+        if (parsed.length > 0) return parsed[0];
+      } catch (e) {
+        return "customer";
+      }
+    }
+    return "customer";
+  });
+
+  // User Registration State
+  const [isRegistered, setIsRegistered] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("oorsevai_registered") === "true";
+    }
+    return false;
+  });
+
+  const [userName, setUserName] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("oorsevai_user_name") || "";
+    }
+    return "";
+  });
+
+  const [userMobile, setUserMobile] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("oorsevai_user_mobile") || "";
+    }
+    return "";
+  });
+
+  const [userLocation, setUserLocation] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("oorsevai_user_location") || "Coimbatore, Tamil Nadu";
+    }
+    return "Coimbatore, Tamil Nadu";
+  });
+
+  const [registeredRoles, setRegisteredRoles] = useState<("customer" | "owner" | "labor" | "admin")[]>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const roles = localStorage.getItem("oorsevai_user_roles");
+        return roles ? JSON.parse(roles) : ["customer", "owner", "labor"];
+      } catch (e) {
+        return ["customer", "owner", "labor"];
+      }
+    }
+    return ["customer", "owner", "labor"];
+  });
+
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [showProviderPromptModal, setShowProviderPromptModal] = useState(false);
   
   // Navigation State
   const [activeTab, setActiveTab] = useState<"home" | "bookings" | "chat" | "dashboard">("home");
@@ -33,7 +90,7 @@ export default function App() {
   // Admin Service Location and Radius Geofence (surrounding distance KM)
   const [adminLocation, setAdminLocation] = useState<string>(() => {
     if (typeof window !== "undefined") {
-      return localStorage.getItem("admin_location") || "Coimbatore, Tamil Nadu";
+      return localStorage.getItem("oorsevai_user_location") || localStorage.getItem("admin_location") || "Coimbatore, Tamil Nadu";
     }
     return "Coimbatore, Tamil Nadu";
   });
@@ -71,14 +128,39 @@ export default function App() {
 
 
 
+  // Dynamically resolve names of owner and labor to the logged-in user name
+  const resolvedEquipmentList = useMemo(() => {
+    return equipmentList.map(eq => {
+      if (eq.ownerId === "owner-1" || eq.ownerName === "Ravi Kumar" || eq.ownerName === "Udaya Kumar") {
+        return {
+          ...eq,
+          ownerName: userName || "Ravi Kumar"
+        };
+      }
+      return eq;
+    });
+  }, [equipmentList, userName]);
+
+  const resolvedLaborersList = useMemo(() => {
+    return laborersList.map(lb => {
+      if (lb.id === "lb-4" || lb.name === "Raju Krishnan") {
+        return {
+          ...lb,
+          name: userName || "Raju Krishnan"
+        };
+      }
+      return lb;
+    });
+  }, [laborersList, userName]);
+
   // Dynamically filter active equipment and laborers based on Admin configured location distance
   const filteredEquipmentList = useMemo(() => {
-    return equipmentList.filter(item => item.distance <= adminDistance);
-  }, [equipmentList, adminDistance]);
+    return resolvedEquipmentList.filter(item => item.distance <= adminDistance);
+  }, [resolvedEquipmentList, adminDistance]);
 
   const filteredLaborersList = useMemo(() => {
-    return laborersList.filter(item => item.distance <= adminDistance);
-  }, [laborersList, adminDistance]);
+    return resolvedLaborersList.filter(item => item.distance <= adminDistance);
+  }, [resolvedLaborersList, adminDistance]);
 
   // PWA (Progressive Web App) states
   const [isOnline, setIsOnline] = useState(typeof window !== "undefined" ? navigator.onLine : true);
@@ -219,7 +301,12 @@ export default function App() {
   const [rentalDuration, setRentalDuration] = useState<number>(1);
   const [operatorOption, setOperatorOption] = useState<boolean>(true);
   const [deliveryMethod, setDeliveryMethod] = useState<"delivery" | "pickup">("delivery");
-  const [customLocation, setCustomLocation] = useState<string>("Coimbatore, Tamil Nadu");
+  const [customLocation, setCustomLocation] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("oorsevai_user_location") || "Coimbatore, Tamil Nadu";
+    }
+    return "Coimbatore, Tamil Nadu";
+  });
   const [deliveryFee, setDeliveryFee] = useState<number>(600);
   const [editingGeofenceId, setEditingGeofenceId] = useState<string | null>(null);
   
@@ -250,6 +337,54 @@ export default function App() {
   ]);
   const [showNotificationsDropdown, setShowNotificationsDropdown] = useState(false);
   const [activeBannerNotification, setActiveBannerNotification] = useState<AppNotification | null>(null);
+
+  // Dynamically resolve notification messages to the logged-in user name & location
+  const resolvedNotifications = useMemo(() => {
+    return notifications.map(n => {
+      let message = n.message;
+      if (userName) {
+        message = message
+          .replace("Ravi Kumar's", `${userName}'s`)
+          .replace("Raju Krishnan's", `${userName}'s`)
+          .replace("Ravi Kumar", userName)
+          .replace("Raju Krishnan", userName);
+      }
+      if (userLocation) {
+        message = message
+          .replace(/Coimbatore,\s*Tamil\s*Nadu/gi, userLocation)
+          .replace(/Coimbatore/gi, userLocation);
+      }
+      return { ...n, message };
+    });
+  }, [notifications, userName, userLocation]);
+
+  const resolvedActiveBannerNotification = useMemo(() => {
+    if (!activeBannerNotification) return null;
+    let message = activeBannerNotification.message;
+    if (userName) {
+      message = message
+        .replace("Ravi Kumar's", `${userName}'s`)
+        .replace("Raju Krishnan's", `${userName}'s`)
+        .replace("Ravi Kumar", userName)
+        .replace("Raju Krishnan", userName);
+    }
+    if (userLocation) {
+      message = message
+        .replace(/Coimbatore,\s*Tamil\s*Nadu/gi, userLocation)
+        .replace(/Coimbatore/gi, userLocation);
+    }
+    return { ...activeBannerNotification, message };
+  }, [activeBannerNotification, userName, userLocation]);
+
+  // Dynamically resolve booking locations to the user's current/registered location
+  const resolvedBookings = useMemo(() => {
+    return bookings.map(b => {
+      if (b.location === "Coimbatore, Tamil Nadu") {
+        return { ...b, location: userLocation };
+      }
+      return b;
+    });
+  }, [bookings, userLocation]);
 
   // Utility to push new notifications and trigger real-time banner
   const triggerNotification = (bookingId: string, title: string, message: string, type: "equipment_on_the_way" | "labor_shift_start" | "general") => {
@@ -289,7 +424,12 @@ export default function App() {
   const [predictBrand, setPredictBrand] = useState("John Deere");
   const [predictYear, setPredictYear] = useState("2021");
   const [predictCondition, setPredictCondition] = useState("Excellent");
-  const [predictLocation, setPredictLocation] = useState("Coimbatore, Tamil Nadu");
+  const [predictLocation, setPredictLocation] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("oorsevai_user_location") || "Coimbatore, Tamil Nadu";
+    }
+    return "Coimbatore, Tamil Nadu";
+  });
   const [predictionResult, setPredictionResult] = useState<any | null>(null);
   const [isPredicting, setIsPredicting] = useState(false);
 
@@ -735,7 +875,7 @@ export default function App() {
     setShowNotificationsDropdown(false);
     setUserRole("customer");
     setActiveTab("bookings");
-    const b = bookings.find(x => x.id === bookingId);
+    const b = resolvedBookings.find(x => x.id === bookingId);
     if (b) {
       setBookingTab(b.status);
     }
@@ -743,13 +883,235 @@ export default function App() {
 
   // Filter My Bookings state tabs
   const [bookingTab, setBookingTab] = useState<"upcoming" | "ongoing" | "completed" | "cancelled">("upcoming");
-  const filteredBookings = bookings.filter(b => b.status === bookingTab);
+  const filteredBookings = resolvedBookings.filter(b => b.status === bookingTab);
 
   // Calculate Owner stats
-  const ownerEquipment = equipmentList.filter(eq => eq.ownerId === "owner-1");
-  const ownerTotalEarnings = bookings
+  const ownerEquipment = resolvedEquipmentList.filter(eq => eq.ownerId === "owner-1");
+  const ownerTotalEarnings = resolvedBookings
     .filter(b => b.status === "completed" || b.status === "ongoing")
     .reduce((sum, b) => sum + (b.totalAmount * 0.9), 0); // 90% goes to owner after 10% commission
+
+  const [regName, setRegName] = useState("");
+  const [regMobile, setRegMobile] = useState("");
+  const [regRoles, setRegRoles] = useState<("customer" | "owner" | "labor")[]>(["customer"]);
+  const [regLocation, setRegLocation] = useState("");
+  const [isDetectingLocation, setIsDetectingLocation] = useState(false);
+  const [adminCodeInput, setAdminCodeInput] = useState("");
+  const [showAdminField, setShowAdminField] = useState(false);
+  const [regError, setRegError] = useState("");
+
+  const handleDetectRegLocation = () => {
+    if (!navigator.geolocation) {
+      alert(language === "ta" ? "உங்கள் உலாவி இருப்பிடத்தைக் கண்டறிவதை ஆதரிக்கவில்லை" : "Geolocation is not supported by your browser");
+      return;
+    }
+    setIsDetectingLocation(true);
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        let detectedName = `Near ${latitude.toFixed(4)}°N, ${longitude.toFixed(4)}°E`;
+        try {
+          const geoRes = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&accept-language=${language}`
+          );
+          if (geoRes.ok) {
+            const geoData = await geoRes.json();
+            const addr = geoData.address || {};
+            const parts: string[] = [];
+
+            // 1. Specific building or amenity
+            if (addr.amenity) parts.push(addr.amenity);
+            else if (addr.building) parts.push(addr.building);
+
+            // 2. Road and house number
+            if (addr.house_number) {
+              if (addr.road) {
+                parts.push(`${addr.house_number}, ${addr.road}`);
+              } else {
+                parts.push(addr.house_number);
+              }
+            } else if (addr.road) {
+              parts.push(addr.road);
+            }
+
+            // 3. Local area details
+            if (addr.neighbourhood) parts.push(addr.neighbourhood);
+            if (addr.suburb && addr.suburb !== addr.neighbourhood) parts.push(addr.suburb);
+            
+            const localPlace = addr.village || addr.town || addr.city;
+            if (localPlace && !parts.includes(localPlace)) {
+              parts.push(localPlace);
+            }
+
+            // 4. District and State (clean up for cleaner reading)
+            if (addr.county) {
+              const countyClean = addr.county.replace(/\s+District/gi, "").replace(/\s+மாவட்டம்/g, "");
+              if (!parts.includes(countyClean) && countyClean !== localPlace) {
+                parts.push(countyClean);
+              }
+            }
+            if (addr.state) {
+              const stateClean = addr.state.replace(/\s+State/gi, "").replace(/\s+மாநிலம்/g, "");
+              if (!parts.includes(stateClean)) {
+                parts.push(stateClean);
+              }
+            }
+
+            // 5. Postal Code
+            if (addr.postcode) {
+              parts.push(addr.postcode);
+            }
+
+            detectedName = parts.length > 1 ? parts.join(", ") : geoData.display_name || detectedName;
+          }
+        } catch (e) {
+          console.error("Reverse geocoding failed, using coordinates:", e);
+        }
+        setRegLocation(detectedName);
+        setIsDetectingLocation(false);
+      },
+      (error) => {
+        console.error("Geolocation error:", error);
+        alert(language === "ta" ? "இருப்பிடத்தை அணுக முடியவில்லை. கைமுறையாக தட்டச்சு செய்யவும்." : "Location access denied or unavailable. Please type manually.");
+        setIsDetectingLocation(false);
+      },
+      { enableHighAccuracy: true, timeout: 5000 }
+    );
+  };
+
+  const handleDetectSettingsLocation = () => {
+    if (!navigator.geolocation) {
+      alert(language === "ta" ? "உங்கள் உலாவி இருப்பிடத்தைக் கண்டறிவதை ஆதரிக்கவில்லை" : "Geolocation is not supported by your browser");
+      return;
+    }
+    setIsDetectingLocation(true);
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        let detectedName = `Near ${latitude.toFixed(4)}°N, ${longitude.toFixed(4)}°E`;
+        try {
+          const geoRes = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&accept-language=${language}`
+          );
+          if (geoRes.ok) {
+            const geoData = await geoRes.json();
+            const addr = geoData.address || {};
+            const parts: string[] = [];
+
+            // 1. Specific building or amenity
+            if (addr.amenity) parts.push(addr.amenity);
+            else if (addr.building) parts.push(addr.building);
+
+            // 2. Road and house number
+            if (addr.house_number) {
+              if (addr.road) {
+                parts.push(`${addr.house_number}, ${addr.road}`);
+              } else {
+                parts.push(addr.house_number);
+              }
+            } else if (addr.road) {
+              parts.push(addr.road);
+            }
+
+            // 3. Local area details
+            if (addr.neighbourhood) parts.push(addr.neighbourhood);
+            if (addr.suburb && addr.suburb !== addr.neighbourhood) parts.push(addr.suburb);
+            
+            const localPlace = addr.village || addr.town || addr.city;
+            if (localPlace && !parts.includes(localPlace)) {
+              parts.push(localPlace);
+            }
+
+            // 4. District and State
+            if (addr.county) {
+              const countyClean = addr.county.replace(/\s+District/gi, "").replace(/\s+மாவட்டம்/g, "");
+              if (!parts.includes(countyClean) && countyClean !== localPlace) {
+                parts.push(countyClean);
+              }
+            }
+            if (addr.state) {
+              const stateClean = addr.state.replace(/\s+State/gi, "").replace(/\s+மாநிலம்/g, "");
+              if (!parts.includes(stateClean)) {
+                parts.push(stateClean);
+              }
+            }
+
+            // 5. Postal Code
+            if (addr.postcode) {
+              parts.push(addr.postcode);
+            }
+
+            detectedName = parts.length > 1 ? parts.join(", ") : geoData.display_name || detectedName;
+          }
+        } catch (e) {
+          console.error("Reverse geocoding failed, using coordinates:", e);
+        }
+        setUserLocation(detectedName);
+        setIsDetectingLocation(false);
+      },
+      (error) => {
+        console.error("Geolocation error:", error);
+        alert(language === "ta" ? "இருப்பிடத்தை அணுக முடியவில்லை. கைமுறையாக தட்டச்சு செய்யவும்." : "Location access denied or unavailable. Please type manually.");
+        setIsDetectingLocation(false);
+      },
+      { enableHighAccuracy: true, timeout: 5000 }
+    );
+  };
+
+  const handleRegisterSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!regName.trim()) {
+      setRegError(t("reg_error_name"));
+      return;
+    }
+    const cleanMobile = regMobile.replace(/\D/g, "");
+    if (cleanMobile.length < 10) {
+      setRegError(t("reg_error_mobile"));
+      return;
+    }
+    if (!regLocation.trim()) {
+      setRegError(t("reg_error_location"));
+      return;
+    }
+    if (regRoles.length === 0) {
+      setRegError(t("reg_error_roles"));
+      return;
+    }
+
+    const finalRoles: ("customer" | "owner" | "labor" | "admin")[] = [...regRoles];
+    if (adminCodeInput.trim() === "1234" || adminCodeInput.trim() === "admin123") {
+      finalRoles.push("admin");
+    }
+
+    const finalLocation = regLocation.trim();
+    localStorage.setItem("oorsevai_user_name", regName.trim());
+    localStorage.setItem("oorsevai_user_mobile", cleanMobile);
+    localStorage.setItem("oorsevai_user_location", finalLocation);
+    localStorage.setItem("oorsevai_user_roles", JSON.stringify(finalRoles));
+    localStorage.setItem("oorsevai_registered", "true");
+    localStorage.setItem("admin_location", finalLocation);
+
+    setUserName(regName.trim());
+    setUserMobile(cleanMobile);
+    setUserLocation(finalLocation);
+    setCustomLocation(finalLocation);
+    setAdminLocation(finalLocation);
+    setPredictLocation(finalLocation);
+    setRegisteredRoles(finalRoles);
+    setIsRegistered(true);
+
+    if (finalRoles.includes("admin")) {
+      setUserRole("admin");
+      setActiveTab("dashboard");
+    } else if (finalRoles.includes("customer")) {
+      setUserRole("customer");
+      setActiveTab("home");
+      setActiveView("home");
+    } else {
+      setUserRole(finalRoles[0]);
+      setActiveTab("dashboard");
+    }
+  };
 
   return (
     <div id="main-app-container" className={`min-h-screen bg-[#FAF7F2] dark:bg-slate-950 font-sans flex flex-col items-center justify-start py-0 md:py-8 transition-colors duration-300 ${darkMode ? "dark" : ""}`}>
@@ -757,8 +1119,274 @@ export default function App() {
       {/* High Fidelity Screen Wrapper framing a mobile emulator feel on desktop */}
       <div className={`w-full max-w-md bg-[#FDFCF9] dark:bg-[#121212] dark:text-[#F1F5F9] md:rounded-3xl md:shadow-2xl border border-[#E8E6E1] dark:border-slate-800 overflow-hidden flex flex-col min-h-screen md:min-h-[840px] relative transition-all duration-300 ${darkMode ? "dark" : ""}`}>
         
-        {/* TOP PLATFORM BAR & ROLE SWITCHER */}
-        <div id="top-branding-bar" className="bg-[#3E5C31] dark:bg-[#203119] text-white px-4 py-3 border-b border-white/10 flex flex-col space-y-2.5 shadow-sm">
+        {!isRegistered ? (
+          <div className="flex-1 flex flex-col h-full bg-[#FAF7F2] dark:bg-slate-950 overflow-y-auto scrollbar-none">
+            {/* Simple Registration Header */}
+            <div className="bg-[#3E5C31] dark:bg-[#203119] text-white px-4 py-4 border-b border-white/10 flex justify-between items-center shadow-sm shrink-0">
+              <div className="flex items-center space-x-2">
+                <div className="w-8 h-8 bg-white rounded-xl overflow-hidden flex items-center justify-center p-0.5 shadow-sm">
+                  <img src="/icon.svg" alt="Oor Sevai" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
+                </div>
+                <div>
+                  <h1 className="text-sm font-black tracking-tight leading-none text-white">{t("app_title")}</h1>
+                  <span className="text-[8px] uppercase tracking-wider text-white/70 font-bold">{t("app_subtitle")}</span>
+                </div>
+              </div>
+              
+              <div className="flex items-center space-x-1.5">
+                {/* Language Switcher */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const newLang = language === "en" ? "ta" : "en";
+                    setLanguage(newLang);
+                    localStorage.setItem("oorsevai_lang", newLang);
+                  }}
+                  className="text-[10px] bg-white/10 hover:bg-white/20 border border-white/10 text-white px-2.5 py-1.5 rounded-xl font-bold transition-all duration-200 cursor-pointer flex items-center space-x-1"
+                >
+                  <span>🌐</span>
+                  <span className="font-extrabold">{language === "en" ? "EN" : "தம"}</span>
+                </button>
+
+                {/* Theme Switcher */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const newMode = !darkMode;
+                    setDarkMode(newMode);
+                    localStorage.setItem("oorsevai_dark", newMode ? "true" : "false");
+                  }}
+                  className="p-1.5 bg-white/10 hover:bg-white/20 border border-white/10 rounded-xl transition-all duration-200 cursor-pointer"
+                >
+                  {darkMode ? "☀️" : "🌙"}
+                </button>
+              </div>
+            </div>
+
+            {/* Registration Form */}
+            <div className="p-5 flex-1 flex flex-col justify-start">
+              <div className="mb-6 text-center">
+                <h2 className="text-xl font-black text-[#2D2D2A] dark:text-slate-100 tracking-tight">{t("reg_title")}</h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5 leading-relaxed max-w-sm mx-auto">{t("reg_subtitle")}</p>
+              </div>
+
+              <form onSubmit={handleRegisterSubmit} className="space-y-4 flex-1 flex flex-col">
+                {regError && (
+                  <div className="bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/50 text-rose-600 dark:text-rose-400 p-3 rounded-xl text-xs font-semibold flex items-center space-x-1.5 animate-bounce">
+                    <span>⚠️</span>
+                    <span>{regError}</span>
+                  </div>
+                )}
+
+                {/* Name field */}
+                <div>
+                  <label className="block text-[11px] font-black uppercase text-slate-500 dark:text-slate-400 mb-1.5 tracking-wider">{t("reg_name_label")}</label>
+                  <input
+                    type="text"
+                    value={regName}
+                    onChange={(e) => {
+                      setRegName(e.target.value);
+                      if (regError) setRegError("");
+                    }}
+                    placeholder={t("reg_name_placeholder")}
+                    className="w-full bg-white dark:bg-[#1A2320] border border-[#E8E6E1] dark:border-slate-800 rounded-xl px-3.5 py-2.5 text-xs focus:ring-2 focus:ring-[#3E5C31] focus:border-[#3E5C31] dark:text-slate-100 outline-none transition-all"
+                  />
+                </div>
+
+                {/* Mobile field */}
+                <div>
+                  <label className="block text-[11px] font-black uppercase text-slate-500 dark:text-slate-400 mb-1.5 tracking-wider">{t("reg_mobile_label")}</label>
+                  <input
+                    type="tel"
+                    value={regMobile}
+                    onChange={(e) => {
+                      const clean = e.target.value.replace(/\D/g, "");
+                      setRegMobile(clean);
+                      if (regError) setRegError("");
+                    }}
+                    maxLength={10}
+                    placeholder={t("reg_mobile_placeholder")}
+                    className="w-full bg-white dark:bg-[#1A2320] border border-[#E8E6E1] dark:border-slate-800 rounded-xl px-3.5 py-2.5 text-xs focus:ring-2 focus:ring-[#3E5C31] focus:border-[#3E5C31] dark:text-slate-100 outline-none transition-all"
+                  />
+                </div>
+
+                {/* Location field with GPS Detection */}
+                <div>
+                  <label className="block text-[11px] font-black uppercase text-slate-500 dark:text-slate-400 mb-1.5 tracking-wider">{t("reg_location_label")}</label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={regLocation}
+                      onChange={(e) => {
+                        setRegLocation(e.target.value);
+                        if (regError) setRegError("");
+                      }}
+                      placeholder={t("reg_location_placeholder")}
+                      className="flex-1 bg-white dark:bg-[#1A2320] border border-[#E8E6E1] dark:border-slate-800 rounded-xl px-3.5 py-2.5 text-xs focus:ring-2 focus:ring-[#3E5C31] focus:border-[#3E5C31] dark:text-slate-100 outline-none transition-all"
+                    />
+                    <button
+                      type="button"
+                      disabled={isDetectingLocation}
+                      onClick={handleDetectRegLocation}
+                      className="px-3 bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:text-slate-200 text-[#2D2D2A] rounded-xl text-[10px] font-black cursor-pointer transition-colors flex items-center gap-1 shrink-0"
+                    >
+                      <span>📍</span> {isDetectingLocation ? (language === "ta" ? "கண்டறிகிறது..." : "Detecting...") : t("reg_location_detect")}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Roles Selection */}
+                <div>
+                  <label className="block text-[11px] font-black uppercase text-slate-500 dark:text-slate-400 mb-0.5 tracking-wider">{t("reg_roles_label")}</label>
+                  <p className="text-[10px] text-[#8A867E] dark:text-slate-400 mb-3">{t("reg_roles_desc")}</p>
+                  
+                  <div className="space-y-2.5">
+                    {/* Customer role */}
+                    <div 
+                      onClick={() => {
+                        const next = regRoles.includes("customer") 
+                          ? regRoles.filter(r => r !== "customer") 
+                          : [...regRoles, "customer"];
+                        setRegRoles(next);
+                        if (regError) setRegError("");
+                      }}
+                      className={`p-3 rounded-2xl border-2 cursor-pointer transition-all flex items-start space-x-3 select-none ${
+                        regRoles.includes("customer")
+                          ? "bg-[#3E5C31]/5 border-[#3E5C31] dark:border-emerald-500 dark:bg-emerald-500/5 shadow-xs"
+                          : "bg-white dark:bg-[#1A2320] border-[#E8E6E1] dark:border-slate-800 hover:border-slate-300"
+                      }`}
+                    >
+                      <div className={`w-5 h-5 rounded-md flex items-center justify-center border-2 shrink-0 mt-0.5 transition-all ${
+                        regRoles.includes("customer")
+                          ? "border-[#3E5C31] bg-[#3E5C31] text-white dark:border-emerald-500 dark:bg-emerald-500"
+                          : "border-[#E8E6E1] dark:border-slate-700"
+                      }`}>
+                        {regRoles.includes("customer") && <Check className="w-3.5 h-3.5 stroke-[4px]" />}
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="text-xs font-black text-[#2D2D2A] dark:text-slate-100 flex items-center gap-1.5">
+                          <span>🚜</span> {t("reg_role_customer_title")}
+                        </h4>
+                        <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 leading-relaxed">{t("reg_role_customer_desc")}</p>
+                      </div>
+                    </div>
+
+                    {/* Owner role */}
+                    <div 
+                      onClick={() => {
+                        const next = regRoles.includes("owner") 
+                          ? regRoles.filter(r => r !== "owner") 
+                          : [...regRoles, "owner"];
+                        setRegRoles(next);
+                        if (regError) setRegError("");
+                      }}
+                      className={`p-3 rounded-2xl border-2 cursor-pointer transition-all flex items-start space-x-3 select-none ${
+                        regRoles.includes("owner")
+                          ? "bg-[#3E5C31]/5 border-[#3E5C31] dark:border-emerald-500 dark:bg-emerald-500/5 shadow-xs"
+                          : "bg-white dark:bg-[#1A2320] border-[#E8E6E1] dark:border-slate-800 hover:border-slate-300"
+                      }`}
+                    >
+                      <div className={`w-5 h-5 rounded-md flex items-center justify-center border-2 shrink-0 mt-0.5 transition-all ${
+                        regRoles.includes("owner")
+                          ? "border-[#3E5C31] bg-[#3E5C31] text-white dark:border-emerald-500 dark:bg-emerald-500"
+                          : "border-[#E8E6E1] dark:border-slate-700"
+                      }`}>
+                        {regRoles.includes("owner") && <Check className="w-3.5 h-3.5 stroke-[4px]" />}
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="text-xs font-black text-[#2D2D2A] dark:text-slate-100 flex items-center gap-1.5">
+                          <span>🛠️</span> {t("reg_role_owner_title")}
+                        </h4>
+                        <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 leading-relaxed">{t("reg_role_owner_desc")}</p>
+                      </div>
+                    </div>
+
+                    {/* Labor role */}
+                    <div 
+                      onClick={() => {
+                        const next = regRoles.includes("labor") 
+                          ? regRoles.filter(r => r !== "labor") 
+                          : [...regRoles, "labor"];
+                        setRegRoles(next);
+                        if (regError) setRegError("");
+                      }}
+                      className={`p-3 rounded-2xl border-2 cursor-pointer transition-all flex items-start space-x-3 select-none ${
+                        regRoles.includes("labor")
+                          ? "bg-[#3E5C31]/5 border-[#3E5C31] dark:border-emerald-500 dark:bg-emerald-500/5 shadow-xs"
+                          : "bg-white dark:bg-[#1A2320] border-[#E8E6E1] dark:border-slate-800 hover:border-slate-300"
+                      }`}
+                    >
+                      <div className={`w-5 h-5 rounded-md flex items-center justify-center border-2 shrink-0 mt-0.5 transition-all ${
+                        regRoles.includes("labor")
+                          ? "border-[#3E5C31] bg-[#3E5C31] text-white dark:border-emerald-500 dark:bg-emerald-500"
+                          : "border-[#E8E6E1] dark:border-slate-700"
+                      }`}>
+                        {regRoles.includes("labor") && <Check className="w-3.5 h-3.5 stroke-[4px]" />}
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="text-xs font-black text-[#2D2D2A] dark:text-slate-100 flex items-center gap-1.5">
+                          <span>👷</span> {t("reg_role_labor_title")}
+                        </h4>
+                        <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 leading-relaxed">{t("reg_role_labor_desc")}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Discreet Village Admin Section */}
+                <div className="border border-[#E8E6E1] dark:border-slate-800 rounded-2xl p-3.5 bg-[#FAF7F2]/50 dark:bg-[#151C1A] mt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowAdminField(!showAdminField)}
+                    className="flex items-center justify-between w-full text-left font-black text-[#2D2D2A] dark:text-slate-200 text-xs focus:outline-none"
+                  >
+                    <span className="flex items-center gap-1.5">
+                      <span>🔑</span> {t("reg_admin_title")}
+                    </span>
+                    <span className="text-slate-400">{showAdminField ? "▲" : "▼"}</span>
+                  </button>
+                  
+                  {showAdminField && (
+                    <div className="mt-3 space-y-2">
+                      <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-relaxed">{t("reg_admin_desc")}</p>
+                      <input
+                        type="password"
+                        value={adminCodeInput}
+                        onChange={(e) => setAdminCodeInput(e.target.value)}
+                        placeholder={t("reg_admin_placeholder")}
+                        className="w-full bg-white dark:bg-[#1A2320] border border-[#E8E6E1] dark:border-slate-800 rounded-xl px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-[#3E5C31] dark:text-slate-100"
+                      />
+                      {adminCodeInput.trim() && (
+                        <p className="text-[10px] font-bold">
+                          {adminCodeInput.trim() === "1234" || adminCodeInput.trim() === "admin123" ? (
+                            <span className="text-[#3E5C31] dark:text-emerald-400">{t("reg_admin_success")}</span>
+                          ) : (
+                            <span className="text-rose-500">{t("reg_admin_error")}</span>
+                          )}
+                        </p>
+                      )}
+                      <p className="text-[9px] text-[#8A867E] italic">💡 Hint: Enter 1234 to test as Village Admin</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Submit button */}
+                <div className="pt-4 mt-auto">
+                  <button
+                    type="submit"
+                    className="w-full bg-[#3E5C31] hover:bg-[#344F28] dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white font-black py-3 px-4 rounded-xl shadow-md transition-all text-xs cursor-pointer active:scale-[0.98] flex items-center justify-center gap-1.5 animate-pulse"
+                  >
+                    <span>{t("reg_btn_submit")}</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* TOP PLATFORM BAR & ROLE SWITCHER */}
+            <div id="top-branding-bar" className="bg-[#3E5C31] dark:bg-[#203119] text-white px-4 py-3 border-b border-white/10 flex flex-col space-y-2.5 shadow-sm">
           <div className="flex justify-between items-center">
             <div className="flex items-center space-x-2">
               <div className="w-8 h-8 bg-white rounded-xl overflow-hidden flex items-center justify-center shadow-xs shrink-0 p-0.5">
@@ -811,11 +1439,22 @@ export default function App() {
                 title="Notifications"
               >
                 <Bell className="h-4 w-4 text-white" />
-                {notifications.filter(n => !n.isRead).length > 0 && (
+                {resolvedNotifications.filter(n => !n.isRead).length > 0 && (
                   <span className="absolute -top-1 -right-1 h-4 w-4 bg-rose-500 text-white font-black text-[8px] rounded-full flex items-center justify-center border border-[#3E5C31] shadow-xs">
-                    {notifications.filter(n => !n.isRead).length}
+                    {resolvedNotifications.filter(n => !n.isRead).length}
                   </span>
                 )}
+              </button>
+
+              {/* Settings Icon Toggle */}
+              <button
+                type="button"
+                onClick={() => setShowSettingsModal(true)}
+                className="p-1.5 bg-white/10 hover:bg-white/20 border border-white/10 rounded-xl transition-all duration-200 focus:outline-none cursor-pointer flex items-center justify-center text-white"
+                title="Settings"
+                id="settings-toggle-btn"
+              >
+                <Settings className="h-4 w-4 text-white" />
               </button>
  
               <span className="text-[9px] bg-[#E9C46A] text-[#2D2D2A] px-2 py-1.2 rounded-xl font-extrabold flex items-center space-x-0.5 shadow-xs shrink-0">
@@ -828,31 +1467,40 @@ export default function App() {
           <div className="bg-black/20 p-1 rounded-xl flex justify-between items-center">
             <span className="text-[10px] text-white/80 font-bold pl-2">{t("role_label")}</span>
             <div className="flex space-x-1 flex-1 justify-end">
-              {(["customer", "owner", "labor", "admin"] as const).map((role) => (
-                <button
-                  key={role}
-                  onClick={() => {
-                    setUserRole(role);
-                    // Reset standard tab when switching roles
-                    if (role === "customer") {
-                      setActiveTab("home");
-                      setActiveView("home");
-                    } else {
-                      setActiveTab("dashboard");
-                    }
-                  }}
-                  className={`text-[9px] font-extrabold px-2 py-1 rounded-lg capitalize transition-all cursor-pointer ${
-                    userRole === role 
-                      ? "bg-white text-[#3E5C31] shadow-xs" 
-                      : "text-white/80 hover:text-white hover:bg-white/10"
-                  }`}
-                >
-                  {role === "customer" ? t("role_customer") : 
-                   role === "owner" ? t("role_owner") : 
-                   role === "labor" ? t("role_labor") : 
+              {registeredRoles.length > 1 ? (
+                registeredRoles.map((role) => (
+                  <button
+                    key={role}
+                    onClick={() => {
+                      setUserRole(role);
+                      // Reset standard tab when switching roles
+                      if (role === "customer") {
+                        setActiveTab("home");
+                        setActiveView("home");
+                      } else {
+                        setActiveTab("dashboard");
+                      }
+                    }}
+                    className={`text-[9px] font-extrabold px-2 py-1 rounded-lg capitalize transition-all cursor-pointer ${
+                      userRole === role 
+                        ? "bg-white text-[#3E5C31] shadow-xs" 
+                        : "text-white/80 hover:text-white hover:bg-white/10"
+                    }`}
+                  >
+                    {role === "customer" ? t("role_customer") : 
+                     role === "owner" ? t("role_owner") : 
+                     role === "labor" ? t("role_labor") : 
+                     t("role_admin")}
+                  </button>
+                ))
+              ) : (
+                <span className="text-[9px] bg-white text-[#3E5C31] font-black px-2.5 py-1 rounded-lg capitalize">
+                  {userRole === "customer" ? t("role_customer") : 
+                   userRole === "owner" ? t("role_owner") : 
+                   userRole === "labor" ? t("role_labor") : 
                    t("role_admin")}
-                </button>
-              ))}
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -912,7 +1560,7 @@ export default function App() {
         <AnimatePresence>
           {showNotificationsDropdown && (
             <NotificationCenter
-              notifications={notifications}
+              notifications={resolvedNotifications}
               onMarkAsRead={handleMarkNotificationRead}
               onMarkAllAsRead={handleMarkAllNotificationsRead}
               onClearAll={handleClearAllNotifications}
@@ -924,13 +1572,13 @@ export default function App() {
 
         {/* ==================== REAL-TIME BANNER TOAST ==================== */}
         <AnimatePresence>
-          {activeBannerNotification && (
+          {resolvedActiveBannerNotification && (
             <motion.div
               initial={{ opacity: 0, y: -80, scale: 0.9 }}
               animate={{ opacity: 1, y: 16, scale: 1 }}
               exit={{ opacity: 0, y: -40, scale: 0.9 }}
               transition={{ type: "spring", stiffness: 300, damping: 25 }}
-              onClick={() => handleNotificationClick(activeBannerNotification.bookingId)}
+              onClick={() => handleNotificationClick(resolvedActiveBannerNotification.bookingId)}
               className="absolute top-4 left-4 right-4 bg-[#FAF7F2] border-2 border-[#3E5C31] shadow-2xl rounded-2xl p-3.5 z-50 flex gap-3 items-start cursor-pointer hover:bg-white"
             >
               <div className="w-8 h-8 rounded-full bg-[#3E5C31] text-white flex items-center justify-center shrink-0">
@@ -938,10 +1586,10 @@ export default function App() {
               </div>
               <div className="flex-1 text-xs">
                 <div className="flex justify-between items-center">
-                  <span className="font-black text-[#2D2D2A] text-[11px] block">{activeBannerNotification.title}</span>
+                  <span className="font-black text-[#2D2D2A] text-[11px] block">{resolvedActiveBannerNotification.title}</span>
                   <span className="text-[9px] bg-[#3E5C31]/10 text-[#3E5C31] font-black px-1.5 py-0.5 rounded-full">NEW</span>
                 </div>
-                <p className="text-[10px] text-slate-700 mt-1 leading-relaxed">{activeBannerNotification.message}</p>
+                <p className="text-[10px] text-slate-700 mt-1 leading-relaxed">{resolvedActiveBannerNotification.message}</p>
                 <span className="text-[8px] text-[#3E5C31] mt-1.5 block font-black">👉 Tap to inspect booking details</span>
               </div>
             </motion.div>
@@ -979,6 +1627,7 @@ export default function App() {
                   adminLocation={adminLocation}
                   adminDistance={adminDistance}
                   language={language}
+                  userName={userName}
                 />
               )}
 
@@ -988,7 +1637,7 @@ export default function App() {
                   searchQuery={searchQuery}
                   allEquipment={filteredEquipmentList}
                   allLaborers={filteredLaborersList}
-                  bookings={bookings}
+                  bookings={resolvedBookings}
                   onBack={() => setActiveView("home")}
                   onSelectEquipment={handleSelectEquipment}
                   onSelectLaborer={handleSelectLaborer}
@@ -1174,7 +1823,7 @@ export default function App() {
                       <span className="text-[10px] text-[#3E5C31] font-bold block mt-0.5">✓ 100% On-time Completion</span>
                     </div>
                     {(() => {
-                      const currentLaborer = laborersList.find(l => l.id === selectedLaborer.id) || selectedLaborer;
+                      const currentLaborer = resolvedLaborersList.find(l => l.id === selectedLaborer.id) || selectedLaborer;
                       return (
                         <div className="text-[#8A867E] text-[10px] font-bold">
                           Availability: {currentLaborer.availability === "available" ? (
@@ -1188,7 +1837,7 @@ export default function App() {
                   </div>
 
                   {(() => {
-                    const currentLaborer = laborersList.find(l => l.id === selectedLaborer.id) || selectedLaborer;
+                    const currentLaborer = resolvedLaborersList.find(l => l.id === selectedLaborer.id) || selectedLaborer;
                     const isAvailable = currentLaborer.availability === "available";
                     return (
                       <button 
@@ -1485,7 +2134,7 @@ export default function App() {
                   <div className="flex justify-between items-center">
                     <h2 className="text-lg font-black text-[#2D2D2A]">My Rental Bookings</h2>
                     <span className="text-xs bg-[#3E5C31]/10 text-[#3E5C31] px-2.5 py-0.5 rounded-full font-bold">
-                      {bookings.length} Total
+                      {resolvedBookings.length} Total
                     </span>
                   </div>
 
@@ -1679,10 +2328,12 @@ export default function App() {
                   <span className="text-[9px] bg-[#3E5C31]/10 text-[#3E5C31] font-black uppercase tracking-widest px-2.5 py-1 rounded-full">
                     Owner Hub
                   </span>
-                  <h2 className="text-lg font-black text-[#2D2D2A] mt-1.5">Welcome back, Ravi Kumar</h2>
+                  <h2 className="text-lg font-black text-[#2D2D2A] mt-1.5">Welcome back, {userName || "Ravi Kumar"}</h2>
                 </div>
                 <div className="w-10 h-10 rounded-full border border-[#3E5C31] p-0.5">
-                  <div className="w-full h-full bg-[#3E5C31]/10 rounded-full flex items-center justify-center font-bold text-[#3E5C31]">R</div>
+                  <div className="w-full h-full bg-[#3E5C31]/10 rounded-full flex items-center justify-center font-bold text-[#3E5C31]">
+                    {userName ? userName.charAt(0).toUpperCase() : "R"}
+                  </div>
                 </div>
               </div>
 
@@ -1705,16 +2356,16 @@ export default function App() {
               <div className="bg-white p-4 rounded-3xl border border-[#E8E6E1] shadow-xs space-y-3">
                 <div className="flex justify-between items-center pb-2 border-b border-[#E8E6E1]">
                   <h3 className="font-extrabold text-xs text-[#2D2D2A] uppercase tracking-wider">
-                    Rent Bookings & Dispatches ({bookings.filter(b => b.type === "equipment").length})
+                    Rent Bookings & Dispatches ({resolvedBookings.filter(b => b.type === "equipment").length})
                   </h3>
-                  <span className="bg-[#3E5C31]/10 text-[#3E5C31] text-[8px] font-black uppercase px-2 py-0.5 rounded">
-                    Coimbatore Core
+                  <span className="bg-[#3E5C31]/10 text-[#3E5C31] text-[8px] font-black uppercase px-2 py-0.5 rounded truncate max-w-[120px]" title={userLocation}>
+                    {userLocation.split(",")[0]} Hub
                   </span>
                 </div>
 
                 <div className="space-y-3">
-                  {bookings.filter(b => b.type === "equipment").map((b) => {
-                    const equipment = equipmentList.find(e => e.id === b.itemId);
+                  {resolvedBookings.filter(b => b.type === "equipment").map((b) => {
+                    const equipment = resolvedEquipmentList.find(e => e.id === b.itemId);
                     const isDispatched = notifications.some(n => n.bookingId === b.id && n.type === "equipment_on_the_way");
                     
                     return (
@@ -2276,64 +2927,7 @@ export default function App() {
                 </div>
               )}
 
-              {/* PWA / Progressive Web App Diagnostics Card */}
-              <div className="bg-white p-4 rounded-3xl border border-[#E8E6E1] shadow-xs space-y-3">
-                <div className="flex justify-between items-center pb-2 border-b border-[#E8E6E1]">
-                  <div className="flex items-center space-x-1.5">
-                    <span className="text-sm">📱</span>
-                    <h3 className="font-extrabold text-xs text-[#2D2D2A] uppercase tracking-wider">
-                      OorSevai PWA Engine
-                    </h3>
-                  </div>
-                  <span className="bg-emerald-100 text-emerald-800 text-[8px] font-black uppercase px-2 py-0.5 rounded">
-                    Active
-                  </span>
-                </div>
-                
-                <div className="space-y-2 text-[10px]">
-                  <div className="flex justify-between">
-                    <span className="text-[#8A867E]">Network Connection:</span>
-                    <span className={`font-bold flex items-center ${isOnline ? "text-emerald-600" : "text-amber-600"}`}>
-                      <span className="mr-1">●</span> {isOnline ? "Online (Fully Connected)" : "Offline Mode Active"}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-[#8A867E]">Installation Status:</span>
-                    <span className="font-bold text-[#2D2D2A]">
-                      {isInstalled ? "✓ App Installed" : "Available to Install / Shortcut Option"}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-[#8A867E]">Offline Engine:</span>
-                    <span className="font-bold text-[#3E5C31]">Service Worker Registered</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-[#8A867E]">Local Cached Assets:</span>
-                    <span className="font-bold text-slate-700">App Shell, Forms, Icons & Static Data</span>
-                  </div>
-                </div>
 
-                <div className="flex gap-2 pt-2">
-                  {!isInstalled && (
-                    <button
-                      type="button"
-                      onClick={handleInstallApp}
-                      className="flex-1 bg-[#3E5C31] hover:bg-[#3E5C31]/95 text-white text-[10px] font-black py-2 rounded-xl text-center cursor-pointer transition-colors"
-                    >
-                      📱 Install App Shortcut
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      alert("Offline Sync Test:\n\nIf you go offline (turn off WiFi/data) and rent equipment or submit labor applications, OorSevai's Service Worker holds the UI flow locally, and will attempt to submit when connection is restored! All listing structures are preserved.");
-                    }}
-                    className="flex-1 bg-[#FAF7F2] hover:bg-[#F3F1ED] border border-[#E8E6E1] text-slate-700 text-[10px] font-bold py-2 rounded-xl text-center cursor-pointer transition-colors"
-                  >
-                    💡 Test Offline Capability
-                  </button>
-                </div>
-              </div>
             </div>
           )}
 
@@ -2346,10 +2940,12 @@ export default function App() {
                   <span className="text-[9px] bg-[#3E5C31]/10 text-[#3E5C31] font-black uppercase tracking-widest px-2.5 py-1 rounded-full">
                     Labor Hub
                   </span>
-                  <h2 className="text-lg font-black text-[#2D2D2A] mt-1.5">Welcome, Raju Krishnan</h2>
+                  <h2 className="text-lg font-black text-[#2D2D2A] mt-1.5">Welcome, {userName || "Raju Krishnan"}</h2>
                 </div>
                 <div className="w-10 h-10 rounded-full border border-[#3E5C31] p-0.5">
-                  <div className="w-full h-full bg-[#3E5C31]/10 rounded-full flex items-center justify-center font-bold text-[#3E5C31]">K</div>
+                  <div className="w-full h-full bg-[#3E5C31]/10 rounded-full flex items-center justify-center font-bold text-[#3E5C31]">
+                    {userName ? userName.charAt(0).toUpperCase() : "R"}
+                  </div>
                 </div>
               </div>
 
@@ -2361,7 +2957,7 @@ export default function App() {
                     <p className="text-[10px] text-[#8A867E]">Toggle to start receiving hyperlocal job bookings.</p>
                   </div>
                   {(() => {
-                    const raju = laborersList.find(l => l.id === "lb-4" || l.name === "Raju Krishnan");
+                    const raju = resolvedLaborersList.find(l => l.id === "lb-4" || l.name === "Raju Krishnan");
                     const isAvailable = raju ? raju.availability === "available" : true;
                     return isAvailable ? (
                       <span className="bg-emerald-100 text-emerald-800 text-[9px] font-black uppercase px-2 py-1 rounded-md">
@@ -2377,7 +2973,7 @@ export default function App() {
 
                 <div className="flex space-x-2">
                   {(() => {
-                    const raju = laborersList.find(l => l.id === "lb-4" || l.name === "Raju Krishnan");
+                    const raju = resolvedLaborersList.find(l => l.id === "lb-4" || l.name === "Raju Krishnan");
                     const isAvailable = raju ? raju.availability === "available" : true;
                     return (
                       <>
@@ -2425,63 +3021,63 @@ export default function App() {
               <div className="bg-white p-4 rounded-3xl border border-[#E8E6E1] shadow-xs space-y-3">
                 <div className="flex justify-between items-center pb-2 border-b border-[#E8E6E1]">
                   <h3 className="font-extrabold text-xs text-[#2D2D2A] uppercase tracking-wider">
-                    My Received Shift Bookings ({bookings.filter(b => b.type === "labor").length})
+                    My Received Shift Bookings ({resolvedBookings.filter(b => b.type === "labor").length})
                   </h3>
                   <span className="bg-[#3E5C31]/10 text-[#3E5C31] text-[8px] font-black uppercase px-2 py-0.5 rounded">
                     Active
                   </span>
                 </div>
 
-                {bookings.filter(b => b.type === "labor").length === 0 ? (
+                {resolvedBookings.filter(b => b.type === "labor").length === 0 ? (
                   <div className="py-4 text-center space-y-1 bg-[#FAF7F2] rounded-2xl border border-dashed border-[#E8E6E1]">
                     <span className="text-xl">📅</span>
                     <p className="text-[11px] font-extrabold text-[#2D2D2A]">No shift bookings yet</p>
                     <p className="text-[9px] text-[#8A867E] px-4 leading-relaxed">
-                      To test this, switch to <strong>Customer</strong> role, click <strong>Browse</strong>, select <strong>Labor</strong> tab, and click <strong>Hire Now</strong> on Raju Krishnan!
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {bookings.filter(b => b.type === "labor").map((b) => {
-                      const isNotified = notifications.some(n => n.bookingId === b.id && n.type === "labor_shift_start");
-                      
-                      return (
-                        <div key={b.id} className="bg-[#FAF7F2] p-3 rounded-2xl border border-[#E8E6E1] space-y-2 text-xs">
-                          <div className="flex justify-between items-center">
-                            <div>
-                              <span className="text-[8px] font-bold text-slate-400">Shift #{b.id}</span>
-                              <h4 className="font-black text-xs text-[#2D2D2A]">{b.itemName}</h4>
-                            </div>
-                            <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded ${
-                              isNotified ? "bg-amber-100 text-amber-800 animate-pulse" : "bg-emerald-100 text-emerald-800"
-                            }`}>
-                              {isNotified ? "⏰ Shift Alerted" : b.status}
-                            </span>
+                    To test this, switch to <strong>Customer</strong> role, click <strong>Browse</strong>, select <strong>Labor</strong> tab, and click <strong>Hire Now</strong> on {userName || "Raju Krishnan"}!
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {resolvedBookings.filter(b => b.type === "labor").map((b) => {
+                    const isNotified = notifications.some(n => n.bookingId === b.id && n.type === "labor_shift_start");
+                    
+                    return (
+                      <div key={b.id} className="bg-[#FAF7F2] p-3 rounded-2xl border border-[#E8E6E1] space-y-2 text-xs">
+                        <div className="flex justify-between items-center">
+                          <div>
+                            <span className="text-[8px] font-bold text-slate-400">Shift #{b.id}</span>
+                            <h4 className="font-black text-xs text-[#2D2D2A]">{b.itemName}</h4>
                           </div>
+                          <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded ${
+                            isNotified ? "bg-amber-100 text-amber-800 animate-pulse" : "bg-emerald-100 text-emerald-800"
+                          }`}>
+                            {isNotified ? "⏰ Shift Alerted" : b.status}
+                          </span>
+                        </div>
 
-                          <div className="text-[10px] text-[#8A867E] space-y-0.5">
-                            <p>👤 <strong>Employer:</strong> {b.customerName}</p>
-                            <p>📍 <strong>Location:</strong> {b.location}</p>
-                            <p>📅 <strong>Schedule:</strong> {b.startDate}</p>
-                          </div>
+                        <div className="text-[10px] text-[#8A867E] space-y-0.5">
+                          <p>👤 <strong>Employer:</strong> {b.customerName}</p>
+                          <p>📍 <strong>Location:</strong> {b.location}</p>
+                          <p>📅 <strong>Schedule:</strong> {b.startDate}</p>
+                        </div>
 
-                          <div className="flex justify-between items-center pt-1 border-t border-[#E8E6E1]/50">
-                            <span className="font-extrabold text-[#3E5C31] text-[11px]">Daily Wage: ₹{b.totalAmount}</span>
-                            
-                            <button
-                              type="button"
-                              disabled={isNotified}
-                              onClick={() => {
-                                // Transition booking status to 'ongoing'
-                                setBookings(prev => prev.map(x => x.id === b.id ? { ...x, status: "ongoing" } : x));
-                                // Push notification
-                                triggerNotification(
-                                  b.id,
-                                  "⏰ Labor Shift Starting",
-                                  `Raju Krishnan's shift at ${b.location} is starting in 30 minutes! Please prepare the workspace.`,
-                                  "labor_shift_start"
-                                );
-                              }}
+                        <div className="flex justify-between items-center pt-1 border-t border-[#E8E6E1]/50">
+                          <span className="font-extrabold text-[#3E5C31] text-[11px]">Daily Wage: ₹{b.totalAmount}</span>
+                          
+                          <button
+                            type="button"
+                            disabled={isNotified}
+                            onClick={() => {
+                              // Transition booking status to 'ongoing'
+                              setBookings(prev => prev.map(x => x.id === b.id ? { ...x, status: "ongoing" } : x));
+                              // Push notification
+                              triggerNotification(
+                                b.id,
+                                "⏰ Labor Shift Starting",
+                                `${userName || "Raju Krishnan"}'s shift at ${b.location} is starting in 30 minutes! Please prepare the workspace.`,
+                                "labor_shift_start"
+                              );
+                            }}
                               className={`text-[9px] font-black px-3 py-1.5 rounded-lg border transition-all cursor-pointer flex items-center gap-1 ${
                                 isNotified 
                                   ? "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed"
@@ -2834,11 +3430,11 @@ export default function App() {
                     <div className="grid grid-cols-2 gap-2 pt-2 text-[9px] font-bold">
                       <div className="bg-white p-1.5 rounded-lg border border-[#E8E6E1] text-center">
                         <span className="text-[#8A867E] block text-[8px]">Active Equipment</span>
-                        <span className="text-[#3E5C31] font-black">{filteredEquipmentList.length} / {equipmentList.length}</span>
+                        <span className="text-[#3E5C31] font-black">{filteredEquipmentList.length} / {resolvedEquipmentList.length}</span>
                       </div>
                       <div className="bg-white p-1.5 rounded-lg border border-[#E8E6E1] text-center">
                         <span className="text-[#8A867E] block text-[8px]">Active Laborers</span>
-                        <span className="text-[#3E5C31] font-black">{filteredLaborersList.length} / {laborersList.length}</span>
+                        <span className="text-[#3E5C31] font-black">{filteredLaborersList.length} / {resolvedLaborersList.length}</span>
                       </div>
                     </div>
                   </div>
@@ -2985,6 +3581,66 @@ export default function App() {
                   ))}
                 </div>
               </div>
+
+              {/* PWA / Progressive Web App Diagnostics Card (Moved to Admin Panel) */}
+              <div className="bg-white p-4 rounded-3xl border border-[#E8E6E1] shadow-xs space-y-3">
+                <div className="flex justify-between items-center pb-2 border-b border-[#E8E6E1]">
+                  <div className="flex items-center space-x-1.5">
+                    <span className="text-sm">📱</span>
+                    <h3 className="font-extrabold text-xs text-[#2D2D2A] uppercase tracking-wider">
+                      OorSevai PWA Engine
+                    </h3>
+                  </div>
+                  <span className="bg-emerald-100 text-emerald-800 text-[8px] font-black uppercase px-2 py-0.5 rounded">
+                    Active
+                  </span>
+                </div>
+                
+                <div className="space-y-2 text-[10px]">
+                  <div className="flex justify-between">
+                    <span className="text-[#8A867E]">Network Connection:</span>
+                    <span className={`font-bold flex items-center ${isOnline ? "text-emerald-600" : "text-amber-600"}`}>
+                      <span className="mr-1">●</span> {isOnline ? "Online (Fully Connected)" : "Offline Mode Active"}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-[#8A867E]">Installation Status:</span>
+                    <span className="font-bold text-[#2D2D2A]">
+                      {isInstalled ? "✓ App Installed" : "Available to Install / Shortcut Option"}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-[#8A867E]">Offline Engine:</span>
+                    <span className="font-bold text-[#3E5C31]">Service Worker Registered</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-[#8A867E]">Local Cached Assets:</span>
+                    <span className="font-bold text-slate-700">App Shell, Forms, Icons & Static Data</span>
+                  </div>
+                </div>
+
+                <div className="flex gap-2 pt-2">
+                  {!isInstalled && (
+                    <button
+                      type="button"
+                      onClick={handleInstallApp}
+                      className="flex-1 bg-[#3E5C31] hover:bg-[#3E5C31]/95 text-white text-[10px] font-black py-2 rounded-xl text-center cursor-pointer transition-colors"
+                    >
+                      📱 Install App Shortcut
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      alert("Offline Sync Test:\n\nIf you go offline (turn off WiFi/data) and rent equipment or submit labor applications, OorSevai's Service Worker holds the UI flow locally, and will attempt to submit when connection is restored! All listing structures are preserved.");
+                    }}
+                    className="flex-1 bg-[#FAF7F2] hover:bg-[#F3F1ED] border border-[#E8E6E1] text-slate-700 text-[10px] font-bold py-2 rounded-xl text-center cursor-pointer transition-colors"
+                  >
+                    💡 Test Offline Capability
+                  </button>
+                </div>
+              </div>
+
             </div>
           )}
 
@@ -3019,7 +3675,15 @@ export default function App() {
               </button>
 
               <button 
-                onClick={() => { setUserRole("owner"); setActiveTab("dashboard"); }}
+                onClick={() => {
+                  const providers = registeredRoles.filter(r => r === "owner" || r === "labor");
+                  if (providers.length > 0) {
+                    setUserRole(providers[0]);
+                    setActiveTab("dashboard");
+                  } else {
+                    setShowProviderPromptModal(true);
+                  }
+                }}
                 className="flex flex-col items-center gap-0.5 cursor-pointer text-[#8A867E]"
               >
                 <div className="text-xl">👤</div>
@@ -3029,7 +3693,16 @@ export default function App() {
           ) : (
             <>
               <button 
-                onClick={() => { setUserRole("customer"); setActiveTab("home"); setActiveView("home"); }}
+                onClick={() => {
+                  if (registeredRoles.includes("customer")) {
+                    setUserRole("customer");
+                    setActiveTab("home");
+                    setActiveView("home");
+                  } else {
+                    alert(language === "ta" ? "வாடிக்கையாளர் பங்கை செயல்படுத்த அமைப்புகளுக்குச் செல்லவும்!" : "Please enable Customer role in Settings!");
+                    setShowSettingsModal(true);
+                  }
+                }}
                 className="flex flex-col items-center gap-0.5 cursor-pointer text-[#8A867E]"
               >
                 <div className="text-xl">🚜</div>
@@ -3046,7 +3719,7 @@ export default function App() {
 
               <button 
                 onClick={() => {
-                  const num = "918072462520";
+                  const num = "919698340357";
                   alert(`Connecting you directly to OorSevai Support Desk...\nPhone helpline: +${num}`);
                 }}
                 className="flex flex-col items-center gap-0.5 cursor-pointer text-[#8A867E]"
@@ -3057,6 +3730,288 @@ export default function App() {
             </>
           )}
         </div>
+          </>
+        )}
+
+        {/* ==================== SETTINGS MODAL ==================== */}
+        <AnimatePresence>
+          {showSettingsModal && (
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/60 z-50 flex items-end justify-center"
+            >
+              <motion.div 
+                initial={{ y: "100%" }}
+                animate={{ y: 0 }}
+                exit={{ y: "100%" }}
+                transition={{ type: "spring", damping: 25, stiffness: 200 }}
+                className="w-full bg-[#FAF7F2] dark:bg-slate-900 rounded-t-3xl p-5 max-h-[85%] overflow-y-auto border-t border-[#E8E6E1] dark:border-slate-800 shadow-2xl flex flex-col scrollbar-none"
+              >
+                {/* Header */}
+                <div className="flex justify-between items-center mb-4 border-b border-[#E8E6E1]/60 dark:border-slate-800 pb-3 shrink-0">
+                  <div>
+                    <h3 className="text-sm font-black text-[#2D2D2A] dark:text-slate-100 flex items-center gap-1.5">
+                      <span>⚙️</span> {t("settings_title")}
+                    </h3>
+                    <p className="text-[10px] text-[#8A867E] dark:text-slate-400 mt-0.5">{t("settings_profile_info")}</p>
+                  </div>
+                  <button 
+                    onClick={() => setShowSettingsModal(false)}
+                    className="w-7 h-7 rounded-full bg-slate-200/60 dark:bg-slate-800 flex items-center justify-center text-xs font-bold text-slate-500 hover:bg-slate-300/60 dark:hover:bg-slate-700"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                {/* Content */}
+                <div className="space-y-4 flex-1">
+                  {/* Name field */}
+                  <div>
+                    <label className="block text-[10px] font-black uppercase text-slate-500 dark:text-slate-400 mb-1 tracking-wider">{t("reg_name_label")}</label>
+                    <input
+                      type="text"
+                      value={userName}
+                      onChange={(e) => setUserName(e.target.value)}
+                      placeholder={t("reg_name_placeholder")}
+                      className="w-full bg-white dark:bg-[#1A2320] border border-[#E8E6E1] dark:border-slate-800 rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-[#3E5C31] dark:text-slate-100 outline-none"
+                    />
+                  </div>
+
+                  {/* Mobile field */}
+                  <div>
+                    <label className="block text-[10px] font-black uppercase text-slate-500 dark:text-slate-400 mb-1 tracking-wider">{t("reg_mobile_label")}</label>
+                    <input
+                      type="tel"
+                      value={userMobile}
+                      onChange={(e) => setUserMobile(e.target.value.replace(/\D/g, ""))}
+                      maxLength={10}
+                      placeholder={t("reg_mobile_placeholder")}
+                      className="w-full bg-white dark:bg-[#1A2320] border border-[#E8E6E1] dark:border-slate-800 rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-[#3E5C31] dark:text-slate-100 outline-none"
+                    />
+                  </div>
+
+                  {/* Location field in settings */}
+                  <div>
+                    <label className="block text-[10px] font-black uppercase text-slate-500 dark:text-slate-400 mb-1 tracking-wider">{t("reg_location_label")}</label>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={userLocation}
+                        onChange={(e) => setUserLocation(e.target.value)}
+                        placeholder={t("reg_location_placeholder")}
+                        className="flex-1 bg-white dark:bg-[#1A2320] border border-[#E8E6E1] dark:border-slate-800 rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-[#3E5C31] dark:text-slate-100 outline-none"
+                      />
+                      <button
+                        type="button"
+                        disabled={isDetectingLocation}
+                        onClick={handleDetectSettingsLocation}
+                        className="px-3 bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:text-slate-200 text-[#2D2D2A] rounded-xl text-[10px] font-black cursor-pointer transition-colors flex items-center gap-1 shrink-0"
+                      >
+                        <span>📍</span> {isDetectingLocation ? (language === "ta" ? "கண்டறிகிறது..." : "Detecting...") : t("reg_location_detect")}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Registered Roles */}
+                  <div>
+                    <label className="block text-[10px] font-black uppercase text-slate-500 dark:text-slate-400 mb-0.5 tracking-wider">{t("settings_roles_title")}</label>
+                    <p className="text-[9px] text-[#8A867E] dark:text-slate-400 mb-2">{t("settings_roles_desc")}</p>
+                    
+                    <div className="space-y-2">
+                      {(["customer", "owner", "labor"] as const).map((role) => {
+                        const isChecked = registeredRoles.includes(role);
+                        return (
+                          <div
+                            key={role}
+                            onClick={() => {
+                              // We must have at least one role selected
+                              if (isChecked && registeredRoles.filter(r => r !== "admin").length <= 1) {
+                                alert(language === "ta" ? "குறைந்தது ஒரு பங்கையாவது தேர்ந்தெடுக்க வேண்டும்!" : "At least one role must remain selected!");
+                                return;
+                              }
+                              const nextRoles = isChecked 
+                                ? registeredRoles.filter(r => r !== role)
+                                : [...registeredRoles, role];
+                              
+                              setRegisteredRoles(nextRoles);
+                              localStorage.setItem("oorsevai_user_roles", JSON.stringify(nextRoles));
+                            }}
+                            className={`p-2.5 rounded-xl border cursor-pointer transition-all flex items-center justify-between select-none ${
+                              isChecked
+                                ? "bg-[#3E5C31]/5 border-[#3E5C31] dark:border-emerald-500 dark:bg-emerald-500/5"
+                                : "bg-white dark:bg-[#1A2320] border-[#E8E6E1] dark:border-slate-800"
+                            }`}
+                          >
+                            <div className="flex items-center space-x-2">
+                              <span className="text-sm">
+                                {role === "customer" ? "🚜" : role === "owner" ? "🛠️" : "👷"}
+                              </span>
+                              <span className="text-xs font-bold text-[#2D2D2A] dark:text-slate-200">
+                                {role === "customer" ? t("reg_role_customer_title") : 
+                                 role === "owner" ? t("reg_role_owner_title") : 
+                                 t("reg_role_labor_title")}
+                              </span>
+                            </div>
+                            <div className={`w-4 h-4 rounded-md flex items-center justify-center border shrink-0 transition-all ${
+                              isChecked
+                                ? "border-[#3E5C31] bg-[#3E5C31] text-white dark:border-emerald-500 dark:bg-emerald-500"
+                                : "border-[#E8E6E1] dark:border-slate-700"
+                            }`}>
+                              {isChecked && <Check className="w-3 h-3 stroke-[4px]" />}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Admin Passcode section */}
+                  <div className="border border-[#E8E6E1] dark:border-slate-800 rounded-xl p-3 bg-white dark:bg-[#161F1C]">
+                    <div className="flex justify-between items-center mb-1.5">
+                      <span className="text-xs font-bold text-[#2D2D2A] dark:text-slate-200 flex items-center gap-1">
+                        <span>🔑</span> {t("role_admin")} Access
+                      </span>
+                      <span className={`text-[9px] font-black px-1.5 py-0.5 rounded ${
+                        registeredRoles.includes("admin") ? "bg-[#3E5C31]/10 text-[#3E5C31] dark:text-emerald-400" : "bg-slate-100 text-slate-400"
+                      }`}>
+                        {registeredRoles.includes("admin") ? "Unlocked" : "Locked"}
+                      </span>
+                    </div>
+                    <p className="text-[9px] text-slate-500 dark:text-slate-400 leading-relaxed mb-2">
+                      Enter passcode to enable Admin panel on this device (use `1234`).
+                    </p>
+                    <div className="flex gap-2">
+                      <input
+                        type="password"
+                        placeholder="Admin Code"
+                        className="flex-1 bg-slate-50 dark:bg-[#1A2320] border border-[#E8E6E1] dark:border-slate-800 rounded-lg px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-[#3E5C31] dark:text-slate-100"
+                        onChange={(e) => {
+                          const val = e.target.value.trim();
+                          if (val === "1234" || val === "admin123") {
+                            if (!registeredRoles.includes("admin")) {
+                              const next = [...registeredRoles, "admin"];
+                              setRegisteredRoles(next);
+                              localStorage.setItem("oorsevai_user_roles", JSON.stringify(next));
+                            }
+                          }
+                        }}
+                      />
+                      {registeredRoles.includes("admin") && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const next = registeredRoles.filter(r => r !== "admin");
+                            setRegisteredRoles(next);
+                            localStorage.setItem("oorsevai_user_roles", JSON.stringify(next));
+                            if (userRole === "admin") {
+                              setUserRole("customer");
+                              setActiveTab("home");
+                              setActiveView("home");
+                            }
+                          }}
+                          className="bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-500 px-3 py-1.5 rounded-lg text-[10px] font-bold"
+                        >
+                          Remove
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Footer Save Button */}
+                <div className="pt-4 mt-4 border-t border-[#E8E6E1]/60 dark:border-slate-800 shrink-0">
+                  <button
+                    onClick={() => {
+                      if (!userName.trim()) {
+                        alert("Name is required");
+                        return;
+                      }
+                      if (userMobile.replace(/\D/g, "").length < 10) {
+                        alert("Valid 10-digit mobile number is required");
+                        return;
+                      }
+                      
+                      localStorage.setItem("oorsevai_user_name", userName.trim());
+                      localStorage.setItem("oorsevai_user_mobile", userMobile);
+                      localStorage.setItem("oorsevai_user_location", userLocation.trim());
+                      setCustomLocation(userLocation.trim());
+                      setAdminLocation(userLocation.trim());
+                      localStorage.setItem("admin_location", userLocation.trim());
+                      setPredictLocation(userLocation.trim());
+                      
+                      // Ensure current active role is still valid
+                      if (!registeredRoles.includes(userRole)) {
+                        const fallbacks = registeredRoles.filter(r => r !== "admin");
+                        const activeFallback = fallbacks.length > 0 ? fallbacks[0] : registeredRoles[0];
+                        setUserRole(activeFallback);
+                        if (activeFallback === "customer") {
+                          setActiveTab("home");
+                          setActiveView("home");
+                        } else {
+                          setActiveTab("dashboard");
+                        }
+                      }
+                      
+                      setShowSettingsModal(false);
+                    }}
+                    className="w-full bg-[#3E5C31] hover:bg-[#344F28] dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white font-black py-2.5 rounded-xl shadow-md transition-all text-xs"
+                  >
+                    Apply & Close Settings
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* ==================== PROVIDER PROMPT MODAL ==================== */}
+        <AnimatePresence>
+          {showProviderPromptModal && (
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/60 z-50 flex items-center justify-center p-4"
+            >
+              <motion.div 
+                initial={{ scale: 0.9, y: 20 }}
+                animate={{ scale: 1, y: 0 }}
+                exit={{ scale: 0.9, y: 20 }}
+                className="w-full max-w-xs bg-[#FAF7F2] dark:bg-slate-900 rounded-2xl p-5 border border-[#E8E6E1] dark:border-slate-800 shadow-2xl text-center"
+              >
+                <div className="text-3xl mb-2.5">🚜💼</div>
+                <h3 className="text-sm font-black text-[#2D2D2A] dark:text-slate-100 tracking-tight">
+                  {language === "ta" ? "சேவைகளை வழங்கி வருமானம் ஈட்டுங்கள்!" : "Offer Services & Earn!"}
+                </h3>
+                <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-relaxed mt-2">
+                  {language === "ta" 
+                    ? "உங்களின் டிராக்டர் அல்லது விவசாய சேவைகளை ஊர்சேவையில் வழங்க, அமைப்புகளில் 'உரிமையாளர்' அல்லது 'தொழிலாளி' பங்குகளை இயக்கவும்."
+                    : "To list your tractor or offer professional farm labor in OorSevai, please enable the Owner or Worker roles in Settings."}
+                </p>
+                
+                <div className="mt-4 space-y-2">
+                  <button
+                    onClick={() => {
+                      setShowProviderPromptModal(false);
+                      setShowSettingsModal(true);
+                    }}
+                    className="w-full bg-[#3E5C31] hover:bg-[#344F28] text-white text-xs font-black py-2.5 rounded-xl shadow-xs cursor-pointer"
+                  >
+                    {language === "ta" ? "அமைப்புகளைத் திறக்கவும்" : "Open Settings"}
+                  </button>
+                  <button
+                    onClick={() => setShowProviderPromptModal(false)}
+                    className="w-full bg-slate-200/60 dark:bg-slate-800 text-slate-500 hover:bg-slate-300/60 text-xs font-bold py-2 rounded-xl cursor-pointer"
+                  >
+                    {language === "ta" ? "மூடவும்" : "Cancel"}
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
       </div>
 

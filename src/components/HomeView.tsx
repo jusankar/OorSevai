@@ -93,6 +93,7 @@ interface HomeViewProps {
   adminLocation?: string;
   adminDistance?: number;
   language?: Language;
+  userName?: string;
 }
 
 export default function HomeView({
@@ -104,7 +105,8 @@ export default function HomeView({
   onNavigate,
   adminLocation = "Coimbatore, Tamil Nadu",
   adminDistance = 15,
-  language = "en"
+  language = "en",
+  userName
 }: HomeViewProps) {
   const t = (key: Parameters<typeof getTranslation>[1]): string => getTranslation(language, key);
   const [searchQuery, setSearchQuery] = useState("");
@@ -113,7 +115,7 @@ export default function HomeView({
   const [weatherData, setWeatherData] = useState<any[] | null>(null);
   const [selectedWeatherDayIndex, setSelectedWeatherDayIndex] = useState(0);
   const [weatherLocation, setWeatherLocation] = useState({
-    name: "Coimbatore, TN (Default)",
+    name: adminLocation || "Coimbatore, Tamil Nadu",
     latitude: 11.0168,
     longitude: 76.9558,
   });
@@ -183,21 +185,29 @@ export default function HomeView({
         let detectedName = `Near ${latitude.toFixed(2)}°N, ${longitude.toFixed(2)}°E`;
         try {
           const geoRes = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&accept-language=en`
+            `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&accept-language=${language}`
           );
           if (geoRes.ok) {
             const geoData = await geoRes.json();
-            const city =
-              geoData.address.city ||
-              geoData.address.town ||
-              geoData.address.village ||
-              geoData.address.suburb ||
-              geoData.address.county ||
-              "Your Location";
-            const state = geoData.address.state
-              ? `, ${geoData.address.state.replace(" State", "")}`
-              : "";
-            detectedName = `${city}${state}`;
+            const addr = geoData.address || {};
+            const parts: string[] = [];
+            
+            const localArea = addr.suburb || addr.neighbourhood || addr.village || addr.hamlet;
+            const mainPlace = addr.city || addr.town || addr.county || "Your Location";
+            
+            if (localArea) parts.push(localArea);
+            if (mainPlace && mainPlace !== localArea) {
+              const cleanedMain = mainPlace.replace(/\s+District/gi, "").replace(/\s+மாவட்டம்/g, "");
+              parts.push(cleanedMain);
+            }
+            if (addr.state) {
+              const stateClean = addr.state.replace(/\s+State/gi, "").replace(/\s+மாநிலம்/g, "");
+              if (!parts.includes(stateClean)) {
+                parts.push(stateClean);
+              }
+            }
+            
+            detectedName = parts.length > 0 ? parts.join(", ") : geoData.display_name || detectedName;
           }
         } catch (e) {
           console.error("Reverse geocoding failed, using coordinates:", e);
@@ -216,6 +226,33 @@ export default function HomeView({
   React.useEffect(() => {
     const detectAndFetch = async () => {
       setWeatherLoading(true);
+      
+      // Let's first ensure the UI displays the registered location name immediately
+      setWeatherLocation(prev => ({ ...prev, name: adminLocation }));
+
+      // If we have an active registered location, let's geocode it to show exact crop weather!
+      if (adminLocation && adminLocation !== "Coimbatore, Tamil Nadu") {
+        try {
+          const searchRes = await fetch(
+            `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(adminLocation)}&format=json&limit=1`
+          );
+          if (searchRes.ok) {
+            const searchData = await searchRes.json();
+            if (searchData && searchData.length > 0) {
+              const lat = parseFloat(searchData[0].lat);
+              const lon = parseFloat(searchData[0].lon);
+              await fetchWeather(lat, lon, adminLocation);
+              return;
+            }
+          }
+        } catch (e) {
+          console.error("Failed to geocode registered location, falling back:", e);
+        }
+      } else if (adminLocation === "Coimbatore, Tamil Nadu") {
+        await fetchWeather(11.0168, 76.9558, adminLocation);
+        return;
+      }
+
       try {
         // Try IP Geolocation first for a silent and instant city-level load
         const ipRes = await fetch("https://ipapi.co/json/");
@@ -225,7 +262,7 @@ export default function HomeView({
             const cityName = ipData.city 
               ? `${ipData.city}${ipData.region_code ? `, ${ipData.region_code}` : ""}`
               : `${ipData.latitude.toFixed(2)}°N, ${ipData.longitude.toFixed(2)}°E`;
-            await fetchWeather(ipData.latitude, ipData.longitude, cityName);
+            await fetchWeather(ipData.latitude, ipData.longitude, adminLocation || cityName);
             return;
           }
         }
@@ -238,45 +275,53 @@ export default function HomeView({
         navigator.geolocation.getCurrentPosition(
           async (position) => {
             const { latitude, longitude } = position.coords;
-            let detectedName = `Near ${latitude.toFixed(2)}°N, ${longitude.toFixed(2)}°E`;
-            try {
-              const geoRes = await fetch(
-                `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&accept-language=en`
-              );
-              if (geoRes.ok) {
-                const geoData = await geoRes.json();
-                const city =
-                  geoData.address.city ||
-                  geoData.address.town ||
-                  geoData.address.village ||
-                  geoData.address.suburb ||
-                  geoData.address.county ||
-                  "Your Location";
-                const state = geoData.address.state
-                  ? `, ${geoData.address.state.replace(" State", "")}`
-                  : "";
-                detectedName = `${city}${state}`;
+            let detectedName = adminLocation || `Near ${latitude.toFixed(2)}°N, ${longitude.toFixed(2)}°E`;
+            if (!adminLocation) {
+              try {
+                const geoRes = await fetch(
+                  `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&accept-language=${language}`
+                );
+                if (geoRes.ok) {
+                  const geoData = await geoRes.json();
+                  const addr = geoData.address || {};
+                  const parts: string[] = [];
+                  
+                  const localArea = addr.suburb || addr.neighbourhood || addr.village || addr.hamlet;
+                  const mainPlace = addr.city || addr.town || addr.county || "Your Location";
+                  
+                  if (localArea) parts.push(localArea);
+                  if (mainPlace && mainPlace !== localArea) {
+                    const cleanedMain = mainPlace.replace(/\s+District/gi, "").replace(/\s+மாவட்டம்/g, "");
+                    parts.push(cleanedMain);
+                  }
+                  if (addr.state) {
+                    const stateClean = addr.state.replace(/\s+State/gi, "").replace(/\s+மாநிலம்/g, "");
+                    if (!parts.includes(stateClean)) {
+                      parts.push(stateClean);
+                    }
+                  }
+                  
+                  detectedName = parts.length > 0 ? parts.join(", ") : geoData.display_name || detectedName;
+                }
+              } catch (e) {
+                console.error("Nominatim reverse geocoding failed on init:", e);
               }
-            } catch (e) {
-              console.error("Nominatim reverse geocoding failed on init:", e);
             }
             fetchWeather(latitude, longitude, detectedName);
           },
           (error) => {
             console.error("Browser Geolocation failed on init:", error);
-            // Fallback 2: Default to Coimbatore
-            fetchWeather(11.0168, 76.9558, "Coimbatore, TN (Default)");
+            fetchWeather(11.0168, 76.9558, adminLocation || "Coimbatore, Tamil Nadu");
           },
           { enableHighAccuracy: true, timeout: 3000 }
         );
       } else {
-        // Fallback 2: Default to Coimbatore
-        fetchWeather(11.0168, 76.9558, "Coimbatore, TN (Default)");
+        fetchWeather(11.0168, 76.9558, adminLocation || "Coimbatore, Tamil Nadu");
       }
     };
 
     detectAndFetch();
-  }, []);
+  }, [adminLocation]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -286,11 +331,51 @@ export default function HomeView({
   };
 
   const categories = [
-    { id: "agriculture", name: t("agriculture"), sub: t("machines"), icon: Sprout, color: "bg-[#3E5C31]/10 dark:bg-emerald-950/20 text-[#3E5C31] dark:text-emerald-400 border-[#E8E6E1] dark:border-slate-800 hover:bg-[#3E5C31]/20 dark:hover:bg-emerald-950/40" },
-    { id: "construction", name: t("construction"), sub: t("machines"), icon: HardHat, color: "bg-[#D97706]/10 dark:bg-amber-950/20 text-[#D97706] dark:text-amber-400 border-[#E8E6E1] dark:border-slate-800 hover:bg-[#D97706]/20 dark:hover:bg-amber-950/40" },
-    { id: "tools", name: t("tools"), sub: t("machines"), icon: Wrench, color: "bg-[#2D2D2A]/10 dark:bg-slate-800/40 text-[#2D2D2A] dark:text-slate-300 border-[#E8E6E1] dark:border-slate-800 hover:bg-[#2D2D2A]/20 dark:hover:bg-slate-800/60" },
-    { id: "function", name: t("function"), sub: t("materials"), icon: Tent, color: "bg-[#E9C46A]/15 dark:bg-yellow-950/20 text-[#8A867E] dark:text-yellow-400 border-[#E8E6E1] dark:border-slate-800 hover:bg-[#E9C46A]/30 dark:hover:bg-yellow-950/40" },
-    { id: "labor", name: t("labor"), sub: t("services"), icon: Users, color: "bg-[#3E5C31]/5 dark:bg-emerald-900/10 text-[#3E5C31] dark:text-emerald-400 border-[#E8E6E1] dark:border-slate-800 hover:bg-[#3E5C31]/15 dark:hover:bg-emerald-900/20" },
+    { 
+      id: "agriculture", 
+      name: t("agriculture"), 
+      sub: t("machines"), 
+      icon: Sprout, 
+      englishLabel: "AGRICULTURE EQUIPMENT", 
+      tamilLabel: "வேளாண் உபகரணங்கள்", 
+      image: "https://images.unsplash.com/photo-1592982537447-6f2a6a0c7c18?auto=format&fit=crop&w=350&q=80" 
+    },
+    { 
+      id: "construction", 
+      name: t("construction"), 
+      sub: t("machines"), 
+      icon: HardHat, 
+      englishLabel: "CONSTRUCTION EQUIPMENT", 
+      tamilLabel: "கட்டுமான உபகரணங்கள்", 
+      image: "https://images.unsplash.com/photo-1578319439584-104c94d37305?auto=format&fit=crop&w=350&q=80" 
+    },
+    { 
+      id: "tools", 
+      name: t("tools"), 
+      sub: t("machines"), 
+      icon: Wrench, 
+      englishLabel: "TOOLS & MACHINERY", 
+      tamilLabel: "கருவிகள் & இயந்திரங்கள்", 
+      image: "https://images.unsplash.com/photo-1504148455328-c376907d081c?auto=format&fit=crop&w=350&q=80" 
+    },
+    { 
+      id: "function", 
+      name: t("function"), 
+      sub: t("materials"), 
+      icon: Tent, 
+      englishLabel: "EVENT & FUNCTION ITEMS", 
+      tamilLabel: "நிகழ்ச்சி & விழா பொருட்கள்", 
+      image: "https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?auto=format&fit=crop&w=350&q=80" 
+    },
+    { 
+      id: "labor", 
+      name: t("labor"), 
+      sub: t("services"), 
+      icon: Users, 
+      englishLabel: "LABOR SERVICES", 
+      tamilLabel: "தொழிலாளர் சேவைகள்", 
+      image: "https://images.unsplash.com/photo-1504307651254-35680f356dfd?auto=format&fit=crop&w=350&q=80" 
+    },
   ];
 
   return (
@@ -313,7 +398,11 @@ export default function HomeView({
                   {adminDistance} KM {t("radius")}
                 </span>
               </div>
-              <h2 className="text-sm font-semibold text-[#2D2D2A] dark:text-slate-100">{t("hello_user")}</h2>
+              <h2 className="text-sm font-semibold text-[#2D2D2A] dark:text-slate-100">
+                {userName 
+                  ? (language === "ta" ? `வணக்கம், ${userName} 👋` : `Hello, ${userName} 👋`)
+                  : t("hello_user")}
+              </h2>
             </div>
           </div>
           <div className="flex items-center space-x-2">
@@ -364,27 +453,70 @@ export default function HomeView({
       {/* Main Categories Panel */}
       <div id="home-categories" className="px-4 space-y-3">
         <div className="flex justify-between items-center">
-          <h3 className="font-extrabold text-slate-900 dark:text-slate-100 text-base">{t("browse_categories")}</h3>
-          <span className="text-xs font-semibold text-slate-400 dark:text-slate-500">5 {t("categories_count")}</span>
+          <div>
+            <h3 className="font-extrabold text-slate-900 dark:text-slate-100 text-base">{t("browse_categories")}</h3>
+            <p className="text-[10px] text-[#8A867E] dark:text-slate-400">
+              {language === "ta" ? "வகை வாரியாக ஆராய வலப்புறம் நகர்த்தவும்" : "Swipe to explore categories"}
+            </p>
+          </div>
+          <span className="text-[10px] bg-[#3E5C31]/10 text-[#3E5C31] dark:text-emerald-400 font-extrabold px-2.5 py-0.5 rounded-full shrink-0">
+            5 {t("categories_count")}
+          </span>
         </div>
-        <div className="grid grid-cols-5 gap-2.5">
+
+        {/* Categories Carousel */}
+        <div 
+          className="flex overflow-x-auto gap-4 pb-2 -mx-4 px-4 scroll-smooth snap-x snap-mandatory scrollbar-none"
+          id="categories-carousel"
+        >
           {categories.map((cat) => {
             const Icon = cat.icon;
+            const localizedTitle = language === "ta" ? cat.tamilLabel : cat.englishLabel;
+            
             return (
               <button
                 key={cat.id}
                 onClick={() => onSelectCategory(cat.id)}
-                className={`flex flex-col items-center p-2.5 rounded-2xl border text-center transition-all cursor-pointer ${cat.color} hover:scale-105 active:scale-95`}
+                className="flex-shrink-0 w-[175px] snap-start bg-white dark:bg-[#1C2420] rounded-2xl border border-[#E8E6E1] dark:border-slate-800 overflow-hidden shadow-xs hover:scale-[1.03] active:scale-98 transition-all duration-300 text-left flex flex-col group cursor-pointer"
               >
-                <div className="p-2.5 rounded-xl bg-white dark:bg-slate-800 shadow-sm mb-1.5 flex items-center justify-center text-slate-850 dark:text-slate-200">
-                  <Icon className="h-5 w-5" />
+                {/* Image Section */}
+                <div className="relative h-[115px] w-full overflow-hidden bg-[#FAF7F2] dark:bg-slate-900">
+                  <img 
+                    src={cat.image} 
+                    alt={localizedTitle} 
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    referrerPolicy="no-referrer"
+                  />
+                  {/* Floating Icon Badging */}
+                  <div className="absolute top-2.5 right-2.5 p-2 rounded-xl bg-white/95 dark:bg-slate-900/95 shadow-sm backdrop-blur-xs text-[#2D2D2A] dark:text-slate-200">
+                    <Icon className="h-4 w-4 text-[#3E5C31] dark:text-emerald-400" />
+                  </div>
+                  
+                  {/* Category Accent Stripe */}
+                  <div className={`absolute bottom-0 inset-x-0 h-1 ${
+                    cat.id === 'agriculture' ? 'bg-[#3E5C31]' : 
+                    cat.id === 'construction' ? 'bg-[#D97706]' : 
+                    cat.id === 'tools' ? 'bg-[#2D2D2A] dark:bg-slate-400' : 
+                    cat.id === 'function' ? 'bg-purple-600' : 
+                    'bg-amber-600'
+                  }`} />
                 </div>
-                <span className="text-[10px] font-bold tracking-tight leading-none text-slate-800 dark:text-slate-200 break-words w-full">
-                  {cat.name}
-                </span>
-                <span className="text-[9px] text-slate-500 dark:text-slate-400 mt-0.5 leading-none font-medium">
-                  {cat.sub}
-                </span>
+
+                {/* Content Section */}
+                <div className="p-3.5 flex-1 flex flex-col justify-between space-y-2">
+                  <div>
+                    <h4 className="text-[12px] font-black text-[#2D2D2A] dark:text-white leading-tight group-hover:text-[#3E5C31] dark:group-hover:text-emerald-400 transition-colors uppercase tracking-tight">
+                      {localizedTitle}
+                    </h4>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-2 border-t border-[#F3F1ED] dark:border-slate-800 text-[10px] font-medium text-slate-500 dark:text-slate-400">
+                    <span className="font-bold text-[#8A867E] dark:text-slate-300">{cat.name}</span>
+                    <span className="text-[9px] bg-[#FAF7F2] dark:bg-slate-800 text-[#3E5C31] dark:text-emerald-400 px-1.5 py-0.5 rounded-md font-black uppercase shrink-0">
+                      {cat.sub}
+                    </span>
+                  </div>
+                </div>
               </button>
             );
           })}
