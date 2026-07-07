@@ -419,6 +419,14 @@ export default function HomeView({
     }
   };
 
+  const FALLBACK_IMAGES: Record<string, string> = {
+    agriculture: "https://images.unsplash.com/photo-1500937386664-56d1dfef3854?auto=format&fit=crop&w=350&q=80",
+    construction: "https://images.unsplash.com/photo-1578319439584-104c94d37305?auto=format&fit=crop&w=350&q=80",
+    tools: "https://images.unsplash.com/photo-1504148455328-c376907d081c?auto=format&fit=crop&w=350&q=80",
+    function: "https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?auto=format&fit=crop&w=350&q=80",
+    labor: "https://images.unsplash.com/photo-1504307651254-35680f356dfd?auto=format&fit=crop&w=350&q=80",
+  };
+
   const categories = [
     { 
       id: "agriculture", 
@@ -636,6 +644,12 @@ export default function HomeView({
                     alt={cat.title} 
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     referrerPolicy="no-referrer"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      if (target.src !== FALLBACK_IMAGES[cat.id]) {
+                        target.src = FALLBACK_IMAGES[cat.id];
+                      }
+                    }}
                   />
                   {/* Floating Icon Badging */}
                   <div className="absolute top-2.5 right-2.5 p-2 rounded-xl bg-white/95 dark:bg-slate-900/95 shadow-sm backdrop-blur-xs text-[#2D2D2A] dark:text-slate-200">
