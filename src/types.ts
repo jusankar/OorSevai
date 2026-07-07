@@ -67,6 +67,7 @@ export interface Booking {
   totalAmount: number;
   status: "upcoming" | "ongoing" | "completed" | "cancelled";
   customerName: string;
+  customerId?: string; // registered user's mobile number
   location: string;
   deliveryMethod?: "delivery" | "pickup";
   operatorOption?: boolean;

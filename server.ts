@@ -140,7 +140,8 @@ async function startServer() {
   // ------------------------------------------
   app.get("/api/bookings", async (req, res) => {
     try {
-      const items = await dbService.getBookingsList();
+      const customerId = req.query.customerId as string;
+      const items = await dbService.getBookingsList(customerId);
       res.json(items);
     } catch (error: any) {
       res.status(500).json({ error: error.message });

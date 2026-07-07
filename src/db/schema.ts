@@ -71,6 +71,7 @@ export const bookings = pgTable("bookings", {
   totalAmount: integer("total_amount").notNull(),
   status: text("status").notNull(), // "upcoming" | "ongoing" | "completed" | "cancelled"
   customerName: text("customer_name").notNull(),
+  customerId: text("customer_id"), // linked to user's registered mobile number/phone
   location: text("location").notNull(),
   deliveryMethod: text("delivery_method"), // "delivery" | "pickup"
   operatorOption: boolean("operator_option"),

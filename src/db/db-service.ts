@@ -232,8 +232,11 @@ export async function deleteLaborerItem(id: string) {
 // 4. Bookings Queries (Query Layer)
 // ------------------------------------------
 
-export async function getBookingsList() {
+export async function getBookingsList(customerId?: string) {
   try {
+    if (customerId) {
+      return await db.select().from(bookings).where(eq(bookings.customerId, customerId));
+    }
     return await db.select().from(bookings);
   } catch (error) {
     console.error("Database getBookingsList failed:", error);
@@ -257,6 +260,7 @@ export async function addBookingItem(item: any) {
         totalAmount: parseInt(item.totalAmount.toString()),
         status: item.status || "upcoming",
         customerName: item.customerName,
+        customerId: item.customerId || null,
         location: item.location,
         deliveryMethod: item.deliveryMethod || null,
         operatorOption: item.operatorOption !== undefined ? !!item.operatorOption : null,

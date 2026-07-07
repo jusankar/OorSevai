@@ -86,8 +86,8 @@ export default function App() {
   >("home");
 
   // Core Data Lists (In-memory persistent state)
-  const [equipmentList, setEquipmentList] = useState<Equipment[]>(DEFAULT_EQUIPMENT);
-  const [laborersList, setLaborersList] = useState<Laborer[]>(DEFAULT_LABORERS);
+  const [equipmentList, setEquipmentList] = useState<Equipment[]>([]);
+  const [laborersList, setLaborersList] = useState<Laborer[]>([]);
 
   // Admin Service Location and Radius Geofence (surrounding distance KM)
   const [adminLocation, setAdminLocation] = useState<string>(() => {
@@ -142,10 +142,14 @@ export default function App() {
   useEffect(() => {
     const fetchDatabaseData = async () => {
       try {
+        const bookingsUrl = userRole === "admin"
+          ? "/api/bookings"
+          : `/api/bookings?customerId=${userMobile}`;
+
         const [eqRes, lbRes, bRes, dRes, nRes] = await Promise.all([
           fetch("/api/equipment").then(r => r.json()),
           fetch("/api/laborers").then(r => r.json()),
-          fetch("/api/bookings").then(r => r.json()),
+          fetch(bookingsUrl).then(r => r.json()),
           fetch("/api/disputes").then(r => r.json()),
           fetch("/api/notifications").then(r => r.json()),
         ]);
@@ -159,7 +163,7 @@ export default function App() {
       }
     };
     fetchDatabaseData();
-  }, []);
+  }, [userMobile, userRole]);
 
   const t = (key: Parameters<typeof getTranslation>[1]): string => getTranslation(language, key);
 
@@ -258,75 +262,10 @@ export default function App() {
   };
   
   // Bookings Seed Data
-  const [bookings, setBookings] = useState<Booking[]>([
-    {
-      id: "BK-12345",
-      type: "equipment",
-      itemId: "eq-1",
-      itemName: "John Deere 5050 D Tractor",
-      itemImage: "https://images.unsplash.com/photo-1594142404563-64ccc954aa79?auto=format&fit=crop&w=600&q=80",
-      startDate: "2026-07-10",
-      endDate: "2026-07-11",
-      durationDays: 1,
-      totalAmount: 3410,
-      status: "upcoming",
-      customerName: "Udaya Kumar",
-      location: "Coimbatore, Tamil Nadu",
-      deliveryMethod: "delivery",
-      operatorOption: true,
-      paymentStatus: "paid",
-      dateBooked: "2026-07-02"
-    },
-    {
-      id: "BK-12546",
-      type: "equipment",
-      itemId: "eq-3",
-      itemName: "JCB 3DX Backhoe",
-      itemImage: "https://images.unsplash.com/photo-1579684389782-64d84b5e901d?auto=format&fit=crop&w=600&q=80",
-      startDate: "2026-06-15",
-      endDate: "2026-06-16",
-      durationDays: 1,
-      totalAmount: 9500,
-      status: "ongoing",
-      customerName: "Udaya Kumar",
-      location: "Coimbatore Bypass, Tamil Nadu",
-      deliveryMethod: "pickup",
-      operatorOption: true,
-      paymentStatus: "paid",
-      dateBooked: "2026-06-10"
-    },
-    {
-      id: "BK-12347",
-      type: "equipment",
-      itemId: "eq-4",
-      itemName: "Power Weeder 7.5 HP",
-      itemImage: "https://images.unsplash.com/photo-1589923188900-85dae44fc3e3?auto=format&fit=crop&w=600&q=80",
-      startDate: "2026-06-18",
-      endDate: "2026-06-19",
-      durationDays: 1,
-      totalAmount: 1200,
-      status: "completed",
-      customerName: "Udaya Kumar",
-      location: "Sulur, Coimbatore",
-      deliveryMethod: "pickup",
-      operatorOption: false,
-      paymentStatus: "paid",
-      dateBooked: "2026-06-15"
-    }
-  ]);
+  const [bookings, setBookings] = useState<Booking[]>([]);
 
   // Disputes Seed Data
-  const [disputes, setDisputes] = useState<Dispute[]>([
-    {
-      id: "DSP-101",
-      bookingId: "BK-12347",
-      itemName: "Power Weeder 7.5 HP",
-      complainant: "Udaya Kumar (Customer)",
-      reason: "Machine starter was faulty, spent ₹300 repairing it locally.",
-      status: "open",
-      date: "2026-06-20"
-    }
-  ]);
+  const [disputes, setDisputes] = useState<Dispute[]>([]);
 
   // Active Selections
   const [selectedEquipment, setSelectedEquipment] = useState<Equipment | null>(null);
@@ -353,26 +292,7 @@ export default function App() {
   const [equipmentHoursInput, setEquipmentHoursInput] = useState<Record<string, string>>({});
 
   // Notification States
-  const [notifications, setNotifications] = useState<AppNotification[]>([
-    {
-      id: "notif-1",
-      bookingId: "BK-12345",
-      title: "🚚 Equipment On The Way",
-      message: "Ravi Kumar's John Deere 5050 D Tractor is on the way to your farm at Coimbatore, Tamil Nadu!",
-      type: "equipment_on_the_way",
-      isRead: false,
-      timestamp: "5 mins ago"
-    },
-    {
-      id: "notif-2",
-      bookingId: "BK-12546",
-      title: "⏰ Labor Shift Starting",
-      message: "Raju Krishnan's mason shift is about to start at Coimbatore Bypass in 30 minutes.",
-      type: "labor_shift_start",
-      isRead: true,
-      timestamp: "1 hour ago"
-    }
-  ]);
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [showNotificationsDropdown, setShowNotificationsDropdown] = useState(false);
   const [activeBannerNotification, setActiveBannerNotification] = useState<AppNotification | null>(null);
 
@@ -718,7 +638,8 @@ export default function App() {
       durationDays: rentalDuration,
       totalAmount: finalTotal,
       status: "upcoming",
-      customerName: "Udaya Kumar",
+      customerName: userName || "Udaya Kumar",
+      customerId: userMobile || "9999999999",
       location: customLocation,
       deliveryMethod: deliveryMethod,
       operatorOption: operatorOption,
@@ -751,7 +672,8 @@ export default function App() {
       durationDays: 1,
       totalAmount: lb.pricePerDay,
       status: "upcoming",
-      customerName: "Udaya Kumar",
+      customerName: userName || "Udaya Kumar",
+      customerId: userMobile || "9999999999",
       location: lb.location,
       paymentStatus: "paid",
       dateBooked: new Date().toISOString().split('T')[0]
@@ -785,8 +707,8 @@ export default function App() {
       rating: 5.0,
       reviewsCount: 0,
       distance: 1.2,
-      ownerName: "Udaya Kumar",
-      ownerId: "owner-1",
+      ownerName: userName || "Udaya Kumar",
+      ownerId: userMobile || "owner-1",
       specs: {
         power: newEqPower,
         fuel: newEqFuel,
@@ -1113,6 +1035,50 @@ export default function App() {
   const [adminCodeInput, setAdminCodeInput] = useState("");
   const [showAdminField, setShowAdminField] = useState(false);
   const [regError, setRegError] = useState("");
+  const [isCheckingUser, setIsCheckingUser] = useState(false);
+  const [foundUser, setFoundUser] = useState<any>(null);
+
+  useEffect(() => {
+    const checkExistingUser = async () => {
+      const cleanMobile = regMobile.replace(/\D/g, "");
+      if (cleanMobile.length === 10) {
+        setIsCheckingUser(true);
+        try {
+          const res = await fetch(`/api/users/${cleanMobile}`);
+          if (res.ok) {
+            const data = await res.json();
+            if (data && data.id) {
+              setFoundUser(data);
+              // Auto-fill fields for them
+              setRegName(data.name || "");
+              setRegLocation(data.location || "");
+              if (data.roles) {
+                try {
+                  const parsedRoles = JSON.parse(data.roles);
+                  if (Array.isArray(parsedRoles)) {
+                    setRegRoles(parsedRoles);
+                  }
+                } catch {
+                  if (typeof data.roles === "string") {
+                    setRegRoles(data.roles.split(",") as any);
+                  }
+                }
+              }
+            } else {
+              setFoundUser(null);
+            }
+          }
+        } catch (e) {
+          console.error("Failed to check existing user:", e);
+        } finally {
+          setIsCheckingUser(false);
+        }
+      } else {
+        setFoundUser(null);
+      }
+    };
+    checkExistingUser();
+  }, [regMobile]);
 
   const handleDetectRegLocation = () => {
     if (!navigator.geolocation) {
@@ -1298,6 +1264,31 @@ export default function App() {
     }
 
     const finalLocation = regLocation.trim();
+
+    // Persist registration/login profile details to serverless PostgreSQL database
+    const payload = {
+      id: cleanMobile,
+      name: regName.trim(),
+      email: `${cleanMobile}@oorsevai.com`,
+      phone: cleanMobile,
+      location: finalLocation,
+      roles: JSON.stringify(finalRoles),
+      currentRole: finalRoles.includes("customer") ? "customer" : finalRoles[0],
+    };
+
+    fetch("/api/users", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    })
+    .then((r) => r.json())
+    .then((dbUser) => {
+      console.log("Successfully persisted profile on server:", dbUser);
+    })
+    .catch((err) => {
+      console.error("Failed to persist profile on server:", err);
+    });
+
     localStorage.setItem("oorsevai_user_name", regName.trim());
     localStorage.setItem("oorsevai_user_mobile", cleanMobile);
     localStorage.setItem("oorsevai_user_location", finalLocation);
@@ -1410,18 +1401,35 @@ export default function App() {
                 {/* Mobile field */}
                 <div>
                   <label className="block text-[11px] font-black uppercase text-slate-500 dark:text-slate-400 mb-1.5 tracking-wider">{t("reg_mobile_label")}</label>
-                  <input
-                    type="tel"
-                    value={regMobile}
-                    onChange={(e) => {
-                      const clean = e.target.value.replace(/\D/g, "");
-                      setRegMobile(clean);
-                      if (regError) setRegError("");
-                    }}
-                    maxLength={10}
-                    placeholder={t("reg_mobile_placeholder")}
-                    className="w-full bg-white dark:bg-[#1A2320] border border-[#E8E6E1] dark:border-slate-800 rounded-xl px-3.5 py-2.5 text-xs focus:ring-2 focus:ring-[#3E5C31] focus:border-[#3E5C31] dark:text-slate-100 outline-none transition-all"
-                  />
+                  <div className="relative">
+                    <input
+                      type="tel"
+                      value={regMobile}
+                      onChange={(e) => {
+                        const clean = e.target.value.replace(/\D/g, "");
+                        setRegMobile(clean);
+                        if (regError) setRegError("");
+                      }}
+                      maxLength={10}
+                      placeholder={t("reg_mobile_placeholder")}
+                      className="w-full bg-white dark:bg-[#1A2320] border border-[#E8E6E1] dark:border-slate-800 rounded-xl px-3.5 py-2.5 text-xs focus:ring-2 focus:ring-[#3E5C31] focus:border-[#3E5C31] dark:text-slate-100 outline-none transition-all"
+                    />
+                    {isCheckingUser && (
+                      <span className="absolute right-3.5 top-3.5 flex h-4 w-4 items-center justify-center">
+                        <Loader2 className="animate-spin text-[#3E5C31] dark:text-emerald-400 w-3.5 h-3.5" />
+                      </span>
+                    )}
+                  </div>
+                  {foundUser && (
+                    <div className="mt-1.5 p-2 bg-[#3E5C31]/10 dark:bg-emerald-500/10 border border-[#3E5C31]/20 dark:border-emerald-500/20 rounded-lg text-[10px] text-[#3E5C31] dark:text-emerald-400 font-bold flex items-center gap-1">
+                      <span>✓</span>
+                      <span>
+                        {language === "ta" 
+                          ? `ஏற்கனவே உள்ள கணக்கு கண்டறியப்பட்டது! (${foundUser.name}). உள்நுழைய 'தொடரவும்' பொத்தானை அழுத்தவும்.` 
+                          : `Existing profile found! (${foundUser.name}). Proceed with 'Submit' to log in directly.`}
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Location field with GPS Detection */}
