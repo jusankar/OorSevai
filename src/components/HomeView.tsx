@@ -425,35 +425,35 @@ export default function HomeView({
       title: language === "ta" ? "வேளாண் உபகரணங்கள்" : "AGRICULTURE EQUIPMENT", 
       sub: language === "ta" ? "விவசாய இயந்திரங்கள்" : "Farming Machines", 
       icon: Sprout, 
-      image: "https://images.unsplash.com/photo-1592982537447-6f2a6a0c7c18?auto=format&fit=crop&w=350&q=80" 
+      image: "/assets/categories/agriculture.webp" 
     },
     { 
       id: "construction", 
       title: language === "ta" ? "கட்டுமான உபகரணங்கள்" : "CONSTRUCTION EQUIPMENT", 
       sub: language === "ta" ? "கனரக இயந்திரங்கள்" : "Heavy Machinery", 
       icon: HardHat, 
-      image: "https://images.unsplash.com/photo-1578319439584-104c94d37305?auto=format&fit=crop&w=350&q=80" 
+      image: "/assets/categories/construction.webp" 
     },
     { 
       id: "tools", 
       title: language === "ta" ? "கருவிகள் & இயந்திரங்கள்" : "TOOLS & MACHINERY", 
       sub: language === "ta" ? "மின்சாரக் கருவிகள்" : "Power Tools", 
       icon: Wrench, 
-      image: "https://images.unsplash.com/photo-1504148455328-c376907d081c?auto=format&fit=crop&w=350&q=80" 
+      image: "/assets/categories/tools.webp" 
     },
     { 
       id: "function", 
       title: language === "ta" ? "நிகழ்ச்சி & விழா பொருட்கள்" : "EVENT & FUNCTION ITEMS", 
       sub: language === "ta" ? "விழா பந்தல் & நாற்காலிகள்" : "Canopies & Chairs", 
       icon: Tent, 
-      image: "https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?auto=format&fit=crop&w=350&q=80" 
+      image: "/assets/categories/function.webp" 
     },
     { 
       id: "labor", 
       title: language === "ta" ? "தொழிலாளர் சேவைகள்" : "LABOR SERVICES", 
       sub: language === "ta" ? "உள்ளூர் தொழிலாளர்கள்" : "Skilled Labors", 
       icon: Users, 
-      image: "https://images.unsplash.com/photo-1504307651254-35680f356dfd?auto=format&fit=crop&w=350&q=80" 
+      image: "/assets/categories/labor.webp" 
     },
   ];
 
