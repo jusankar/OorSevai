@@ -1,12 +1,11 @@
+import "dotenv/config";
 import express from "express";
 import path from "path";
-import dotenv from "dotenv";
 import { GoogleGenAI, Type } from "@google/genai";
 import { createServer as createViteServer } from "vite";
 import { autoSeed } from "./src/db/seed-auto.ts";
 import * as dbService from "./src/db/db-service.ts";
 
-dotenv.config();
 
 async function startServer() {
   const app = express();
