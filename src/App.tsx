@@ -569,6 +569,8 @@ export default function App() {
     { id: "eq-approve-1", name: "New Power Tiller 15 HP", owner: "Murugan Swamy", status: "pending" }
   ]);
 
+  const [adminActiveQueue, setAdminActiveQueue] = useState<"kyc" | "machinery" | "disputes" | null>("kyc");
+
   // Quick navigation handlers
   const handleSelectCategory = (cat: string) => {
     setBrowseCategory(cat);
@@ -3716,119 +3718,225 @@ export default function App() {
                 </div>
               </div>
 
-              {/* KYC Verifications queue */}
-              <div className="space-y-3">
-                <h3 className="font-extrabold text-sm text-[#2D2D2A]">KYC Verifications Queue ({kycRequests.filter(k => k.status === 'pending').length})</h3>
-                <div className="space-y-2">
-                  {kycRequests.map((k) => (
-                    <div key={k.id} className="bg-white p-3 rounded-2xl border border-[#E8E6E1] flex items-center justify-between shadow-xs text-xs">
-                      <div className="space-y-0.5">
-                        <div className="flex items-center space-x-1.5">
-                          <h4 className="font-black text-[#2D2D2A]">{k.name}</h4>
-                          <span className="text-[8px] bg-slate-100 text-slate-600 px-1.5 rounded font-bold uppercase">{k.type}</span>
-                        </div>
-                        <p className="text-[10px] text-[#8A867E]">Doc: {k.document}</p>
-                      </div>
+              {/* Unified Verification & Resolution Desks Card */}
+              <div className="bg-white rounded-3xl border border-[#E8E6E1] shadow-xs overflow-hidden">
+                {/* Header */}
+                <div className="p-4 border-b border-[#E8E6E1] bg-[#FAF7F2] flex justify-between items-center">
+                  <div>
+                    <h3 className="font-extrabold text-xs text-[#2D2D2A] uppercase tracking-wider">Verification & Resolution Desks</h3>
+                    <p className="text-[9px] text-[#8A867E]">Approve credentials, live items & handle dispute escrows</p>
+                  </div>
+                  <span className="text-[8px] bg-[#3E5C31]/10 text-[#3E5C31] font-black px-2 py-1 rounded">
+                    ADMIN
+                  </span>
+                </div>
 
-                      <div>
-                        {k.status === "pending" ? (
-                          <div className="flex space-x-1">
-                            <button 
-                              onClick={() => handleApproveKYC(k.id)}
-                              className="bg-emerald-50 text-emerald-700 px-2 py-1 rounded-lg border border-emerald-100 font-bold text-[10px] cursor-pointer hover:bg-emerald-100 transition-colors"
-                            >
-                              Approve
-                            </button>
-                            <button 
-                              onClick={() => {
-                                handleRejectKYC(k.id);
-                                alert("KYC document flagged as incomplete and profile rejected.");
-                              }}
-                              className="bg-rose-50 text-rose-700 px-2 py-1 rounded-lg border border-rose-100 font-bold text-[10px] cursor-pointer hover:bg-rose-100 transition-colors"
-                            >
-                              Reject
-                            </button>
+                <div className="divide-y divide-[#E8E6E1]">
+                  {/* Item 1: KYC Verifications */}
+                  <div>
+                    <button
+                      onClick={() => setAdminActiveQueue(adminActiveQueue === "kyc" ? null : "kyc")}
+                      className="w-full flex items-center justify-between p-4 hover:bg-[#FAF7F2]/40 transition-colors cursor-pointer text-left focus:outline-none"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <span className="text-sm">🪪</span>
+                        <span className="font-extrabold text-xs text-[#2D2D2A]">KYC Verifications Queue</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <span className="text-[10px] bg-amber-500/10 text-amber-600 font-extrabold px-2 py-0.5 rounded-full">
+                          {kycRequests.filter(k => k.status === 'pending').length} pending
+                        </span>
+                        <span className="text-[#8A867E] text-[10px] font-black">{adminActiveQueue === "kyc" ? "▲" : "▼"}</span>
+                      </div>
+                    </button>
+
+                    <AnimatePresence initial={false}>
+                      {adminActiveQueue === "kyc" && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: "auto", opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          className="overflow-hidden bg-[#FAF7F2]/30 px-4 pb-4 space-y-2 border-t border-dashed border-[#E8E6E1]"
+                        >
+                          <div className="pt-3 space-y-2">
+                            {kycRequests.length === 0 ? (
+                              <p className="text-[10px] text-[#8A867E] text-center py-2">No KYC requests in queue.</p>
+                            ) : (
+                              kycRequests.map((k) => (
+                                <div key={k.id} className="bg-white p-3 rounded-2xl border border-[#E8E6E1] flex items-center justify-between shadow-xs text-xs">
+                                  <div className="space-y-0.5">
+                                    <div className="flex items-center space-x-1.5">
+                                      <h4 className="font-black text-[#2D2D2A]">{k.name}</h4>
+                                      <span className="text-[8px] bg-slate-100 text-slate-600 px-1.5 rounded font-bold uppercase">{k.type}</span>
+                                    </div>
+                                    <p className="text-[10px] text-[#8A867E]">Doc: {k.document}</p>
+                                  </div>
+
+                                  <div>
+                                    {k.status === "pending" ? (
+                                      <div className="flex space-x-1">
+                                        <button 
+                                          onClick={() => handleApproveKYC(k.id)}
+                                          className="bg-emerald-50 text-emerald-700 px-2 py-1 rounded-lg border border-emerald-100 font-bold text-[10px] cursor-pointer hover:bg-emerald-100 transition-colors"
+                                        >
+                                          Approve
+                                        </button>
+                                        <button 
+                                          onClick={() => {
+                                            handleRejectKYC(k.id);
+                                            alert("KYC document flagged as incomplete and profile rejected.");
+                                          }}
+                                          className="bg-rose-50 text-rose-700 px-2 py-1 rounded-lg border border-rose-100 font-bold text-[10px] cursor-pointer hover:bg-rose-100 transition-colors"
+                                        >
+                                          Reject
+                                        </button>
+                                      </div>
+                                    ) : k.status === "approved" ? (
+                                      <span className="text-emerald-600 font-bold text-[10px] bg-emerald-50 px-2 py-1 rounded border border-emerald-100">✓ Approved</span>
+                                    ) : (
+                                      <span className="text-rose-600 font-bold text-[10px] bg-rose-50 px-2 py-1 rounded border border-rose-100">✗ Rejected</span>
+                                    )}
+                                  </div>
+                                </div>
+                              ))
+                            )}
                           </div>
-                        ) : k.status === "approved" ? (
-                          <span className="text-emerald-600 font-bold text-[10px] bg-emerald-50 px-2 py-1 rounded border border-emerald-100">✓ Approved</span>
-                        ) : (
-                          <span className="text-rose-600 font-bold text-[10px] bg-rose-50 px-2 py-1 rounded border border-rose-100">✗ Rejected</span>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Equipment Listings verification */}
-              <div className="space-y-3">
-                <h3 className="font-extrabold text-sm text-[#2D2D2A]">Machinery Approvals Desk</h3>
-                <div className="space-y-2">
-                  {pendingEquipmentApprovals.map((eq) => (
-                    <div key={eq.id} className="bg-white p-3 rounded-2xl border border-[#E8E6E1] flex items-center justify-between shadow-xs text-xs">
-                      <div className="space-y-0.5">
-                        <h4 className="font-black text-[#2D2D2A]">{eq.name}</h4>
-                        <p className="text-[10px] text-[#8A867E]">Owner: {eq.owner}</p>
-                      </div>
-
-                      <div>
-                        {eq.status === "pending" ? (
-                          <button
-                            onClick={() => handleApproveEquipment(eq.id)}
-                            className="bg-[#3E5C31] text-white px-2.5 py-1 rounded-lg font-bold text-[10px]"
-                          >
-                            Approve Live
-                          </button>
-                        ) : (
-                          <span className="text-emerald-600 font-bold text-[10px]">✓ Live in Search</span>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Dispute Resolution Center */}
-              <div className="space-y-3">
-                <h3 className="font-extrabold text-sm text-[#2D2D2A]">Disputes & Escrow Claims ({disputes.filter(d => d.status === 'open').length})</h3>
-                <div className="space-y-2">
-                  {disputes.map((d) => (
-                    <div key={d.id} className="bg-white p-3.5 rounded-2xl border border-[#E8E6E1] shadow-xs text-xs space-y-2">
-                      <div className="flex justify-between">
-                        <span className="font-bold text-[#2D2D2A]">{d.itemName} ({d.id})</span>
-                        <span className={`text-[8px] font-black uppercase px-1.5 rounded ${
-                          d.status === "open" ? "bg-rose-100 text-rose-800" : "bg-emerald-100 text-emerald-800"
-                        }`}>{d.status}</span>
-                      </div>
-                      <p className="text-[10px] text-[#8A867E]">Complainant: {d.complainant}</p>
-                      <p className="bg-[#FAF7F2] p-2 rounded-lg text-[10px] text-slate-700 italic border border-[#E8E6E1]">
-                        "{d.reason}"
-                      </p>
-
-                      {d.status === "open" && (
-                        <div className="flex space-x-1 justify-end pt-1">
-                          <button
-                            onClick={() => {
-                              handleResolveDispute(d.id);
-                              alert("Escrow dispute resolved. Refund issued to customer's wallet.");
-                            }}
-                            className="bg-rose-50 hover:bg-rose-100 text-rose-700 text-[10px] font-bold px-3 py-1.5 rounded-lg border border-rose-100"
-                          >
-                            💸 Refund Customer
-                          </button>
-                          <button
-                            onClick={() => {
-                              handleResolveDispute(d.id);
-                              alert("Escrow dispute resolved. Payment released to owner's bank account.");
-                            }}
-                            className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-[10px] font-bold px-3 py-1.5 rounded-lg border border-emerald-100"
-                          >
-                            💰 Release Payment
-                          </button>
-                        </div>
+                        </motion.div>
                       )}
-                    </div>
-                  ))}
+                    </AnimatePresence>
+                  </div>
+
+                  {/* Item 2: Machinery Approvals */}
+                  <div>
+                    <button
+                      onClick={() => setAdminActiveQueue(adminActiveQueue === "machinery" ? null : "machinery")}
+                      className="w-full flex items-center justify-between p-4 hover:bg-[#FAF7F2]/40 transition-colors cursor-pointer text-left focus:outline-none"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <span className="text-sm">🚜</span>
+                        <span className="font-extrabold text-xs text-[#2D2D2A]">Machinery Approvals Desk</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <span className="text-[10px] bg-blue-500/10 text-blue-600 font-extrabold px-2 py-0.5 rounded-full">
+                          {pendingEquipmentApprovals.filter(eq => eq.status === 'pending').length} pending
+                        </span>
+                        <span className="text-[#8A867E] text-[10px] font-black">{adminActiveQueue === "machinery" ? "▲" : "▼"}</span>
+                      </div>
+                    </button>
+
+                    <AnimatePresence initial={false}>
+                      {adminActiveQueue === "machinery" && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: "auto", opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          className="overflow-hidden bg-[#FAF7F2]/30 px-4 pb-4 space-y-2 border-t border-dashed border-[#E8E6E1]"
+                        >
+                          <div className="pt-3 space-y-2">
+                            {pendingEquipmentApprovals.length === 0 ? (
+                              <p className="text-[10px] text-[#8A867E] text-center py-2">No pending machinery approvals.</p>
+                            ) : (
+                              pendingEquipmentApprovals.map((eq) => (
+                                <div key={eq.id} className="bg-white p-3 rounded-2xl border border-[#E8E6E1] flex items-center justify-between shadow-xs text-xs">
+                                  <div className="space-y-0.5">
+                                    <h4 className="font-black text-[#2D2D2A]">{eq.name}</h4>
+                                    <p className="text-[10px] text-[#8A867E]">Owner: {eq.owner}</p>
+                                  </div>
+
+                                  <div>
+                                    {eq.status === "pending" ? (
+                                      <button
+                                        onClick={() => handleApproveEquipment(eq.id)}
+                                        className="bg-[#3E5C31] text-white px-2.5 py-1 rounded-lg font-bold text-[10px] cursor-pointer hover:bg-[#3E5C31]/90"
+                                      >
+                                        Approve Live
+                                      </button>
+                                    ) : (
+                                      <span className="text-emerald-600 font-bold text-[10px]">✓ Live in Search</span>
+                                    )}
+                                  </div>
+                                </div>
+                              ))
+                            )}
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+
+                  {/* Item 3: Disputes & Escrow Claims */}
+                  <div>
+                    <button
+                      onClick={() => setAdminActiveQueue(adminActiveQueue === "disputes" ? null : "disputes")}
+                      className="w-full flex items-center justify-between p-4 hover:bg-[#FAF7F2]/40 transition-colors cursor-pointer text-left focus:outline-none"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <span className="text-sm">⚖️</span>
+                        <span className="font-extrabold text-xs text-[#2D2D2A]">Disputes & Escrow Claims</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <span className="text-[10px] bg-rose-500/10 text-rose-600 font-extrabold px-2 py-0.5 rounded-full">
+                          {disputes.filter(d => d.status === 'open').length} active
+                        </span>
+                        <span className="text-[#8A867E] text-[10px] font-black">{adminActiveQueue === "disputes" ? "▲" : "▼"}</span>
+                      </div>
+                    </button>
+
+                    <AnimatePresence initial={false}>
+                      {adminActiveQueue === "disputes" && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: "auto", opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          className="overflow-hidden bg-[#FAF7F2]/30 px-4 pb-4 space-y-2 border-t border-dashed border-[#E8E6E1]"
+                        >
+                          <div className="pt-3 space-y-2">
+                            {disputes.length === 0 ? (
+                              <p className="text-[10px] text-[#8A867E] text-center py-2">No active escrow disputes.</p>
+                            ) : (
+                              disputes.map((d) => (
+                                <div key={d.id} className="bg-white p-3.5 rounded-2xl border border-[#E8E6E1] shadow-xs text-xs space-y-2">
+                                  <div className="flex justify-between">
+                                    <span className="font-bold text-[#2D2D2A]">{d.itemName} ({d.id})</span>
+                                    <span className={`text-[8px] font-black uppercase px-1.5 rounded ${
+                                      d.status === "open" ? "bg-rose-100 text-rose-800" : "bg-emerald-100 text-emerald-800"
+                                    }`}>{d.status}</span>
+                                  </div>
+                                  <p className="text-[10px] text-[#8A867E]">Complainant: {d.complainant}</p>
+                                  <p className="bg-[#FAF7F2] p-2 rounded-lg text-[10px] text-slate-700 italic border border-[#E8E6E1]">
+                                    "{d.reason}"
+                                  </p>
+
+                                  {d.status === "open" && (
+                                    <div className="flex space-x-1 justify-end pt-1">
+                                      <button
+                                        onClick={() => {
+                                          handleResolveDispute(d.id);
+                                          alert("Escrow dispute resolved. Refund issued to customer's wallet.");
+                                        }}
+                                        className="bg-rose-50 hover:bg-rose-100 text-rose-700 text-[10px] font-bold px-3 py-1.5 rounded-lg border border-rose-100 cursor-pointer"
+                                      >
+                                        💸 Refund Customer
+                                      </button>
+                                      <button
+                                        onClick={() => {
+                                          handleResolveDispute(d.id);
+                                          alert("Escrow dispute resolved. Payment released to owner's bank account.");
+                                        }}
+                                        className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-[10px] font-bold px-3 py-1.5 rounded-lg border border-emerald-100 cursor-pointer"
+                                      >
+                                        💰 Release Payment
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
+                              ))
+                            )}
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
                 </div>
               </div>
 
