@@ -5,7 +5,8 @@ import {
   ThumbsUp, BadgePercent, Sparkles, ArrowRight, ArrowLeft, Star, 
   Calendar, CheckCircle, Info, CreditCard, ChevronRight, MessageSquare, 
   User, Check, X, ShieldAlert, Plus, BarChart3, TrendingUp, AlertTriangle, 
-  CheckCircle2, Loader2, Send, HelpCircle, PhoneCall, Truck, Clock
+  CheckCircle2, Loader2, Send, HelpCircle, PhoneCall, Truck, Clock,
+  Mic, MicOff
 } from "lucide-react";
 import { Equipment, Laborer, Booking, ChatMessage, Dispute, AppNotification } from "./types";
 import { DEFAULT_EQUIPMENT, DEFAULT_LABORERS, CATEGORIES_METADATA } from "./data";
@@ -15,6 +16,7 @@ import HomeView from "./components/HomeView";
 import BrowseView from "./components/BrowseView";
 import GeofenceMap from "./components/GeofenceMap";
 import NotificationCenter from "./components/NotificationCenter";
+import { LaborerCalendar } from "./components/LaborerCalendar";
 
 export default function App() {
   // Application Roles
@@ -448,6 +450,74 @@ export default function App() {
     }
   ]);
   const [isChatLoading, setIsChatLoading] = useState(false);
+
+  // Speech Recognition states
+  const [isListening, setIsListening] = useState(false);
+  const [speechError, setSpeechError] = useState<string | null>(null);
+  const recognitionRef = React.useRef<any>(null);
+
+  const toggleListening = () => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      setSpeechError("Not supported");
+      return;
+    }
+
+    if (isListening) {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+      setIsListening(false);
+    } else {
+      setSpeechError(null);
+      try {
+        const recognition = new SpeechRecognition();
+        recognition.continuous = false;
+        recognition.interimResults = false;
+        recognition.lang = language === "ta" ? "ta-IN" : "en-IN";
+
+        recognition.onstart = () => {
+          setIsListening(true);
+        };
+
+        recognition.onresult = (event: any) => {
+          const transcript = event.results[0][0].transcript;
+          if (transcript) {
+            setChatInput((prev) => prev ? prev + " " + transcript : transcript);
+          }
+        };
+
+        recognition.onerror = (event: any) => {
+          console.error("Speech recognition error:", event.error);
+          if (event.error === "not-allowed") {
+            setSpeechError("Permission denied");
+          } else {
+            setSpeechError("Error listening");
+          }
+          setIsListening(false);
+        };
+
+        recognition.onend = () => {
+          setIsListening(false);
+        };
+
+        recognitionRef.current = recognition;
+        recognition.start();
+      } catch (err) {
+        console.error("Failed to start speech recognition:", err);
+        setSpeechError("Initialization error");
+        setIsListening(false);
+      }
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+    };
+  }, []);
 
   // Price Predictor State for Owners
   const [predictCategory, setPredictCategory] = useState("Tractor");
@@ -1244,7 +1314,7 @@ export default function App() {
     <div id="main-app-container" className={`min-h-screen bg-[#FAF7F2] dark:bg-slate-950 font-sans flex flex-col items-center justify-start py-0 md:py-8 transition-colors duration-300 ${darkMode ? "dark" : ""}`}>
       
       {/* High Fidelity Screen Wrapper framing a mobile emulator feel on desktop */}
-      <div className={`w-full max-w-md bg-[#FDFCF9] dark:bg-[#121212] dark:text-[#F1F5F9] md:rounded-3xl md:shadow-2xl border border-[#E8E6E1] dark:border-slate-800 overflow-hidden flex flex-col h-screen md:h-[840px] max-h-screen md:max-h-[840px] relative transition-all duration-300 ${darkMode ? "dark" : ""}`}>
+      <div className={`w-full max-w-md bg-[#FDFCF9] dark:bg-[#121212] dark:text-[#F1F5F9] md:rounded-3xl md:shadow-2xl border-0 md:border md:border-[#E8E6E1] dark:border-0 dark:md:border-slate-800 overflow-hidden flex flex-col h-screen md:h-[840px] max-h-screen md:max-h-[840px] relative transition-all duration-300 ${darkMode ? "dark" : ""}`}>
         
         {!isRegistered ? (
           <div className="flex-1 flex flex-col h-full bg-[#FAF7F2] dark:bg-slate-950 overflow-y-auto scrollbar-none">
@@ -2435,16 +2505,36 @@ export default function App() {
 
                   {/* Input Form */}
                   <form onSubmit={handleSendChatMessage} className="flex items-center space-x-2 border-t border-[#E8E6E1] pt-3 shrink-0">
+                    <button
+                      type="button"
+                      onClick={toggleListening}
+                      className={`p-2.5 rounded-xl border transition-all cursor-pointer shrink-0 ${
+                        isListening
+                          ? "bg-red-500 text-white border-red-500 hover:bg-red-600 animate-pulse"
+                          : "bg-white text-[#8A867E] hover:text-[#2D2D2A] border-[#E8E6E1] hover:bg-[#FAF7F2]"
+                      }`}
+                      title={language === "ta" ? "குரல் மூலம் பேசுங்கள்" : "Speak to AI Advisor"}
+                    >
+                      {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+                    </button>
                     <input
                       type="text"
-                      placeholder="Ask OorSevai AI Advisor anything..."
+                      placeholder={
+                        isListening
+                          ? (language === "ta" ? "கேட்கிறது... பேசுங்கள் 🎙️" : "Listening... Speak now 🎙️")
+                          : speechError
+                          ? (language === "ta" ? `பிழை: ${speechError === "Permission denied" ? "அனுமதி இல்லை" : "மீண்டும் முயல்க"}` : `Speech Error: ${speechError}`)
+                          : (language === "ta" ? "AI ஆலோசகரிடம் எதையும் கேளுங்கள்..." : "Ask OorSevai AI Advisor anything...")
+                      }
                       value={chatInput}
                       onChange={(e) => setChatInput(e.target.value)}
-                      className="flex-1 bg-[#FAF7F2] text-[#2D2D2A] text-xs px-3.5 py-2.5 rounded-xl border border-[#E8E6E1] focus:outline-none focus:ring-1 focus:ring-[#3E5C31] focus:bg-white"
+                      className={`flex-1 bg-[#FAF7F2] text-[#2D2D2A] text-xs px-3.5 py-2.5 rounded-xl border focus:outline-none focus:ring-1 focus:ring-[#3E5C31] focus:bg-white transition-all ${
+                        isListening ? "border-red-500 ring-2 ring-red-500/20 animate-pulse bg-red-50/30" : "border-[#E8E6E1]"
+                      }`}
                     />
                     <button 
                       type="submit"
-                      className="bg-[#3E5C31] hover:bg-[#3E5C31]/95 text-white p-2.5 rounded-xl transition cursor-pointer"
+                      className="bg-[#3E5C31] hover:bg-[#3E5C31]/95 text-white p-2.5 rounded-xl transition cursor-pointer shrink-0"
                     >
                       <Send className="h-4 w-4" />
                     </button>
@@ -3163,6 +3253,13 @@ export default function App() {
                   })()}
                 </div>
               </div>
+
+              {/* Laborer Work & Shift Calendar */}
+              <LaborerCalendar 
+                bookings={resolvedBookings} 
+                language={language} 
+                userName={userName || "Raju Krishnan"} 
+              />
 
               {/* My Booked Shifts & Shifts About to Start */}
               <div className="bg-white p-4 rounded-3xl border border-[#E8E6E1] shadow-xs space-y-3">
