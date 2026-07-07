@@ -514,6 +514,19 @@ export default function App() {
     }));
   }, [equipmentList]);
 
+  // Dynamic database-driven Platform Analytics
+  const totalRentAmount = useMemo(() => {
+    return bookings.reduce((sum, b) => sum + (b.totalAmount || 0), 0);
+  }, [bookings]);
+
+  const platformCommission = useMemo(() => {
+    return Math.round(totalRentAmount * 0.1);
+  }, [totalRentAmount]);
+
+  const activeJobsCount = useMemo(() => {
+    return bookings.filter(b => b.status === "ongoing" || b.status === "upcoming").length;
+  }, [bookings]);
+
   const [adminActiveQueue, setAdminActiveQueue] = useState<"kyc" | "machinery" | "disputes" | null>("kyc");
 
   // Quick navigation handlers
@@ -3721,15 +3734,15 @@ export default function App() {
                 <div className="grid grid-cols-3 gap-2 text-center">
                   <div className="bg-[#FAF7F2] p-2 rounded-xl border border-[#E8E6E1]">
                     <span className="text-[8px] text-[#8A867E] block font-semibold">Total Rent</span>
-                    <span className="text-xs font-black text-[#2D2D2A]">₹14,120</span>
+                    <span className="text-xs font-black text-[#2D2D2A]">₹{totalRentAmount.toLocaleString("en-IN")}</span>
                   </div>
                   <div className="bg-[#FAF7F2] p-2 rounded-xl border border-[#E8E6E1]">
                     <span className="text-[8px] text-[#8A867E] block font-semibold">Commission</span>
-                    <span className="text-xs font-black text-[#3E5C31]">₹1,412</span>
+                    <span className="text-xs font-black text-[#3E5C31]">₹{platformCommission.toLocaleString("en-IN")}</span>
                   </div>
                   <div className="bg-[#FAF7F2] p-2 rounded-xl border border-[#E8E6E1]">
                     <span className="text-[8px] text-[#8A867E] block font-semibold">Active Jobs</span>
-                    <span className="text-xs font-black text-[#2D2D2A]">3 Rentals</span>
+                    <span className="text-xs font-black text-[#2D2D2A]">{activeJobsCount} Active</span>
                   </div>
                 </div>
               </div>
