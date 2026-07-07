@@ -7,11 +7,16 @@ const { Pool } = pg;
 
 // Function to create a new connection pool.
 export const createPool = () => {
+  const host = process.env.SQL_HOST || "localhost";
+  const user = process.env.SQL_USER || "postgres";
+  const password = process.env.SQL_PASSWORD;
+  const database = process.env.SQL_DB_NAME || "oorsevai";
+
   return new Pool({
-    host: process.env.SQL_HOST,
-    user: process.env.SQL_USER,
-    password: process.env.SQL_PASSWORD,
-    database: process.env.SQL_DB_NAME,
+    host,
+    user,
+    password: typeof password === "string" ? password : "",
+    database,
     connectionTimeoutMillis: 15000,
   });
 };
