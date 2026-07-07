@@ -111,6 +111,18 @@ export default function App() {
     }
     return "en";
   });
+  const [ownerImage, setOwnerImage] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("oorsevai_owner_image") || "";
+    }
+    return "";
+  });
+  const [workerImage, setWorkerImage] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("oorsevai_worker_image") || "";
+    }
+    return "";
+  });
   const [darkMode, setDarkMode] = useState<boolean>(() => {
     if (typeof window !== "undefined") {
       return localStorage.getItem("oorsevai_dark") === "true";
@@ -171,12 +183,13 @@ export default function App() {
       if (lb.id === "lb-4" || lb.name === "Raju Krishnan") {
         return {
           ...lb,
-          name: userName || "Raju Krishnan"
+          name: userName || "Raju Krishnan",
+          image: workerImage || lb.image
         };
       }
       return lb;
     });
-  }, [laborersList, userName]);
+  }, [laborersList, userName, workerImage]);
 
   // Dynamically filter active equipment and laborers based on Admin configured location distance
   const filteredEquipmentList = useMemo(() => {
@@ -555,6 +568,7 @@ export default function App() {
   const [newLaborGender, setNewLaborGender] = useState<"Male" | "Female" | "Other">("Male");
   const [newLaborKycDocType, setNewLaborKycDocType] = useState("Aadhaar Card");
   const [newLaborKycFileName, setNewLaborKycFileName] = useState("");
+  const [newLaborImage, setNewLaborImage] = useState("");
   const [isLaborRegistered, setIsLaborRegistered] = useState(false);
 
   // KYC Verifications for Admin Panel
@@ -834,7 +848,7 @@ export default function App() {
       id: `lb-${Date.now()}`,
       name: newLaborName,
       category: newLaborCategory,
-      image: defaultImg,
+      image: newLaborImage || defaultImg,
       pricePerDay: parseFloat(newLaborPrice),
       rating: 5.0,
       reviewsCount: 0,
@@ -875,6 +889,7 @@ export default function App() {
     setNewLaborName("");
     setNewLaborPrice("");
     setNewLaborKycFileName("");
+    setNewLaborImage("");
   };
 
   // Toggle equipment status (Active / Inactive)
@@ -2557,10 +2572,37 @@ export default function App() {
                   </span>
                   <h2 className="text-lg font-black text-[#2D2D2A] mt-1.5">Welcome back, {userName || "Ravi Kumar"}</h2>
                 </div>
-                <div className="w-10 h-10 rounded-full border border-[#3E5C31] p-0.5">
-                  <div className="w-full h-full bg-[#3E5C31]/10 rounded-full flex items-center justify-center font-bold text-[#3E5C31]">
-                    {userName ? userName.charAt(0).toUpperCase() : "R"}
-                  </div>
+                <div className="relative group w-10 h-10 rounded-full border border-[#3E5C31] p-0.5 shrink-0">
+                  <input 
+                    type="file" 
+                    accept="image/*"
+                    id="owner-direct-pic"
+                    className="hidden"
+                    onChange={(e) => {
+                      if (e.target.files && e.target.files[0]) {
+                        const file = e.target.files[0];
+                        const reader = new FileReader();
+                        reader.onloadend = () => {
+                          const base64 = reader.result as string;
+                          setOwnerImage(base64);
+                          localStorage.setItem("oorsevai_owner_image", base64);
+                        };
+                        reader.readAsDataURL(file);
+                      }
+                    }}
+                  />
+                  <label htmlFor="owner-direct-pic" className="cursor-pointer">
+                    {ownerImage ? (
+                      <img src={ownerImage} alt="Owner Avatar" className="w-full h-full object-cover rounded-full" referrerPolicy="no-referrer" />
+                    ) : (
+                      <div className="w-full h-full bg-[#3E5C31]/10 rounded-full flex items-center justify-center font-bold text-[#3E5C31]">
+                        {userName ? userName.charAt(0).toUpperCase() : "R"}
+                      </div>
+                    )}
+                    <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      <span className="text-[9px] text-white font-black">📷</span>
+                    </div>
+                  </label>
                 </div>
               </div>
 
@@ -2913,14 +2955,67 @@ export default function App() {
                   </div>
 
                   <div>
-                    <label className="block text-[9px] font-bold text-[#8A867E] uppercase mb-0.5">Image URL (Optional)</label>
-                    <input 
-                      type="url" 
-                      value={newEqImage}
-                      onChange={(e) => setNewEqImage(e.target.value)}
-                      placeholder="Paste Unsplash or web image URL"
-                      className="w-full bg-[#FAF7F2] text-[#2D2D2A] p-2 rounded-lg border border-[#E8E6E1]"
-                    />
+                    <label className="block text-[9px] font-bold text-[#8A867E] uppercase mb-1">Equipment Image</label>
+                    <div className="space-y-2">
+                      <div className="relative border border-dashed border-[#3E5C31]/40 hover:border-[#3E5C31]/70 rounded-2xl p-4 bg-[#FAF7F2]/50 hover:bg-[#3E5C31]/5 transition-all text-center flex flex-col items-center justify-center min-h-[100px]">
+                        <input 
+                          type="file" 
+                          accept="image/*"
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                          onChange={(e) => {
+                            if (e.target.files && e.target.files[0]) {
+                              const file = e.target.files[0];
+                              const reader = new FileReader();
+                              reader.onloadend = () => {
+                                setNewEqImage(reader.result as string);
+                              };
+                              reader.readAsDataURL(file);
+                            }
+                          }}
+                        />
+                        {newEqImage ? (
+                          <div className="flex items-center space-x-3 w-full z-20 relative pointer-events-auto">
+                            <img src={newEqImage} className="w-14 h-14 object-cover rounded-xl border border-[#E8E6E1]" alt="Preview" referrerPolicy="no-referrer" />
+                            <div className="flex-1 text-left min-w-0">
+                              <p className="text-[10px] font-black text-[#2D2D2A] truncate">Machinery Photo Selected</p>
+                              <p className="text-[8px] text-[#8A867E]">Custom image loaded successfully</p>
+                              <button 
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setNewEqImage("");
+                                }}
+                                className="mt-1 text-[9px] font-bold text-rose-600 hover:text-rose-700 underline cursor-pointer"
+                              >
+                                Remove photo
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="space-y-1 pointer-events-none">
+                            <span className="text-lg block">🚜</span>
+                            <p className="text-[10px] font-black text-[#3E5C31]">
+                              Drag & Drop or Click to Upload Machinery Photo
+                            </p>
+                            <p className="text-[8px] text-[#8A867E]">PNG, JPG or WebP up to 5MB</p>
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div className="flex items-center space-x-2">
+                        <div className="h-px bg-[#E8E6E1]/60 flex-1"></div>
+                        <span className="text-[8px] font-bold text-[#8A867E] uppercase tracking-wider">or paste image URL</span>
+                        <div className="h-px bg-[#E8E6E1]/60 flex-1"></div>
+                      </div>
+                      
+                      <input 
+                        type="url" 
+                        value={newEqImage.startsWith("data:") ? "" : newEqImage}
+                        onChange={(e) => setNewEqImage(e.target.value)}
+                        placeholder="Paste web photo URL instead"
+                        className="w-full bg-[#FAF7F2] text-[#2D2D2A] p-2 rounded-lg border border-[#E8E6E1] text-[10px]"
+                      />
+                    </div>
                   </div>
 
                   <div>
@@ -3181,10 +3276,37 @@ export default function App() {
                   </span>
                   <h2 className="text-lg font-black text-[#2D2D2A] mt-1.5">Welcome, {userName || "Raju Krishnan"}</h2>
                 </div>
-                <div className="w-10 h-10 rounded-full border border-[#3E5C31] p-0.5">
-                  <div className="w-full h-full bg-[#3E5C31]/10 rounded-full flex items-center justify-center font-bold text-[#3E5C31]">
-                    {userName ? userName.charAt(0).toUpperCase() : "R"}
-                  </div>
+                <div className="relative group w-10 h-10 rounded-full border border-[#3E5C31] p-0.5 shrink-0">
+                  <input 
+                    type="file" 
+                    accept="image/*"
+                    id="worker-direct-pic"
+                    className="hidden"
+                    onChange={(e) => {
+                      if (e.target.files && e.target.files[0]) {
+                        const file = e.target.files[0];
+                        const reader = new FileReader();
+                        reader.onloadend = () => {
+                          const base64 = reader.result as string;
+                          setWorkerImage(base64);
+                          localStorage.setItem("oorsevai_worker_image", base64);
+                        };
+                        reader.readAsDataURL(file);
+                      }
+                    }}
+                  />
+                  <label htmlFor="worker-direct-pic" className="cursor-pointer">
+                    {workerImage ? (
+                      <img src={workerImage} alt="Worker Avatar" className="w-full h-full object-cover rounded-full" referrerPolicy="no-referrer" />
+                    ) : (
+                      <div className="w-full h-full bg-[#3E5C31]/10 rounded-full flex items-center justify-center font-bold text-[#3E5C31]">
+                        {userName ? userName.charAt(0).toUpperCase() : "R"}
+                      </div>
+                    )}
+                    <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      <span className="text-[9px] text-white font-black">📷</span>
+                    </div>
+                  </label>
                 </div>
               </div>
 
@@ -3442,6 +3564,55 @@ export default function App() {
                           <option>5 - 10 Years</option>
                           <option>10+ Years</option>
                         </select>
+                      </div>
+                    </div>
+
+                    {/* Profile Photo Upload */}
+                    <div>
+                      <label className="block text-[9px] font-bold text-[#8A867E] uppercase mb-1">Worker Profile Photo (Optional)</label>
+                      <div className="relative border border-dashed border-[#3E5C31]/40 hover:border-[#3E5C31]/70 rounded-2xl p-4 bg-[#FAF7F2]/50 hover:bg-[#3E5C31]/5 transition-all text-center flex flex-col items-center justify-center min-h-[90px]">
+                        <input 
+                          type="file" 
+                          accept="image/*"
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                          onChange={(e) => {
+                            if (e.target.files && e.target.files[0]) {
+                              const file = e.target.files[0];
+                              const reader = new FileReader();
+                              reader.onloadend = () => {
+                                setNewLaborImage(reader.result as string);
+                              };
+                              reader.readAsDataURL(file);
+                            }
+                          }}
+                        />
+                        {newLaborImage ? (
+                          <div className="flex items-center space-x-3 w-full z-20 relative pointer-events-auto">
+                            <img src={newLaborImage} className="w-12 h-12 object-cover rounded-xl border border-[#E8E6E1]" alt="Preview" referrerPolicy="no-referrer" />
+                            <div className="flex-1 text-left min-w-0">
+                              <p className="text-[10px] font-black text-[#2D2D2A] truncate">Profile Photo Loaded</p>
+                              <p className="text-[8px] text-[#8A867E]">Custom worker image active</p>
+                              <button 
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setNewLaborImage("");
+                                }}
+                                className="mt-0.5 text-[9px] font-bold text-rose-600 hover:text-rose-700 underline cursor-pointer"
+                              >
+                                Remove photo
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="space-y-1 pointer-events-none">
+                            <span className="text-base block">👷</span>
+                            <p className="text-[10px] font-black text-[#3E5C31]">
+                              Drag & Drop or Click to Upload Profile Photo
+                            </p>
+                            <p className="text-[8px] text-[#8A867E]">PNG, JPG up to 5MB</p>
+                          </div>
+                        )}
                       </div>
                     </div>
 
@@ -4171,6 +4342,129 @@ export default function App() {
                       </button>
                     </div>
                   </div>
+
+                  {/* Photo Uploads for Registered Roles */}
+                  {(registeredRoles.includes("owner") || registeredRoles.includes("labor")) && (
+                    <div className="border border-[#E8E6E1]/80 dark:border-slate-800 rounded-2xl p-3 bg-white/50 dark:bg-slate-900/50 space-y-3">
+                      <span className="text-[10px] font-black uppercase text-slate-500 dark:text-slate-400 tracking-wider block">
+                        📸 {language === "ta" ? "சுயவிவரப் புகைப்படங்கள்" : "Role Profile Photos"}
+                      </span>
+                      
+                      {registeredRoles.includes("owner") && (
+                        <div className="space-y-1.5">
+                          <label className="block text-[9px] font-bold text-slate-600 dark:text-slate-400">
+                            {language === "ta" ? "உரிமையாளர் புகைப்படம்" : "Owner Profile Photo"}
+                          </label>
+                          <div className="flex items-center space-x-3 bg-white dark:bg-[#1A2320] p-2 rounded-xl border border-[#E8E6E1] dark:border-slate-800">
+                            <div className="w-10 h-10 rounded-full border border-slate-200 dark:border-slate-700 overflow-hidden flex items-center justify-center bg-slate-50 dark:bg-slate-800 shrink-0">
+                              {ownerImage ? (
+                                <img src={ownerImage} alt="Owner Preview" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                              ) : (
+                                <span className="text-sm">🛠️</span>
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <input 
+                                type="file" 
+                                accept="image/*"
+                                id="owner-settings-pic"
+                                className="hidden"
+                                onChange={(e) => {
+                                  if (e.target.files && e.target.files[0]) {
+                                    const file = e.target.files[0];
+                                    const reader = new FileReader();
+                                    reader.onloadend = () => {
+                                      const base64 = reader.result as string;
+                                      setOwnerImage(base64);
+                                      localStorage.setItem("oorsevai_owner_image", base64);
+                                    };
+                                    reader.readAsDataURL(file);
+                                  }
+                                }}
+                              />
+                              <div className="flex gap-1.5">
+                                <label 
+                                  htmlFor="owner-settings-pic"
+                                  className="bg-[#3E5C31] hover:bg-[#3E5C31]/90 text-white text-[9px] font-bold px-2 py-1 rounded-md cursor-pointer transition-colors"
+                                >
+                                  {ownerImage ? (language === "ta" ? "மாற்று" : "Change") : (language === "ta" ? "Upload" : "Upload")}
+                                </label>
+                                {ownerImage && (
+                                  <button 
+                                    type="button"
+                                    onClick={() => {
+                                      setOwnerImage("");
+                                      localStorage.removeItem("oorsevai_owner_image");
+                                    }}
+                                    className="bg-rose-50 dark:bg-rose-900/15 text-rose-600 dark:text-rose-400 border border-rose-100 dark:border-rose-900/30 text-[9px] font-bold px-2 py-1 rounded-md cursor-pointer hover:bg-rose-100"
+                                  >
+                                    {language === "ta" ? "நீக்கு" : "Remove"}
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {registeredRoles.includes("labor") && (
+                        <div className="space-y-1.5">
+                          <label className="block text-[9px] font-bold text-slate-600 dark:text-slate-400">
+                            {language === "ta" ? "தொழிலாளி புகைப்படம்" : "Worker Profile Photo"}
+                          </label>
+                          <div className="flex items-center space-x-3 bg-white dark:bg-[#1A2320] p-2 rounded-xl border border-[#E8E6E1] dark:border-slate-800">
+                            <div className="w-10 h-10 rounded-full border border-slate-200 dark:border-slate-700 overflow-hidden flex items-center justify-center bg-slate-50 dark:bg-slate-800 shrink-0">
+                              {workerImage ? (
+                                <img src={workerImage} alt="Worker Preview" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                              ) : (
+                                <span className="text-sm">👷</span>
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <input 
+                                type="file" 
+                                accept="image/*"
+                                id="worker-settings-pic"
+                                className="hidden"
+                                onChange={(e) => {
+                                  if (e.target.files && e.target.files[0]) {
+                                    const file = e.target.files[0];
+                                    const reader = new FileReader();
+                                    reader.onloadend = () => {
+                                      const base64 = reader.result as string;
+                                      setWorkerImage(base64);
+                                      localStorage.setItem("oorsevai_worker_image", base64);
+                                    };
+                                    reader.readAsDataURL(file);
+                                  }
+                                }}
+                              />
+                              <div className="flex gap-1.5">
+                                <label 
+                                  htmlFor="worker-settings-pic"
+                                  className="bg-[#3E5C31] hover:bg-[#3E5C31]/90 text-white text-[9px] font-bold px-2 py-1 rounded-md cursor-pointer transition-colors"
+                                >
+                                  {workerImage ? (language === "ta" ? "மாற்று" : "Change") : (language === "ta" ? "Upload" : "Upload")}
+                                </label>
+                                {workerImage && (
+                                  <button 
+                                    type="button"
+                                    onClick={() => {
+                                      setWorkerImage("");
+                                      localStorage.removeItem("oorsevai_worker_image");
+                                    }}
+                                    className="bg-rose-50 dark:bg-rose-900/15 text-rose-600 dark:text-rose-400 border border-rose-100 dark:border-rose-900/30 text-[9px] font-bold px-2 py-1 rounded-md cursor-pointer hover:bg-rose-100"
+                                  >
+                                    {language === "ta" ? "நீக்கு" : "Remove"}
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   {/* Registered Roles */}
                   <div>
