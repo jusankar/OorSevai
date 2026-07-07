@@ -638,7 +638,7 @@ export default function HomeView({
                 className="flex-shrink-0 w-[175px] snap-start bg-white dark:bg-[#1C2420] rounded-2xl border border-[#E8E6E1] dark:border-slate-800 overflow-hidden shadow-xs hover:scale-[1.03] active:scale-98 transition-all duration-300 text-left flex flex-col group cursor-pointer"
               >
                 {/* Image Section */}
-                <div className="relative h-[115px] w-full overflow-hidden bg-[#FAF7F2] dark:bg-slate-900">
+                <div className="relative h-[125px] w-full overflow-hidden bg-[#FAF7F2] dark:bg-slate-900">
                   <img 
                     src={cat.image} 
                     alt={cat.title} 
@@ -652,8 +652,8 @@ export default function HomeView({
                     }}
                   />
                   {/* Floating Icon Badging */}
-                  <div className="absolute top-2.5 right-2.5 p-2 rounded-xl bg-white/95 dark:bg-slate-900/95 shadow-sm backdrop-blur-xs text-[#2D2D2A] dark:text-slate-200">
-                    <Icon className="h-4 w-4 text-[#3E5C31] dark:text-emerald-400" />
+                  <div className="absolute top-2 right-2 p-1.5 rounded-lg bg-white/95 dark:bg-slate-900/95 shadow-xs backdrop-blur-xs text-[#2D2D2A] dark:text-slate-200">
+                    <Icon className="h-3.5 w-3.5 text-[#3E5C31] dark:text-emerald-400" />
                   </div>
                   
                   {/* Category Accent Stripe */}
@@ -667,21 +667,17 @@ export default function HomeView({
                 </div>
 
                 {/* Content Section */}
-                <div className="p-3.5 flex-1 flex flex-col justify-between space-y-2">
-                  <div>
-                    <h4 className="text-[12px] font-black text-[#2D2D2A] dark:text-white leading-tight group-hover:text-[#3E5C31] dark:group-hover:text-emerald-400 transition-colors uppercase tracking-tight">
-                      {cat.title}
-                    </h4>
-                    <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium mt-1">
-                      {cat.sub}
-                    </p>
-                  </div>
-
-                  <div className="flex items-center justify-between pt-2 border-t border-[#F3F1ED] dark:border-slate-800 text-[10px] font-medium text-slate-500 dark:text-slate-400">
-                    <span className="font-bold text-[#3E5C31] dark:text-emerald-400 group-hover:translate-x-1 transition-transform duration-300 flex items-center gap-1">
-                      {language === "ta" ? "ஆராய்" : "Explore"} <ArrowRight className="h-3 w-3 inline" />
+                <div className="p-2.5 flex-1 flex flex-col justify-center">
+                  <h4 className="text-[11px] font-black text-[#2D2D2A] dark:text-white leading-tight group-hover:text-[#3E5C31] dark:group-hover:text-emerald-400 transition-colors uppercase tracking-tight">
+                    {cat.title}
+                  </h4>
+                  <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium mt-1.5 flex items-center flex-wrap gap-x-1 gap-y-0.5">
+                    <span className="truncate">{cat.sub}</span>
+                    <span className="text-slate-300 dark:text-slate-700">•</span>
+                    <span className="font-bold text-[#3E5C31] dark:text-emerald-400 inline-flex items-center gap-0.5 group-hover:translate-x-0.5 transition-transform duration-300">
+                      {language === "ta" ? "ஆராய்" : "Explore"} <ArrowRight className="h-2.5 w-2.5" />
                     </span>
-                  </div>
+                  </p>
                 </div>
               </button>
             );
