@@ -54,10 +54,10 @@ export default function BrowseView({
   const availableCategories = useMemo(() => [
     { id: "all", label: t("all_items") },
     { id: "agriculture", label: t("agriculture") },
+    { id: "labor", label: t("labor") },
     { id: "construction", label: t("construction") },
     { id: "tools", label: t("tools") },
-    { id: "function", label: t("function") },
-    { id: "labor", label: t("labor") }
+    { id: "function", label: t("function") }
   ], [language]);
 
   // Subcategories list based on selected category
