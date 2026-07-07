@@ -635,10 +635,10 @@ export default function HomeView({
               <button
                 key={cat.id}
                 onClick={() => onSelectCategory(cat.id)}
-                className="flex-shrink-0 w-[175px] snap-start bg-white dark:bg-[#1C2420] rounded-2xl border border-[#E8E6E1] dark:border-slate-800 overflow-hidden shadow-xs hover:scale-[1.03] active:scale-98 transition-all duration-300 text-left flex flex-col group cursor-pointer"
+                className="flex-shrink-0 w-[185px] h-[260px] snap-start bg-white dark:bg-[#1C2420] rounded-2xl border border-[#E8E6E1] dark:border-slate-800 overflow-hidden shadow-xs hover:scale-[1.03] active:scale-98 transition-all duration-300 text-left flex flex-col group cursor-pointer"
               >
-                {/* Image Section */}
-                <div className="relative h-[115px] w-full overflow-hidden bg-[#FAF7F2] dark:bg-slate-900">
+                {/* Image Section - 3/4 height (195px of 260px) */}
+                <div className="relative h-[195px] w-full overflow-hidden bg-[#FAF7F2] dark:bg-slate-900">
                   <img 
                     src={cat.image} 
                     alt={cat.title} 
@@ -666,21 +666,22 @@ export default function HomeView({
                   }`} />
                 </div>
 
-                {/* Content Section */}
-                <div className="p-3.5 flex-1 flex flex-col justify-between space-y-2">
-                  <div>
-                    <h4 className="text-[12px] font-black text-[#2D2D2A] dark:text-white leading-tight group-hover:text-[#3E5C31] dark:group-hover:text-emerald-400 transition-colors uppercase tracking-tight">
+                {/* Content Section - 1/4 height (65px of 260px) */}
+                <div className="p-3 h-[65px] flex items-center justify-between gap-1.5 bg-white dark:bg-[#1C2420]">
+                  <div className="min-w-0 flex-1 flex flex-col justify-center">
+                    <h4 className="text-[11px] font-black text-[#2D2D2A] dark:text-white leading-tight group-hover:text-[#3E5C31] dark:group-hover:text-emerald-400 transition-colors uppercase tracking-tight">
                       {cat.title}
                     </h4>
-                    <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium mt-1">
+                    <p className="text-[9px] text-slate-500 dark:text-slate-400 font-medium mt-0.5">
                       {cat.sub}
                     </p>
                   </div>
 
-                  <div className="flex items-center justify-between pt-2 border-t border-[#F3F1ED] dark:border-slate-800 text-[10px] font-medium text-slate-500 dark:text-slate-400">
-                    <span className="font-bold text-[#3E5C31] dark:text-emerald-400 group-hover:translate-x-1 transition-transform duration-300">
-                      {language === "ta" ? "ஆராய்" : "Explore"} →
-                    </span>
+                  <div className="shrink-0">
+                    <div className="text-[10px] font-extrabold text-[#3E5C31] dark:text-emerald-400 group-hover:text-[#324B28] dark:group-hover:text-emerald-300 transition-colors flex items-center gap-0.5 transform group-hover:translate-x-0.5 duration-300">
+                      <span>{language === "ta" ? "ஆராய்" : "Explore"}</span>
+                      <ArrowRight className="h-3 w-3" />
+                    </div>
                   </div>
                 </div>
               </button>
