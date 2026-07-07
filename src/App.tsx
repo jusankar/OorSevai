@@ -491,17 +491,28 @@ export default function App() {
   const [newLaborImage, setNewLaborImage] = useState("");
   const [isLaborRegistered, setIsLaborRegistered] = useState(false);
 
-  // KYC Verifications for Admin Panel
-  const [kycRequests, setKycRequests] = useState([
-    { id: "kyc-1", name: "Murugan Swamy", type: "Owner", document: "Aadhaar Card", status: "pending" },
-    { id: "kyc-2", name: "Raju Krishnan", type: "Labor", document: "Electrical License", status: "pending" },
-    { id: "kyc-3", name: "Arun Vignesh", type: "Owner", document: "GST Registration", status: "pending" }
-  ]);
+  // Dynamic database-driven KYC requests derived from laborersList
+  const kycRequests = useMemo(() => {
+    return laborersList
+      .filter((l) => l.kycStatus && l.kycStatus !== "none")
+      .map((l) => ({
+        id: l.id,
+        name: l.name,
+        type: "Labor" as const,
+        document: l.kycDocName || "Aadhaar Card",
+        status: l.kycStatus === "verified" ? ("approved" as const) : l.kycStatus === "rejected" ? ("rejected" as const) : ("pending" as const)
+      }));
+  }, [laborersList]);
 
-  // Handle Equipment/Labor verifications by Admin
-  const [pendingEquipmentApprovals, setPendingEquipmentApprovals] = useState([
-    { id: "eq-approve-1", name: "New Power Tiller 15 HP", owner: "Murugan Swamy", status: "pending" }
-  ]);
+  // Dynamic database-driven Machinery approvals derived from equipmentList
+  const pendingEquipmentApprovals = useMemo(() => {
+    return equipmentList.map((eq) => ({
+      id: eq.id,
+      name: eq.name,
+      owner: eq.ownerName,
+      status: eq.verified ? ("approved" as const) : ("pending" as const)
+    }));
+  }, [equipmentList]);
 
   const [adminActiveQueue, setAdminActiveQueue] = useState<"kyc" | "machinery" | "disputes" | null>("kyc");
 
@@ -735,12 +746,6 @@ export default function App() {
     }).catch(err => console.error("Failed to save equipment to DB:", err));
 
     setEquipmentList((prev) => [newEq, ...prev]);
-    
-    // Add to pending approvals
-    setPendingEquipmentApprovals((prev) => [
-      ...prev,
-      { id: `eq-approve-${Date.now()}`, name: newEq.name, owner: "Udaya Kumar (You)", status: "pending" }
-    ]);
 
     setShowEqSuccessModal(true);
     
@@ -792,18 +797,6 @@ export default function App() {
     }).catch(err => console.error("Failed to save laborer to DB:", err));
 
     setLaborersList((prev) => [newLb, ...prev]);
-    
-    // Add to KYC approvals
-    setKycRequests((prev) => [
-      ...prev,
-      { 
-        id: `kyc-${Date.now()}`, 
-        name: newLaborName, 
-        type: "Labor", 
-        document: docDescription, 
-        status: "pending" 
-      }
-    ]);
 
     setIsLaborRegistered(true);
     
@@ -911,70 +904,55 @@ export default function App() {
 
   // Admin approval KYC
   const handleApproveKYC = (kycId: string) => {
-    let approvedName = "";
-    let approvedType = "";
-    setKycRequests((prev) => prev.map(k => {
-      if (k.id === kycId) {
-        approvedName = k.name;
-        approvedType = k.type;
-        return { ...k, status: "approved" };
-      }
-      return k;
-    }));
+    const l = laborersList.find(x => x.id === kycId);
+    if (l) {
+      fetch(`/api/laborers/${l.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ verified: true, kycStatus: "verified" })
+      }).catch(err => console.error("Failed to approve KYC on DB:", err));
 
-    if (approvedType === "Labor") {
-      const l = laborersList.find(x => x.name === approvedName);
-      if (l) {
-        fetch(`/api/laborers/${l.id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ verified: true, kycStatus: "verified" })
-        }).catch(err => console.error("Failed to approve KYC on DB:", err));
-      }
-
-      setLaborersList((prev) => prev.map(l => {
-        if (l.name === approvedName) {
-          return { ...l, verified: true, kycStatus: "verified" };
+      setLaborersList((prev) => prev.map(item => {
+        if (item.id === l.id) {
+          return { ...item, verified: true, kycStatus: "verified" };
         }
-        return l;
+        return item;
       }));
     }
   };
 
   const handleRejectKYC = (kycId: string) => {
-    let rejectedName = "";
-    let rejectedType = "";
-    setKycRequests((prev) => prev.map(k => {
-      if (k.id === kycId) {
-        rejectedName = k.name;
-        rejectedType = k.type;
-        return { ...k, status: "rejected" };
-      }
-      return k;
-    }));
+    const l = laborersList.find(x => x.id === kycId);
+    if (l) {
+      fetch(`/api/laborers/${l.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ verified: false, kycStatus: "rejected" })
+      }).catch(err => console.error("Failed to reject KYC on DB:", err));
 
-    if (rejectedType === "Labor") {
-      const l = laborersList.find(x => x.name === rejectedName);
-      if (l) {
-        fetch(`/api/laborers/${l.id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ verified: false, kycStatus: "rejected" })
-        }).catch(err => console.error("Failed to reject KYC on DB:", err));
-      }
-
-      setLaborersList((prev) => prev.map(l => {
-        if (l.name === rejectedName) {
-          return { ...l, verified: false, kycStatus: "rejected" };
+      setLaborersList((prev) => prev.map(item => {
+        if (item.id === l.id) {
+          return { ...item, verified: false, kycStatus: "rejected" };
         }
-        return l;
+        return item;
       }));
     }
   };
 
   // Admin approval Equipment
   const handleApproveEquipment = (approveId: string) => {
-    setPendingEquipmentApprovals((prev) => prev.map(eq => eq.id === approveId ? { ...eq, status: "approved" } : eq));
+    fetch(`/api/equipment/${approveId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ verified: true })
+    }).catch(err => console.error("Failed to approve equipment on DB:", err));
+
+    setEquipmentList((prev) => prev.map((eq) => {
+      if (eq.id === approveId) {
+        return { ...eq, verified: true };
+      }
+      return eq;
+    }));
   };
 
   // Dispute Resolution

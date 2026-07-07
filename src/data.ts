@@ -322,6 +322,30 @@ export const DEFAULT_EQUIPMENT: Equipment[] = [
     location: "RS Puram, Coimbatore",
     verified: true,
     status: "active"
+  },
+  {
+    id: "eq-13",
+    name: "New Power Tiller 15 HP",
+    category: "agriculture",
+    subCategory: "Power tiller",
+    image: "https://images.unsplash.com/photo-1530595467537-0b5996c41f2d?auto=format&fit=crop&w=600&q=80",
+    pricePerDay: 1300,
+    rating: 5.0,
+    reviewsCount: 0,
+    distance: 1.2,
+    ownerName: "Murugan Swamy",
+    ownerId: "owner-11",
+    specs: {
+      power: "15 HP",
+      fuel: "Diesel",
+      drive: "2 WD",
+      year: "2024",
+      operatorIncluded: false,
+    },
+    about: "Brand new high power tiller. Excellent for narrow fields.",
+    location: "Sulur, Coimbatore",
+    verified: false,
+    status: "active"
   }
 ];
 
@@ -385,6 +409,40 @@ export const DEFAULT_LABORERS: Laborer[] = [
     experience: "6 Years",
     verified: true,
     gender: "Male"
+  },
+  {
+    id: "lb-5",
+    name: "Murugan Swamy",
+    category: "Farm labor",
+    image: "https://images.unsplash.com/photo-1541822557762-276686e08836?auto=format&fit=crop&w=150&q=80",
+    pricePerDay: 700,
+    rating: 5.0,
+    reviewsCount: 0,
+    location: "Sulur, Coimbatore",
+    distance: 1.2,
+    availability: "available",
+    experience: "5 Years",
+    verified: false,
+    gender: "Male",
+    kycDocName: "Aadhaar Card",
+    kycStatus: "pending"
+  },
+  {
+    id: "lb-6",
+    name: "Karthikeyan P.",
+    category: "Carpenter",
+    image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&q=80",
+    pricePerDay: 1050,
+    rating: 5.0,
+    reviewsCount: 0,
+    location: "Thudiyalur, Coimbatore",
+    distance: 1.8,
+    availability: "available",
+    experience: "8 Years",
+    verified: false,
+    gender: "Male",
+    kycDocName: "GST Registration",
+    kycStatus: "pending"
   }
 ];
 
