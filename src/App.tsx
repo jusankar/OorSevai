@@ -1686,12 +1686,12 @@ export default function App() {
               </div>
 
               {/* Row 2: Minimalist Interactive Sub-Tabs with Active Indicators (Option 3) */}
-              <div className="px-4 py-2 border-t border-white/5 bg-black/15 flex items-center justify-between shrink-0">
+              <div className="px-4 py-2 border-t border-white/5 bg-black/15 flex items-center justify-between gap-3 shrink-0">
                 <span className="text-[9px] text-white/50 font-black uppercase tracking-widest flex items-center gap-1 shrink-0">
                   <span>🎭</span> {t("role_label")}
                 </span>
                 
-                <div className="flex items-center space-x-3">
+                <div className="flex items-center space-x-3 overflow-x-auto scrollbar-none py-0.5 flex-1 justify-end min-w-0">
                   {registeredRoles.map((role) => {
                     const isActive = userRole === role;
                     return (
@@ -1706,7 +1706,7 @@ export default function App() {
                             setActiveTab("dashboard");
                           }
                         }}
-                        className="relative pb-1 pt-0.5 px-1.5 flex flex-col items-center cursor-pointer transition-all duration-200 focus:outline-none"
+                        className="relative pb-1 pt-0.5 px-1.5 flex flex-col items-center cursor-pointer transition-all duration-200 focus:outline-none shrink-0"
                       >
                         <div className={`flex items-center space-x-1.5 text-[9px] font-black uppercase tracking-wider transition-colors duration-200 ${
                           isActive ? "text-white scale-[1.03]" : "text-white/60 hover:text-white/90"
@@ -1716,7 +1716,7 @@ export default function App() {
                              role === "owner" ? "🛠️" : 
                              role === "labor" ? "👷" : "🔑"}
                           </span>
-                          <span>
+                          <span className="whitespace-nowrap">
                             {role === "customer" ? t("role_customer") : 
                              role === "owner" ? t("role_owner") : 
                              role === "labor" ? t("role_labor") : 
