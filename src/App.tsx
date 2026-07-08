@@ -165,6 +165,14 @@ export default function App() {
     fetchDatabaseData();
   }, [userMobile, userRole]);
 
+  // Dynamically update mobile browser status bar/battery area color
+  useEffect(() => {
+    const metaThemeColor = document.querySelector('meta[name="theme-color"]');
+    if (metaThemeColor) {
+      metaThemeColor.setAttribute("content", darkMode ? "#203119" : "#3E5C31");
+    }
+  }, [darkMode]);
+
   const t = (key: Parameters<typeof getTranslation>[1]): string => getTranslation(language, key);
 
 
@@ -1599,124 +1607,135 @@ export default function App() {
         ) : (
           <>
             {/* TOP PLATFORM BAR & ROLE SWITCHER */}
-            <div id="top-branding-bar" className="bg-[#3E5C31] dark:bg-[#203119] text-white px-4 py-3 border-b border-white/10 flex flex-col space-y-2.5 shadow-sm">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-white rounded-xl overflow-hidden flex items-center justify-center shadow-xs shrink-0 p-0.5">
-                <img src="/icon.svg" alt="Oor Sevai Logo" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
-              </div>
-              <div>
-                <h1 className="text-sm font-black tracking-tight leading-none text-white">{t("app_title")}</h1>
-                <span className="text-[8px] uppercase tracking-wider text-white/70 font-bold">{t("app_subtitle")}</span>
-              </div>
-            </div>
-            
-            {/* Quick Multi-Language / Support Badges & Notifications */}
-            <div className="flex items-center space-x-1.5">
-              {/* Language Switcher Toggle */}
-              <button
-                type="button"
-                onClick={() => {
-                  const newLang = language === "en" ? "ta" : "en";
-                  setLanguage(newLang);
-                  localStorage.setItem("oorsevai_lang", newLang);
-                }}
-                className="text-[10px] bg-white/10 hover:bg-white/20 border border-white/10 text-white px-2.5 py-1 rounded-xl font-bold transition-all duration-200 cursor-pointer flex items-center space-x-1"
-                title={language === "en" ? "தமிழ் மொழிக்கு மாற்றவும்" : "Switch to English"}
-                id="language-toggle-btn"
-              >
-                <span>🌐</span>
-                <span className="font-extrabold">{language === "en" ? "EN" : "தம"}</span>
-              </button>
-
-              {/* Theme Switcher Toggle */}
-              <button
-                type="button"
-                onClick={() => {
-                  const newMode = !darkMode;
-                  setDarkMode(newMode);
-                  localStorage.setItem("oorsevai_dark", newMode ? "true" : "false");
-                }}
-                className="p-1.5 bg-white/10 hover:bg-white/20 border border-white/10 rounded-xl transition-all duration-200 focus:outline-none cursor-pointer flex items-center justify-center text-white text-sm select-none"
-                title={darkMode ? "Switch to Light Theme ☀️" : "Switch to Dark Theme 🌙"}
-                id="theme-toggle-btn"
-              >
-                {darkMode ? "☀️" : "🌙"}
-              </button>
-
-              {/* Notification Bell Icon */}
-              <button
-                type="button"
-                onClick={() => setShowNotificationsDropdown(!showNotificationsDropdown)}
-                className="relative p-1.5 bg-white/10 hover:bg-white/20 border border-white/10 rounded-xl transition-all duration-200 focus:outline-none cursor-pointer flex items-center justify-center"
-                title="Notifications"
-              >
-                <Bell className="h-4 w-4 text-white" />
-                {resolvedNotifications.filter(n => !n.isRead).length > 0 && (
-                  <span className="absolute -top-1 -right-1 h-4 w-4 bg-rose-500 text-white font-black text-[8px] rounded-full flex items-center justify-center border border-[#3E5C31] shadow-xs">
-                    {resolvedNotifications.filter(n => !n.isRead).length}
-                  </span>
-                )}
-              </button>
-
-              {/* Settings Icon Toggle */}
-              <button
-                type="button"
-                onClick={() => setShowSettingsModal(true)}
-                className="p-1.5 bg-white/10 hover:bg-white/20 border border-white/10 rounded-xl transition-all duration-200 focus:outline-none cursor-pointer flex items-center justify-center text-white"
-                title="Settings"
-                id="settings-toggle-btn"
-              >
-                <Settings className="h-4 w-4 text-white" />
-              </button>
- 
-              <span className="text-[9px] bg-[#E9C46A] text-[#2D2D2A] px-2 py-1.2 rounded-xl font-extrabold flex items-center space-x-0.5 shadow-xs shrink-0">
-                <span>{t("mvp")}</span>
-              </span>
-            </div>
-          </div>
- 
-          {/* Quick Role Switcher Panel */}
-          <div className="bg-black/20 p-1 rounded-xl flex justify-between items-center">
-            <span className="text-[10px] text-white/80 font-bold pl-2">{t("role_label")}</span>
-            <div className="flex space-x-1 flex-1 justify-end">
-              {registeredRoles.length > 1 ? (
-                registeredRoles.map((role) => (
+            <div id="top-branding-bar" className="bg-[#3E5C31] dark:bg-[#203119] text-white border-b border-white/10 shadow-sm shrink-0 flex flex-col">
+              {/* Row 1: Logo & Action Items */}
+              <div className="px-4 py-3 flex items-center justify-between">
+                <div className="flex items-center space-x-2 shrink-0">
+                  <div className="w-8 h-8 bg-white rounded-xl overflow-hidden flex items-center justify-center shadow-xs shrink-0 p-0.5">
+                    <img src="/icon.svg" alt="Oor Sevai Logo" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
+                  </div>
+                  <div>
+                    <h1 className="text-sm font-black tracking-tight leading-none text-white">{t("app_title")}</h1>
+                    <span className="text-[8px] uppercase tracking-wider text-white/70 font-bold">{t("app_subtitle")}</span>
+                  </div>
+                </div>
+                
+                {/* Quick Multi-Language / Support Badges & Notifications */}
+                <div className="flex items-center space-x-1.5 shrink-0">
+                  {/* Language Switcher Toggle */}
                   <button
-                    key={role}
+                    type="button"
                     onClick={() => {
-                      setUserRole(role);
-                      // Reset standard tab when switching roles
-                      if (role === "customer") {
-                        setActiveTab("home");
-                        setActiveView("home");
-                      } else {
-                        setActiveTab("dashboard");
-                      }
+                      const newLang = language === "en" ? "ta" : "en";
+                      setLanguage(newLang);
+                      localStorage.setItem("oorsevai_lang", newLang);
                     }}
-                    className={`text-[9px] font-extrabold px-2 py-1 rounded-lg capitalize transition-all cursor-pointer ${
-                      userRole === role 
-                        ? "bg-white text-[#3E5C31] shadow-xs" 
-                        : "text-white/80 hover:text-white hover:bg-white/10"
-                    }`}
+                    className="text-[10px] bg-white/10 hover:bg-white/20 border border-white/10 text-white px-2.5 py-1 rounded-xl font-bold transition-all duration-200 cursor-pointer flex items-center space-x-1 shrink-0"
+                    title={language === "en" ? "தமிழ் மொழிக்கு மாற்றவும்" : "Switch to English"}
+                    id="language-toggle-btn"
                   >
-                    {role === "customer" ? t("role_customer") : 
-                     role === "owner" ? t("role_owner") : 
-                     role === "labor" ? t("role_labor") : 
-                     t("role_admin")}
+                    <span>🌐</span>
+                    <span className="font-extrabold">{language === "en" ? "EN" : "தம"}</span>
                   </button>
-                ))
-              ) : (
-                <span className="text-[9px] bg-white text-[#3E5C31] font-black px-2.5 py-1 rounded-lg capitalize">
-                  {userRole === "customer" ? t("role_customer") : 
-                   userRole === "owner" ? t("role_owner") : 
-                   userRole === "labor" ? t("role_labor") : 
-                   t("role_admin")}
+
+                  {/* Theme Switcher Toggle */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const newMode = !darkMode;
+                      setDarkMode(newMode);
+                      localStorage.setItem("oorsevai_dark", newMode ? "true" : "false");
+                    }}
+                    className="p-1.5 bg-white/10 hover:bg-white/20 border border-white/10 rounded-xl transition-all duration-200 focus:outline-none cursor-pointer flex items-center justify-center text-white text-sm select-none shrink-0"
+                    title={darkMode ? "Switch to Light Theme ☀️" : "Switch to Dark Theme 🌙"}
+                    id="theme-toggle-btn"
+                  >
+                    {darkMode ? "☀️" : "🌙"}
+                  </button>
+
+                  {/* Notification Bell Icon */}
+                  <button
+                    type="button"
+                    onClick={() => setShowNotificationsDropdown(!showNotificationsDropdown)}
+                    className="relative p-1.5 bg-white/10 hover:bg-white/20 border border-white/10 rounded-xl transition-all duration-200 focus:outline-none cursor-pointer flex items-center justify-center shrink-0"
+                    title="Notifications"
+                  >
+                    <Bell className="h-4 w-4 text-white" />
+                    {resolvedNotifications.filter(n => !n.isRead).length > 0 && (
+                      <span className="absolute -top-1 -right-1 h-4 w-4 bg-rose-500 text-white font-black text-[8px] rounded-full flex items-center justify-center border border-[#3E5C31] shadow-xs">
+                        {resolvedNotifications.filter(n => !n.isRead).length}
+                      </span>
+                    )}
+                  </button>
+
+                  {/* Settings Icon Toggle */}
+                  <button
+                    type="button"
+                    onClick={() => setShowSettingsModal(true)}
+                    className="p-1.5 bg-white/10 hover:bg-white/20 border border-white/10 rounded-xl transition-all duration-200 focus:outline-none cursor-pointer flex items-center justify-center text-white shrink-0"
+                    title="Settings"
+                    id="settings-toggle-btn"
+                  >
+                    <Settings className="h-4 w-4 text-white" />
+                  </button>
+   
+                  <span className="text-[9px] bg-[#E9C46A] text-[#2D2D2A] px-2 py-1.2 rounded-xl font-extrabold flex items-center space-x-0.5 shadow-xs shrink-0">
+                    <span>{t("mvp")}</span>
+                  </span>
+                </div>
+              </div>
+
+              {/* Row 2: Minimalist Interactive Sub-Tabs with Active Indicators (Option 3) */}
+              <div className="px-4 py-2 border-t border-white/5 bg-black/15 flex items-center justify-between shrink-0">
+                <span className="text-[9px] text-white/50 font-black uppercase tracking-widest flex items-center gap-1 shrink-0">
+                  <span>🎭</span> {t("role_label")}
                 </span>
-              )}
+                
+                <div className="flex items-center space-x-3">
+                  {registeredRoles.map((role) => {
+                    const isActive = userRole === role;
+                    return (
+                      <button
+                        key={role}
+                        onClick={() => {
+                          setUserRole(role);
+                          if (role === "customer") {
+                            setActiveTab("home");
+                            setActiveView("home");
+                          } else {
+                            setActiveTab("dashboard");
+                          }
+                        }}
+                        className="relative pb-1 pt-0.5 px-1.5 flex flex-col items-center cursor-pointer transition-all duration-200 focus:outline-none"
+                      >
+                        <div className={`flex items-center space-x-1.5 text-[9px] font-black uppercase tracking-wider transition-colors duration-200 ${
+                          isActive ? "text-white scale-[1.03]" : "text-white/60 hover:text-white/90"
+                        }`}>
+                          <span className="text-xs">
+                            {role === "customer" ? "🚜" : 
+                             role === "owner" ? "🛠️" : 
+                             role === "labor" ? "👷" : "🔑"}
+                          </span>
+                          <span>
+                            {role === "customer" ? t("role_customer") : 
+                             role === "owner" ? t("role_owner") : 
+                             role === "labor" ? t("role_labor") : 
+                             t("role_admin")}
+                          </span>
+                        </div>
+                        {isActive && (
+                          <motion.div 
+                            layoutId="activeRoleIndicator"
+                            className="absolute bottom-0 h-0.5 w-full bg-emerald-400 rounded-full"
+                            transition={{ type: "spring", stiffness: 350, damping: 30 }}
+                          />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
 
         {/* ==================== PWA NETWORK & INSTALLATION BANNERS ==================== */}
         {!isOnline && (

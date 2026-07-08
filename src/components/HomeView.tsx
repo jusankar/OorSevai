@@ -941,9 +941,9 @@ export default function HomeView({
 
           <div className="z-10 w-[30%] flex justify-end">
             <img 
-              src="https://images.unsplash.com/photo-1594142404563-64ccc954aa79?auto=format&fit=crop&w=200&q=80" 
+              src="/assets/categories/farmer_owner.webp" 
               alt="Farmer Owner" 
-              className="w-16 h-16 rounded-2xl object-cover border border-[#E8E6E1]/20 shadow-md rotate-3"
+              className="w-20 h-20 rounded-2xl object-cover border border-[#E8E6E1]/20 shadow-md rotate-3"
               referrerPolicy="no-referrer"
             />
           </div>

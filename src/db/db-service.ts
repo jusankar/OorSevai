@@ -391,3 +391,4 @@ export async function markNotificationAsRead(id: string) {
     throw new Error("Failed to mark notification as read.", { cause: error });
   }
 }
+
