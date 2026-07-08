@@ -1326,14 +1326,14 @@ export default function App() {
         {!isRegistered ? (
           <div className="flex-1 flex flex-col h-full bg-[#FAF7F2] dark:bg-slate-950 overflow-y-auto scrollbar-none">
             {/* Simple Registration Header */}
-            <div className="bg-[#3E5C31] dark:bg-[#203119] text-white px-4 py-4 border-b border-white/10 flex justify-between items-center shadow-sm shrink-0">
-              <div className="flex items-center space-x-2">
-                <div className="w-8 h-8 bg-white rounded-xl overflow-hidden flex items-center justify-center p-0.5 shadow-sm">
+            <div className="bg-[#3E5C31] dark:bg-[#203119] text-white px-4 py-4 border-b border-white/10 flex justify-between items-center gap-2 shadow-sm shrink-0">
+              <div className="flex items-center space-x-2 min-w-0 flex-1">
+                <div className="w-8 h-8 bg-white rounded-xl overflow-hidden flex items-center justify-center p-0.5 shadow-sm shrink-0">
                   <img src="/icon.svg" alt="Oor Sevai" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
                 </div>
-                <div>
+                <div className="min-w-0">
                   <h1 className="text-sm font-black tracking-tight leading-none text-white">{t("app_title")}</h1>
-                  <span className="text-[8px] uppercase tracking-wider text-white/70 font-bold">{t("app_subtitle")}</span>
+                  <span className="text-[8px] uppercase tracking-wider text-white/70 font-bold block whitespace-normal leading-tight">{t("app_subtitle")}</span>
                 </div>
               </div>
               
@@ -1609,14 +1609,14 @@ export default function App() {
             {/* TOP PLATFORM BAR & ROLE SWITCHER */}
             <div id="top-branding-bar" className="bg-[#3E5C31] dark:bg-[#203119] text-white border-b border-white/10 shadow-sm shrink-0 flex flex-col">
               {/* Row 1: Logo & Action Items */}
-              <div className="px-4 py-3 flex items-center justify-between">
-                <div className="flex items-center space-x-2 shrink-0">
+              <div className="px-4 py-3 flex items-center justify-between gap-2">
+                <div className="flex items-center space-x-2 min-w-0 flex-1">
                   <div className="w-8 h-8 bg-white rounded-xl overflow-hidden flex items-center justify-center shadow-xs shrink-0 p-0.5">
                     <img src="/icon.svg" alt="Oor Sevai Logo" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <h1 className="text-sm font-black tracking-tight leading-none text-white">{t("app_title")}</h1>
-                    <span className="text-[8px] uppercase tracking-wider text-white/70 font-bold">{t("app_subtitle")}</span>
+                    <span className="text-[8px] uppercase tracking-wider text-white/70 font-bold block whitespace-normal leading-tight">{t("app_subtitle")}</span>
                   </div>
                 </div>
                 
@@ -1686,12 +1686,12 @@ export default function App() {
               </div>
 
               {/* Row 2: Minimalist Interactive Sub-Tabs with Active Indicators (Option 3) */}
-              <div className="px-4 py-2 border-t border-white/5 bg-black/15 flex items-center justify-between gap-3 shrink-0">
-                <span className="text-[9px] text-white/50 font-black uppercase tracking-widest flex items-center gap-1 shrink-0">
+              <div className="px-4 py-1.5 border-t border-white/5 bg-black/15 flex items-center justify-between gap-3 shrink-0 min-w-0">
+                <span className="text-[9px] text-white/50 font-black uppercase tracking-widest flex items-center gap-1 shrink-0 select-none">
                   <span>🎭</span> {t("role_label")}
                 </span>
                 
-                <div className="flex items-center space-x-3 overflow-x-auto scrollbar-none py-0.5 flex-1 justify-end min-w-0">
+                <div className="flex-1 flex items-center space-x-3.5 py-0.5 overflow-x-auto scrollbar-none justify-start min-w-0 ml-1.5">
                   {registeredRoles.map((role) => {
                     const isActive = userRole === role;
                     return (
@@ -1716,7 +1716,7 @@ export default function App() {
                              role === "owner" ? "🛠️" : 
                              role === "labor" ? "👷" : "🔑"}
                           </span>
-                          <span className="whitespace-nowrap">
+                          <span className="whitespace-normal leading-tight text-left max-w-[95px] text-[8.5px]">
                             {role === "customer" ? t("role_customer") : 
                              role === "owner" ? t("role_owner") : 
                              role === "labor" ? t("role_labor") : 
