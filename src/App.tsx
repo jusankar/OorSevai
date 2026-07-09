@@ -313,6 +313,7 @@ export default function App() {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [showNotificationsDropdown, setShowNotificationsDropdown] = useState(false);
   const [activeBannerNotification, setActiveBannerNotification] = useState<AppNotification | null>(null);
+  const [highlightedBookingId, setHighlightedBookingId] = useState<string | null>(null);
 
   // Dynamically resolve notification messages to the logged-in user name & location
   const resolvedNotifications = useMemo(() => {
@@ -756,6 +757,16 @@ export default function App() {
     }).catch(err => console.error("Failed to save booking to DB:", err));
 
     setBookings((prev) => [newBooking, ...prev]);
+
+    // Trigger notification to the worker
+    triggerNotification(
+      newBooking.id,
+      getProviderMobileForBooking(newBooking),
+      "👷 New Job Offer / Hire Request",
+      `You have been hired by ${userName || "Udaya Kumar"} for ${lb.category} service! Click to view details.`,
+      "general"
+    );
+
     alert(`Successfully booked ${lb.name} for ${lb.category} service! They will contact you shortly.`);
     setActiveTab("bookings");
     setActiveView("home");
@@ -1045,11 +1056,46 @@ export default function App() {
     // Mark specifically as read
     setNotifications(prev => prev.map(n => n.bookingId === bookingId ? { ...n, isRead: true } : n));
     setShowNotificationsDropdown(false);
-    setUserRole("customer");
-    setActiveTab("bookings");
+    
     const b = resolvedBookings.find(x => x.id === bookingId);
     if (b) {
-      setBookingTab(b.status);
+      const isMyShift = b.type === "labor" && ((userMobile && b.itemId.includes(userMobile)) || b.itemId === "lb-4");
+      if (isMyShift) {
+        setUserRole("labor");
+        setActiveTab("dashboard");
+        setHighlightedBookingId(bookingId);
+        setTimeout(() => {
+          const element = document.getElementById(`received-shift-${bookingId}`);
+          if (element) {
+            element.scrollIntoView({ behavior: "smooth", block: "center" });
+          } else {
+            const container = document.getElementById("received-shifts-section");
+            if (container) {
+              container.scrollIntoView({ behavior: "smooth" });
+            }
+          }
+        }, 300);
+        setTimeout(() => {
+          setHighlightedBookingId(null);
+        }, 5000);
+      } else {
+        setUserRole("customer");
+        setActiveTab("bookings");
+        setBookingTab(b.status);
+        setHighlightedBookingId(bookingId);
+        setTimeout(() => {
+          const element = document.getElementById(`customer-booking-${bookingId}`);
+          if (element) {
+            element.scrollIntoView({ behavior: "smooth", block: "center" });
+          }
+        }, 300);
+        setTimeout(() => {
+          setHighlightedBookingId(null);
+        }, 5000);
+      }
+    } else {
+      setUserRole("customer");
+      setActiveTab("bookings");
     }
   };
 
@@ -2443,8 +2489,18 @@ export default function App() {
                         <p className="text-[10px] text-[#8A867E]">Rent machinery or hire laborers to see your active schedules.</p>
                       </div>
                     ) : (
-                      filteredBookings.map((b) => (
-                        <div key={b.id} className="bg-white p-3.5 rounded-2xl border border-[#E8E6E1] shadow-xs space-y-3">
+                      filteredBookings.map((b) => {
+                        const isHighlighted = highlightedBookingId === b.id;
+                        return (
+                          <div 
+                            key={b.id} 
+                            id={`customer-booking-${b.id}`}
+                            className={`p-3.5 rounded-2xl border shadow-xs space-y-3 transition-all duration-500 ${
+                              isHighlighted 
+                                ? "bg-white border-[#3E5C31] ring-4 ring-[#3E5C31]/25 scale-[1.01] shadow-md" 
+                                : "bg-white border-[#E8E6E1]"
+                            }`}
+                          >
                           <div className="flex justify-between items-start">
                             <div>
                               <span className="text-[9px] font-bold text-[#8A867E]">Booking ID: {b.id}</span>
@@ -2574,7 +2630,8 @@ export default function App() {
                             </div>
                           </div>
                         </div>
-                      ))
+                        );
+                      })
                     )}
                   </div>
                 </div>
@@ -3509,7 +3566,7 @@ export default function App() {
               />
 
               {/* My Booked Shifts & Shifts About to Start */}
-              <div className="bg-white p-4 rounded-3xl border border-[#E8E6E1] shadow-xs space-y-3">
+              <div id="received-shifts-section" className="bg-white p-4 rounded-3xl border border-[#E8E6E1] shadow-xs space-y-3">
                 <div className="flex justify-between items-center pb-2 border-b border-[#E8E6E1]">
                   <h3 className="font-extrabold text-xs text-[#2D2D2A] uppercase tracking-wider">
                     My Received Shift Bookings ({receivedShiftBookings.length})
@@ -3531,9 +3588,18 @@ export default function App() {
                 <div className="space-y-3">
                   {receivedShiftBookings.map((b) => {
                     const isNotified = notifications.some(n => n.bookingId === b.id && n.type === "labor_shift_start");
+                    const isHighlighted = highlightedBookingId === b.id;
                     
                     return (
-                      <div key={b.id} className="bg-[#FAF7F2] p-3 rounded-2xl border border-[#E8E6E1] space-y-2 text-xs">
+                      <div 
+                        key={b.id} 
+                        id={`received-shift-${b.id}`}
+                        className={`p-3 rounded-2xl border space-y-2 text-xs transition-all duration-500 ${
+                          isHighlighted 
+                            ? "bg-[#3E5C31]/5 border-[#3E5C31] ring-4 ring-[#3E5C31]/20 scale-[1.01] shadow-md" 
+                            : "bg-[#FAF7F2] border-[#E8E6E1]"
+                        }`}
+                      >
                         <div className="flex justify-between items-center">
                           <div>
                             <span className="text-[8px] font-bold text-slate-400">Shift #{b.id}</span>
