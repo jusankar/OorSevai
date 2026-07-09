@@ -423,3 +423,25 @@ export async function markNotificationAsRead(id: string) {
   }
 }
 
+export async function clearNotifications(recipientId?: string) {
+  try {
+    if (recipientId) {
+      await db
+        .delete(appNotifications)
+        .where(
+          or(
+            eq(appNotifications.recipientId, recipientId),
+            isNull(appNotifications.recipientId)
+          )
+        );
+    } else {
+      await db.delete(appNotifications);
+    }
+    return { success: true };
+  } catch (error) {
+    console.error("Database clearNotifications failed:", error);
+    throw new Error("Failed to clear notifications.", { cause: error });
+  }
+}
+
+

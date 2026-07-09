@@ -227,6 +227,16 @@ async function startServer() {
     }
   });
 
+  app.delete("/api/notifications/clear", async (req, res) => {
+    try {
+      const recipientId = req.query.recipientId as string;
+      const result = await dbService.clearNotifications(recipientId);
+      res.json(result);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // AI Chatbot / Farming Advisory API
   app.post("/api/chat", async (req, res) => {
     try {

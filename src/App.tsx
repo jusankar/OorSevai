@@ -198,7 +198,9 @@ export default function App() {
 
   const resolvedLaborersList = useMemo(() => {
     return laborersList.map(lb => {
-      const isMyProfile = (userMobile && lb.id.includes(userMobile)) || lb.id === "lb-4" || lb.name === "Raju Krishnan";
+      const isMyProfile = userMobile 
+        ? lb.id.includes(userMobile) 
+        : (lb.id === "lb-4" || lb.name === "Raju Krishnan");
       if (isMyProfile) {
         return {
           ...lb,
@@ -217,7 +219,9 @@ export default function App() {
 
   const filteredLaborersList = useMemo(() => {
     return resolvedLaborersList.filter(item => {
-      const isMyProfile = (userMobile && item.id.includes(userMobile)) || item.id === "lb-4";
+      const isMyProfile = userMobile 
+        ? item.id.includes(userMobile) 
+        : (item.id === "lb-4" || item.name === "Raju Krishnan");
       return item.distance <= adminDistance && !isMyProfile;
     });
   }, [resolvedLaborersList, adminDistance, userMobile]);
@@ -281,6 +285,8 @@ export default function App() {
   
   // Bookings Seed Data
   const [bookings, setBookings] = useState<Booking[]>([]);
+  const [rejectConfirmId, setRejectConfirmId] = useState<string | null>(null);
+  const [receivedShiftsPage, setReceivedShiftsPage] = useState<number>(1);
 
   // Disputes Seed Data
   const [disputes, setDisputes] = useState<Dispute[]>([]);
@@ -1049,6 +1055,13 @@ export default function App() {
   };
 
   const handleClearAllNotifications = () => {
+    const url = userMobile 
+      ? `/api/notifications/clear?recipientId=${userMobile}`
+      : "/api/notifications/clear";
+    fetch(url, {
+      method: "DELETE"
+    }).catch(err => console.error("Failed to clear notifications in DB:", err));
+
     setNotifications([]);
   };
 
@@ -1108,7 +1121,9 @@ export default function App() {
   const receivedShiftBookings = useMemo(() => {
     return resolvedBookings.filter(b => {
       if (b.type !== "labor") return false;
-      const isMyProfile = (userMobile && b.itemId.includes(userMobile)) || b.itemId === "lb-4";
+      const isMyProfile = userMobile 
+        ? b.itemId.includes(userMobile) 
+        : b.itemId === "lb-4";
       return isMyProfile;
     });
   }, [resolvedBookings, userMobile]);
@@ -3503,8 +3518,12 @@ export default function App() {
                     <p className="text-[10px] text-[#8A867E]">Toggle to start receiving hyperlocal job bookings.</p>
                   </div>
                   {(() => {
-                    const raju = resolvedLaborersList.find(l => l.id === "lb-4" || l.name === "Raju Krishnan");
-                    const isAvailable = raju ? raju.availability === "available" : true;
+                    const myLaborer = resolvedLaborersList.find(l => {
+                      return userMobile 
+                        ? l.id.includes(userMobile) 
+                        : (l.id === "lb-4" || l.name === "Raju Krishnan");
+                    });
+                    const isAvailable = myLaborer ? myLaborer.availability === "available" : true;
                     return isAvailable ? (
                       <span className="bg-emerald-100 text-emerald-800 text-[9px] font-black uppercase px-2 py-1 rounded-md">
                         ● Available
@@ -3519,18 +3538,31 @@ export default function App() {
 
                 <div className="flex space-x-2">
                   {(() => {
-                    const raju = resolvedLaborersList.find(l => l.id === "lb-4" || l.name === "Raju Krishnan");
-                    const isAvailable = raju ? raju.availability === "available" : true;
+                    const myLaborer = resolvedLaborersList.find(l => {
+                      return userMobile 
+                        ? l.id.includes(userMobile) 
+                        : (l.id === "lb-4" || l.name === "Raju Krishnan");
+                    });
+                    const isAvailable = myLaborer ? myLaborer.availability === "available" : true;
+                    const laborerId = myLaborer ? myLaborer.id : "lb-4";
                     return (
                       <>
                         <button 
                           onClick={() => {
                             setLaborersList(prev => prev.map(l => {
-                              if (l.id === "lb-4" || l.name === "Raju Krishnan") {
+                              const isMe = userMobile 
+                                ? l.id.includes(userMobile) 
+                                : (l.id === "lb-4" || l.name === "Raju Krishnan");
+                              if (isMe) {
                                 return { ...l, availability: "available" };
                               }
                               return l;
                             }));
+                            fetch(`/api/laborers/${laborerId}`, {
+                              method: "PUT",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ availability: "available" })
+                            }).catch(err => console.error("Failed to update laborer availability:", err));
                           }}
                           className={`flex-1 text-xs font-black py-2.5 rounded-xl border transition-all cursor-pointer ${
                             isAvailable 
@@ -3543,11 +3575,19 @@ export default function App() {
                         <button 
                           onClick={() => {
                             setLaborersList(prev => prev.map(l => {
-                              if (l.id === "lb-4" || l.name === "Raju Krishnan") {
+                              const isMe = userMobile 
+                                ? l.id.includes(userMobile) 
+                                : (l.id === "lb-4" || l.name === "Raju Krishnan");
+                              if (isMe) {
                                 return { ...l, availability: "unavailable" };
                               }
                               return l;
                             }));
+                            fetch(`/api/laborers/${laborerId}`, {
+                              method: "PUT",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ availability: "unavailable" })
+                            }).catch(err => console.error("Failed to update laborer availability:", err));
                           }}
                           className={`flex-1 text-xs font-black py-2.5 rounded-xl border transition-all cursor-pointer ${
                             !isAvailable 
@@ -3608,123 +3648,181 @@ export default function App() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {receivedShiftBookings.map((b) => {
-                    const isNotified = notifications.some(n => n.bookingId === b.id && n.type === "labor_shift_start");
-                    const isHighlighted = highlightedBookingId === b.id;
-                    
+                  {(() => {
+                    const ITEMS_PER_PAGE = 5;
+                    const totalPages = Math.ceil(receivedShiftBookings.length / ITEMS_PER_PAGE);
+                    const currentPage = Math.min(receivedShiftsPage, totalPages || 1);
+                    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+                    const paginatedShifts = receivedShiftBookings.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+
                     return (
-                      <div 
-                        key={b.id} 
-                        id={`received-shift-${b.id}`}
-                        className={`p-3 rounded-2xl border space-y-2 text-xs transition-all duration-500 ${
-                          isHighlighted 
-                            ? "bg-[#3E5C31]/5 border-[#3E5C31] ring-4 ring-[#3E5C31]/20 scale-[1.01] shadow-md" 
-                            : "bg-[#FAF7F2] border-[#E8E6E1]"
-                        }`}
-                      >
-                        <div className="flex justify-between items-center">
-                          <div>
-                            <span className="text-[8px] font-bold text-slate-400">Shift #{b.id}</span>
-                            <h4 className="font-black text-xs text-[#2D2D2A]">{b.itemName}</h4>
-                          </div>
-                          <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded ${
-                            b.status === "cancelled" 
-                              ? "bg-rose-100 text-rose-800" 
-                              : b.status === "completed"
-                              ? "bg-slate-100 text-slate-800"
-                              : b.status === "ongoing"
-                              ? "bg-blue-100 text-blue-800 animate-pulse"
-                              : isNotified 
-                              ? "bg-amber-100 text-amber-800 animate-pulse" 
-                              : "bg-emerald-100 text-emerald-800"
-                          }`}>
-                            {b.status === "cancelled" 
-                              ? "Cancelled ❌" 
-                              : b.status === "completed"
-                              ? "Completed ✓"
-                              : b.status === "ongoing"
-                              ? "Ongoing ⚡"
-                              : isNotified 
-                              ? "⏰ Shift Alerted" 
-                              : b.status}
-                          </span>
-                        </div>
-
-                        <div className="text-[10px] text-[#8A867E] space-y-0.5">
-                          <p>👤 <strong>Employer:</strong> {b.customerName}</p>
-                          <p>📍 <strong>Location:</strong> {b.location}</p>
-                          <p>📅 <strong>Schedule:</strong> {b.startDate}</p>
-                        </div>
-
-                        <div className="flex justify-between items-center pt-1 border-t border-[#E8E6E1]/50">
-                          <span className="font-extrabold text-[#3E5C31] text-[11px]">Daily Wage: ₹{b.totalAmount}</span>
-                          
-                          {b.status === "upcoming" && (
-                            <div className="flex items-center space-x-1.5">
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  if (confirm(language === "ta" ? "இந்த முன்பதிவை நிராகரிக்க வேண்டுமா?" : "Are you sure you want to reject this booking?")) {
-                                    fetch(`/api/bookings/${b.id}`, {
-                                      method: "PUT",
-                                      headers: { "Content-Type": "application/json" },
-                                      body: JSON.stringify({ status: "cancelled" })
-                                    }).catch(err => console.error("Failed to reject booking:", err));
-
-                                    setBookings(prev => prev.map(x => x.id === b.id ? { ...x, status: "cancelled" } : x));
-                                    
-                                    triggerNotification(
-                                      b.id,
-                                      b.customerId || "9999999999",
-                                      language === "ta" ? "❌ பணி நிராகரிக்கப்பட்டது" : "❌ Hire Request Rejected",
-                                      language === "ta" 
-                                        ? `${userName || "ராஜு கிருஷ்ணன்"} உங்கள் பணி முன்பதிவு கோரிக்கையை நிராகரித்துள்ளார்.` 
-                                        : `${userName || "Raju Krishnan"} has rejected your shift hire request.`,
-                                      "general"
-                                    );
-                                  }
-                                }}
-                                className="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-[9px] font-black px-2.5 py-1.5 rounded-lg transition-all cursor-pointer shadow-xs whitespace-nowrap"
-                              >
-                                {language === "ta" ? "நிராகரி ❌" : "Reject Booking ❌"}
-                              </button>
-
-                              <button
-                                type="button"
-                                disabled={isNotified}
-                                onClick={() => {
-                                  // Transition booking status to 'ongoing'
-                                  fetch(`/api/bookings/${b.id}`, {
-                                    method: "PUT",
-                                    headers: { "Content-Type": "application/json" },
-                                    body: JSON.stringify({ status: "ongoing" })
-                                  }).catch(err => console.error("Failed to update booking status:", err));
-
-                                  setBookings(prev => prev.map(x => x.id === b.id ? { ...x, status: "ongoing" } : x));
-                                  // Push notification
-                                  triggerNotification(
-                                    b.id,
-                                    b.customerId || "9999999999",
-                                    "⏰ Labor Shift Starting",
-                                    `${userName || "Raju Krishnan"}'s shift at ${b.location} is starting in 30 minutes! Please prepare the workspace.`,
-                                    "labor_shift_start"
-                                  );
-                                }}
-                                className={`text-[9px] font-black px-3 py-1.5 rounded-lg border transition-all cursor-pointer flex items-center gap-1 ${
-                                  isNotified 
-                                    ? "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed"
-                                    : "bg-[#3E5C31] text-white border-[#3E5C31] hover:bg-[#3E5C31]/95 shadow-xs"
+                      <>
+                        <div className="space-y-3">
+                          {paginatedShifts.map((b) => {
+                            const isNotified = notifications.some(n => n.bookingId === b.id && n.type === "labor_shift_start");
+                            const isHighlighted = highlightedBookingId === b.id;
+                            const isConfirmingReject = rejectConfirmId === b.id;
+                            
+                            return (
+                              <div 
+                                key={b.id} 
+                                id={`received-shift-${b.id}`}
+                                className={`p-3 rounded-2xl border space-y-2 text-xs transition-all duration-500 ${
+                                  isHighlighted 
+                                    ? "bg-[#3E5C31]/5 border-[#3E5C31] ring-4 ring-[#3E5C31]/20 scale-[1.01] shadow-md" 
+                                    : "bg-[#FAF7F2] border-[#E8E6E1]"
                                 }`}
                               >
-                                <Clock className="h-3 w-3" />
-                                {isNotified ? "Starting Notified" : "Notify Shift Starting ⏰"}
-                              </button>
-                            </div>
-                          )}
+                                <div className="flex justify-between items-center">
+                                  <div>
+                                    <span className="text-[8px] font-bold text-slate-400">Shift #{b.id}</span>
+                                    <h4 className="font-black text-xs text-[#2D2D2A]">{b.itemName}</h4>
+                                  </div>
+                                  <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded ${
+                                    b.status === "cancelled" 
+                                      ? "bg-rose-100 text-rose-800" 
+                                      : b.status === "completed"
+                                      ? "bg-slate-100 text-slate-800"
+                                      : b.status === "ongoing"
+                                      ? "bg-blue-100 text-blue-800 animate-pulse"
+                                      : isNotified 
+                                      ? "bg-amber-100 text-amber-800 animate-pulse" 
+                                      : "bg-emerald-100 text-emerald-800"
+                                  }`}>
+                                    {b.status === "cancelled" 
+                                      ? "Cancelled ❌" 
+                                      : b.status === "completed"
+                                      ? "Completed ✓"
+                                      : b.status === "ongoing"
+                                      ? "Ongoing ⚡"
+                                      : isNotified 
+                                      ? "⏰ Shift Alerted" 
+                                      : b.status}
+                                  </span>
+                                </div>
+
+                                <div className="text-[10px] text-[#8A867E] space-y-0.5">
+                                  <p>👤 <strong>Employer:</strong> {b.customerName}</p>
+                                  <p>📍 <strong>Location:</strong> {b.location}</p>
+                                  <p>📅 <strong>Schedule:</strong> {b.startDate}</p>
+                                </div>
+
+                                <div className="flex justify-between items-center pt-1 border-t border-[#E8E6E1]/50">
+                                  <span className="font-extrabold text-[#3E5C31] text-[11px]">Daily Wage: ₹{b.totalAmount}</span>
+                                  
+                                  {b.status === "upcoming" && (
+                                    <div className="flex items-center space-x-1.5">
+                                      {isConfirmingReject ? (
+                                        <div className="flex items-center space-x-1">
+                                          <span className="text-[8px] text-rose-600 font-extrabold animate-pulse uppercase">Sure?</span>
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              fetch(`/api/bookings/${b.id}`, {
+                                                method: "PUT",
+                                                headers: { "Content-Type": "application/json" },
+                                                body: JSON.stringify({ status: "cancelled" })
+                                              }).catch(err => console.error("Failed to reject booking:", err));
+
+                                              setBookings(prev => prev.map(x => x.id === b.id ? { ...x, status: "cancelled" } : x));
+                                              setRejectConfirmId(null);
+                                              
+                                              triggerNotification(
+                                                b.id,
+                                                b.customerId || "9999999999",
+                                                language === "ta" ? "❌ பணி நிராகரிக்கப்பட்டது" : "❌ Hire Request Rejected",
+                                                language === "ta" 
+                                                  ? `${userName || "ராஜு கிருஷ்ணன்"} உங்கள் பணி முன்பதிவு கோரிக்கையை நிராகரித்துள்ளார்.` 
+                                                  : `${userName || "Raju Krishnan"} has rejected your shift hire request.`,
+                                                "general"
+                                              );
+                                            }}
+                                            className="bg-rose-600 text-white text-[9px] font-bold px-2 py-1 rounded hover:bg-rose-700 cursor-pointer"
+                                          >
+                                            {language === "ta" ? "ஆம் ❌" : "Yes ❌"}
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={() => setRejectConfirmId(null)}
+                                            className="bg-slate-200 text-[#2D2D2A] text-[9px] font-bold px-2 py-1 rounded hover:bg-slate-300 cursor-pointer"
+                                          >
+                                            {language === "ta" ? "இல்லை" : "No"}
+                                          </button>
+                                        </div>
+                                      ) : (
+                                        <button
+                                          type="button"
+                                          onClick={() => setRejectConfirmId(b.id)}
+                                          className="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-[9px] font-black px-2.5 py-1.5 rounded-lg transition-all cursor-pointer shadow-xs whitespace-nowrap"
+                                        >
+                                          {language === "ta" ? "நிராகரி ❌" : "Reject Booking ❌"}
+                                        </button>
+                                      )}
+
+                                      <button
+                                        type="button"
+                                        disabled={isNotified}
+                                        onClick={() => {
+                                          // Transition booking status to 'ongoing'
+                                          fetch(`/api/bookings/${b.id}`, {
+                                            method: "PUT",
+                                            headers: { "Content-Type": "application/json" },
+                                            body: JSON.stringify({ status: "ongoing" })
+                                          }).catch(err => console.error("Failed to update booking status:", err));
+
+                                          setBookings(prev => prev.map(x => x.id === b.id ? { ...x, status: "ongoing" } : x));
+                                          // Push notification
+                                          triggerNotification(
+                                            b.id,
+                                            b.customerId || "9999999999",
+                                            "⏰ Labor Shift Starting",
+                                            `${userName || "Raju Krishnan"}'s shift at ${b.location} is starting in 30 minutes! Please prepare the workspace.`,
+                                            "labor_shift_start"
+                                          );
+                                        }}
+                                        className={`text-[9px] font-black px-3 py-1.5 rounded-lg border transition-all cursor-pointer flex items-center gap-1 ${
+                                          isNotified 
+                                            ? "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed"
+                                            : "bg-[#3E5C31] text-white border-[#3E5C31] hover:bg-[#3E5C31]/95 shadow-xs"
+                                        }`}
+                                      >
+                                        <Clock className="h-3 w-3" />
+                                        {isNotified ? "Starting Notified" : "Notify Shift Starting ⏰"}
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
                         </div>
-                      </div>
+
+                        {totalPages > 1 && (
+                          <div className="flex items-center justify-between pt-3 border-t border-[#E8E6E1] text-[10px]">
+                            <button
+                              type="button"
+                              disabled={currentPage === 1}
+                              onClick={() => setReceivedShiftsPage(p => Math.max(1, p - 1))}
+                              className="px-2.5 py-1 rounded-lg border border-[#E8E6E1] bg-white text-[#2D2D2A] disabled:opacity-40 disabled:cursor-not-allowed font-bold"
+                            >
+                              ← Prev
+                            </button>
+                            <span className="text-[#8A867E] font-bold">
+                              Page {currentPage} of {totalPages}
+                            </span>
+                            <button
+                              type="button"
+                              disabled={currentPage === totalPages}
+                              onClick={() => setReceivedShiftsPage(p => Math.min(totalPages, p + 1))}
+                              className="px-2.5 py-1 rounded-lg border border-[#E8E6E1] bg-white text-[#2D2D2A] disabled:opacity-40 disabled:cursor-not-allowed font-bold"
+                            >
+                              Next →
+                            </button>
+                          </div>
+                        )}
+                      </>
                     );
-                  })}
+                  })()}
                 </div>
               )}
             </div>
