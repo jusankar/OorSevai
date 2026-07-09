@@ -79,6 +79,159 @@ export default function App() {
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showProviderPromptModal, setShowProviderPromptModal] = useState(false);
   
+  // Custom Star Rating Dialog State
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [reviewBooking, setReviewBooking] = useState<Booking | null>(null);
+  const [reviewRating, setReviewRating] = useState<number>(5);
+  const [reviewComment, setReviewComment] = useState<string>("");
+  const [reviewedBookingIds, setReviewedBookingIds] = useState<string[]>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem("oorsevai_reviewed_bookings");
+        return saved ? JSON.parse(saved) : [];
+      } catch (e) {
+        return [];
+      }
+    }
+    return [];
+  });
+
+  const handleOpenReviewModal = (booking: Booking) => {
+    setReviewBooking(booking);
+    setReviewRating(5);
+    setReviewComment("");
+    setShowReviewModal(true);
+  };
+
+  const handleSubmitReview = async () => {
+    if (!reviewBooking) return;
+
+    const bookingId = reviewBooking.id;
+    const ratingValue = reviewRating;
+    const comment = reviewComment;
+
+    try {
+      if (reviewBooking.type === "equipment") {
+        // Find existing equipment
+        const eq = equipmentList.find(e => e.id === reviewBooking.itemId);
+        if (eq) {
+          const currentCount = eq.reviewsCount || 0;
+          const currentRating = eq.rating || 5.0;
+          const newCount = currentCount + 1;
+          const newRating = Math.round(((currentRating * currentCount + ratingValue) / newCount) * 10) / 10;
+
+          // Put to server
+          const response = await fetch(`/api/equipment/${eq.id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              rating: newRating,
+              reviewsCount: newCount
+            })
+          });
+
+          if (response.ok) {
+            // Update local state
+            setEquipmentList(prev => prev.map(e => e.id === eq.id ? { ...e, rating: newRating, reviewsCount: newCount } : e));
+          }
+        }
+      } else {
+        // Laborer
+        const lb = laborersList.find(l => l.id === reviewBooking.itemId);
+        if (lb) {
+          const currentCount = lb.reviewsCount || 0;
+          const currentRating = lb.rating || 5.0;
+          const newCount = currentCount + 1;
+          const newRating = Math.round(((currentRating * currentCount + ratingValue) / newCount) * 10) / 10;
+
+          // Put to server
+          const response = await fetch(`/api/laborers/${lb.id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              rating: newRating,
+              reviewsCount: newCount
+            })
+          });
+
+          if (response.ok) {
+            // Update local state
+            setLaborersList(prev => prev.map(l => l.id === lb.id ? { ...l, rating: newRating, reviewsCount: newCount } : l));
+          }
+        }
+      }
+
+      // Add to reviewed bookings
+      const updatedReviewed = [...reviewedBookingIds, bookingId];
+      setReviewedBookingIds(updatedReviewed);
+      localStorage.setItem("oorsevai_reviewed_bookings", JSON.stringify(updatedReviewed));
+
+      // Show success notification
+      triggerNotification(
+        bookingId,
+        userMobile || "9999999999",
+        language === "ta" ? "⭐ மதிப்பாய்வு சமர்ப்பிக்கப்பட்டது" : "⭐ Review Submitted",
+        language === "ta" 
+          ? "மதிப்பாய்வு வழங்கியமைக்கு நன்றி! விவசாயிகளுக்கு இது மிகவும் பயனுள்ளதாக இருக்கும்."
+          : `Thank you for leaving a ${ratingValue}-star review for ${reviewBooking.itemName}!`,
+        "general"
+      );
+
+      // Close modal
+      setShowReviewModal(false);
+      setReviewBooking(null);
+    } catch (err) {
+      console.error("Error submitting review:", err);
+    }
+  };
+  
+  // Beautiful Custom Dialog State (Replaces blocked window.confirm/window.prompt inside Preview iframe)
+  const [customDialog, setCustomDialog] = useState<{
+    isOpen: boolean;
+    type: "confirm" | "prompt";
+    title: string;
+    message: string;
+    placeholder?: string;
+    inputValue?: string;
+    onConfirm: (val?: string) => void;
+  }>({
+    isOpen: false,
+    type: "confirm",
+    title: "",
+    message: "",
+    onConfirm: () => {}
+  });
+
+  const showConfirm = (title: string, message: string, onConfirm: () => void) => {
+    setCustomDialog({
+      isOpen: true,
+      type: "confirm",
+      title,
+      message,
+      onConfirm: () => {
+        onConfirm();
+        setCustomDialog(prev => ({ ...prev, isOpen: false }));
+      }
+    });
+  };
+
+  const showPrompt = (title: string, message: string, placeholder: string, onConfirm: (val: string) => void) => {
+    setCustomDialog({
+      isOpen: true,
+      type: "prompt",
+      title,
+      message,
+      placeholder,
+      inputValue: "",
+      onConfirm: (val) => {
+        if (val) {
+          onConfirm(val);
+        }
+        setCustomDialog(prev => ({ ...prev, isOpen: false }));
+      }
+    });
+  };
+  
   // Navigation State
   const [activeTab, setActiveTab] = useState<"home" | "bookings" | "chat" | "dashboard">("home");
   const [activeView, setActiveView] = useState<
@@ -143,25 +296,37 @@ export default function App() {
     const fetchDatabaseData = async () => {
       try {
         const bookingsUrl = userRole === "admin"
-          ? "/api/bookings"
-          : `/api/bookings?customerId=${userMobile}`;
+          ? `/api/bookings?_t=${Date.now()}`
+          : `/api/bookings?customerId=${userMobile}&_t=${Date.now()}`;
 
         const notificationsUrl = userRole === "admin"
-          ? "/api/notifications"
-          : `/api/notifications?recipientId=${userMobile}`;
+          ? `/api/notifications?_t=${Date.now()}`
+          : `/api/notifications?recipientId=${userMobile}&_t=${Date.now()}`;
 
         const [eqRes, lbRes, bRes, dRes, nRes] = await Promise.all([
-          fetch("/api/equipment").then(r => r.json()),
-          fetch("/api/laborers").then(r => r.json()),
+          fetch(`/api/equipment?_t=${Date.now()}`).then(r => r.json()),
+          fetch(`/api/laborers?_t=${Date.now()}`).then(r => r.json()),
           fetch(bookingsUrl).then(r => r.json()),
-          fetch("/api/disputes").then(r => r.json()),
+          fetch(`/api/disputes?_t=${Date.now()}`).then(r => r.json()),
           fetch(notificationsUrl).then(r => r.json()),
         ]);
         if (Array.isArray(eqRes)) setEquipmentList(eqRes);
         if (Array.isArray(lbRes)) setLaborersList(lbRes);
         if (Array.isArray(bRes)) setBookings(bRes);
         if (Array.isArray(dRes)) setDisputes(dRes);
-        if (Array.isArray(nRes)) setNotifications(nRes);
+        if (Array.isArray(nRes)) {
+          let clearedIds: string[] = [];
+          if (typeof window !== "undefined") {
+            try {
+              const savedCleared = localStorage.getItem("oorsevai_cleared_notifications");
+              clearedIds = savedCleared ? JSON.parse(savedCleared) : [];
+            } catch (e) {
+              clearedIds = [];
+            }
+          }
+          const activeNotifs = nRes.filter(n => !clearedIds.includes(n.id));
+          setNotifications(activeNotifs);
+        }
       } catch (err) {
         console.error("Failed to load persistent datasets from Cloud SQL:", err);
       }
@@ -323,22 +488,33 @@ export default function App() {
 
   // Dynamically resolve notification messages to the logged-in user name & location
   const resolvedNotifications = useMemo(() => {
-    return notifications.map(n => {
-      let message = n.message;
-      if (userName) {
-        message = message
-          .replace("Ravi Kumar's", `${userName}'s`)
-          .replace("Raju Krishnan's", `${userName}'s`)
-          .replace("Ravi Kumar", userName)
-          .replace("Raju Krishnan", userName);
+    let clearedIds: string[] = [];
+    if (typeof window !== "undefined") {
+      try {
+        const savedCleared = localStorage.getItem("oorsevai_cleared_notifications");
+        clearedIds = savedCleared ? JSON.parse(savedCleared) : [];
+      } catch (e) {
+        clearedIds = [];
       }
-      if (userLocation) {
-        message = message
-          .replace(/Coimbatore,\s*Tamil\s*Nadu/gi, userLocation)
-          .replace(/Coimbatore/gi, userLocation);
-      }
-      return { ...n, message };
-    });
+    }
+    return notifications
+      .filter(n => !clearedIds.includes(n.id))
+      .map(n => {
+        let message = n.message;
+        if (userName) {
+          message = message
+            .replace("Ravi Kumar's", `${userName}'s`)
+            .replace("Raju Krishnan's", `${userName}'s`)
+            .replace("Ravi Kumar", userName)
+            .replace("Raju Krishnan", userName);
+        }
+        if (userLocation) {
+          message = message
+            .replace(/Coimbatore,\s*Tamil\s*Nadu/gi, userLocation)
+            .replace(/Coimbatore/gi, userLocation);
+        }
+        return { ...n, message };
+      });
   }, [notifications, userName, userLocation]);
 
   const resolvedActiveBannerNotification = useMemo(() => {
@@ -1062,6 +1238,18 @@ export default function App() {
       method: "DELETE"
     }).catch(err => console.error("Failed to clear notifications in DB:", err));
 
+    if (typeof window !== "undefined") {
+      try {
+        const savedCleared = localStorage.getItem("oorsevai_cleared_notifications");
+        const currentCleared: string[] = savedCleared ? JSON.parse(savedCleared) : [];
+        const currentIds = notifications.map(n => n.id);
+        const updatedCleared = Array.from(new Set([...currentCleared, ...currentIds]));
+        localStorage.setItem("oorsevai_cleared_notifications", JSON.stringify(updatedCleared));
+      } catch (e) {
+        console.error("Failed to save cleared notifications to localStorage:", e);
+      }
+    }
+
     setNotifications([]);
   };
 
@@ -1115,8 +1303,12 @@ export default function App() {
   // Filter My Bookings state tabs
   const [bookingTab, setBookingTab] = useState<"upcoming" | "ongoing" | "completed" | "cancelled">("upcoming");
   const filteredBookings = useMemo(() => {
-    return resolvedBookings.filter(b => b.customerId === userMobile && b.status === bookingTab);
-  }, [resolvedBookings, userMobile, bookingTab]);
+    if (userRole === "admin") {
+      return resolvedBookings.filter(b => b.status === bookingTab);
+    }
+    const effectiveMobile = userMobile || "9999999999";
+    return resolvedBookings.filter(b => b.customerId === effectiveMobile && b.status === bookingTab);
+  }, [resolvedBookings, userMobile, bookingTab, userRole]);
 
   const receivedShiftBookings = useMemo(() => {
     return resolvedBookings.filter(b => {
@@ -2489,7 +2681,7 @@ export default function App() {
                   <div className="flex justify-between items-center">
                     <h2 className="text-lg font-black text-[#2D2D2A]">My Rental Bookings</h2>
                     <span className="text-xs bg-[#3E5C31]/10 text-[#3E5C31] px-2.5 py-0.5 rounded-full font-bold">
-                      {resolvedBookings.filter(b => userRole === "admin" ? true : b.customerId === userMobile).length} Total
+                      {resolvedBookings.filter(b => userRole === "admin" ? true : b.customerId === (userMobile || "9999999999")).length} Total
                     </span>
                   </div>
 
@@ -2562,35 +2754,48 @@ export default function App() {
                               {b.status === "completed" && (
                                 <button 
                                   onClick={() => {
-                                    alert("Review submitted successfully! Thank you for the feedback.");
+                                    if (reviewedBookingIds.includes(b.id)) return;
+                                    handleOpenReviewModal(b);
                                   }}
-                                  className="bg-[#3E5C31] text-white text-[9px] font-extrabold px-3 py-1.5 rounded-lg hover:bg-[#3E5C31]/95"
+                                  disabled={reviewedBookingIds.includes(b.id)}
+                                  className={`${
+                                    reviewedBookingIds.includes(b.id)
+                                      ? "bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500 cursor-not-allowed border border-slate-200 dark:border-slate-700"
+                                      : "bg-[#3E5C31] text-white hover:bg-[#344F28]"
+                                  } text-[9px] font-extrabold px-3 py-1.5 rounded-lg transition-all`}
                                 >
-                                  ⭐ Review
+                                  {reviewedBookingIds.includes(b.id)
+                                    ? (language === "ta" ? "மதிப்பாய்வு செய்யப்பட்டது ✓" : "Reviewed ✓")
+                                    : (language === "ta" ? "⭐ மதிப்பீடு" : "⭐ Review")
+                                  }
                                 </button>
                               )}
 
                               {b.status === "upcoming" && (
                                 <button
                                   onClick={() => {
-                                    if (confirm("Are you sure you want to cancel this booking?")) {
-                                      fetch(`/api/bookings/${b.id}`, {
-                                        method: "PUT",
-                                        headers: { "Content-Type": "application/json" },
-                                        body: JSON.stringify({ status: "cancelled" })
-                                      })
-                                      .then(() => {
-                                        setBookings(prev => prev.map(x => x.id === b.id ? { ...x, status: "cancelled" } : x));
-                                        triggerNotification(
-                                          b.id,
-                                          getProviderMobileForBooking(b),
-                                          "❌ Booking Cancelled",
-                                          `Your booking for ${b.itemName} has been cancelled by the customer.`,
-                                          "general"
-                                        );
-                                      })
-                                      .catch(err => console.error("Failed to cancel booking:", err));
-                                    }
+                                    showConfirm(
+                                      language === "ta" ? "முன்பதிவை ரத்து செய்" : "Cancel Booking",
+                                      language === "ta" ? "இந்த முன்பதிவை ரத்து செய்ய விரும்புகிறீர்களா?" : "Are you sure you want to cancel this booking?",
+                                      () => {
+                                        fetch(`/api/bookings/${b.id}`, {
+                                          method: "PUT",
+                                          headers: { "Content-Type": "application/json" },
+                                          body: JSON.stringify({ status: "cancelled" })
+                                        })
+                                        .then(() => {
+                                          setBookings(prev => prev.map(x => x.id === b.id ? { ...x, status: "cancelled" } : x));
+                                          triggerNotification(
+                                            b.id,
+                                            getProviderMobileForBooking(b),
+                                            "❌ Booking Cancelled",
+                                            `Your booking for ${b.itemName} has been cancelled by the customer.`,
+                                            "general"
+                                          );
+                                        })
+                                        .catch(err => console.error("Failed to cancel booking:", err));
+                                      }
+                                    );
                                   }}
                                   className="bg-rose-600 text-white text-[9px] font-extrabold px-3 py-1.5 rounded-lg hover:bg-rose-700 transition-all"
                                 >
@@ -2601,24 +2806,28 @@ export default function App() {
                               {b.status === "ongoing" && (
                                 <button
                                   onClick={() => {
-                                    if (confirm("Are you sure you want to complete this booking?")) {
-                                      fetch(`/api/bookings/${b.id}`, {
-                                        method: "PUT",
-                                        headers: { "Content-Type": "application/json" },
-                                        body: JSON.stringify({ status: "completed" })
-                                      })
-                                      .then(() => {
-                                        setBookings(prev => prev.map(x => x.id === b.id ? { ...x, status: "completed" } : x));
-                                        triggerNotification(
-                                          b.id,
-                                          getProviderMobileForBooking(b),
-                                          "🎉 Booking Completed",
-                                          `Your booking for ${b.itemName} has been marked as completed. Thank you!`,
-                                          "general"
-                                        );
-                                      })
-                                      .catch(err => console.error("Failed to complete booking:", err));
-                                    }
+                                    showConfirm(
+                                      language === "ta" ? "முன்பதிவை முடி" : "Complete Booking",
+                                      language === "ta" ? "இந்த முன்பதிவை வெற்றிகரமாக முடிக்க விரும்புகிறீர்களா?" : "Are you sure you want to complete this booking?",
+                                      () => {
+                                        fetch(`/api/bookings/${b.id}`, {
+                                          method: "PUT",
+                                          headers: { "Content-Type": "application/json" },
+                                          body: JSON.stringify({ status: "completed" })
+                                        })
+                                        .then(() => {
+                                          setBookings(prev => prev.map(x => x.id === b.id ? { ...x, status: "completed" } : x));
+                                          triggerNotification(
+                                            b.id,
+                                            getProviderMobileForBooking(b),
+                                            "🎉 Booking Completed",
+                                            `Your booking for ${b.itemName} has been marked as completed. Thank you!`,
+                                            "general"
+                                          );
+                                        })
+                                        .catch(err => console.error("Failed to complete booking:", err));
+                                      }
+                                    );
                                   }}
                                   className="bg-emerald-600 text-white text-[9px] font-extrabold px-3 py-1.5 rounded-lg hover:bg-emerald-700 transition-all"
                                 >
@@ -2629,28 +2838,35 @@ export default function App() {
                               {b.status !== "cancelled" && (
                                 <button
                                   onClick={() => {
-                                    const reason = prompt("Enter your reason for dispute/complaint:");
-                                    if (reason) {
-                                      const newDis: Dispute = {
-                                        id: `DSP-${Math.floor(100 + Math.random() * 900)}`,
-                                        bookingId: b.id,
-                                        itemName: b.itemName,
-                                        complainant: "Udaya Kumar (Customer)",
-                                        reason: reason,
-                                        status: "open",
-                                        date: new Date().toISOString().split('T')[0]
-                                      };
+                                    showPrompt(
+                                      language === "ta" ? "முரண்பாட்டை பதிவு செய்" : "Lodge Dispute",
+                                      language === "ta" ? "உங்கள் முரண்பாடு அல்லது புகாருக்கான காரணத்தை உள்ளிடவும்:" : "Enter your reason for dispute/complaint:",
+                                      language === "ta" ? "காரணம்..." : "Reason for dispute...",
+                                      (reason) => {
+                                        const newDis: Dispute = {
+                                          id: `DSP-${Math.floor(100 + Math.random() * 900)}`,
+                                          bookingId: b.id,
+                                          itemName: b.itemName,
+                                          complainant: `${userName || "Raju Krishnan"} (Customer)`,
+                                          reason: reason,
+                                          status: "open",
+                                          date: new Date().toISOString().split('T')[0]
+                                        };
 
-                                      // Save to serverless PostgreSQL database
-                                      fetch("/api/disputes", {
-                                        method: "POST",
-                                        headers: { "Content-Type": "application/json" },
-                                        body: JSON.stringify(newDis)
-                                      }).catch(err => console.error("Failed to save dispute to DB:", err));
+                                        // Save to serverless PostgreSQL database
+                                        fetch("/api/disputes", {
+                                          method: "POST",
+                                          headers: { "Content-Type": "application/json" },
+                                          body: JSON.stringify(newDis)
+                                        }).catch(err => console.error("Failed to save dispute to DB:", err));
 
-                                      setDisputes(prev => [...prev, newDis]);
-                                      alert("Dispute lodged successfully. Our admin team will investigate and contact you within 24 hours.");
-                                    }
+                                        setDisputes(prev => [...prev, newDis]);
+                                        alert(language === "ta"
+                                          ? "முரண்பாடு வெற்றிகரமாக பதிவு செய்யப்பட்டது. எங்கள் குழு 24 மணி நேரத்திற்குள் உங்களைத் தொடர்பு கொள்ளும்."
+                                          : "Dispute lodged successfully. Our admin team will investigate and contact you within 24 hours."
+                                        );
+                                      }
+                                    );
                                   }}
                                   className="bg-rose-50 text-rose-700 text-[9px] font-extrabold px-3 py-1.5 rounded-lg border border-rose-100 hover:bg-rose-100"
                                 >
@@ -3827,26 +4043,30 @@ export default function App() {
                                       <button
                                         type="button"
                                         onClick={() => {
-                                          if (confirm(language === "ta" ? "இந்த முன்பதிவை வெற்றிகரமாக முடிக்க விரும்புகிறீர்களா?" : "Are you sure you want to complete this booking?")) {
-                                            fetch(`/api/bookings/${b.id}`, {
-                                              method: "PUT",
-                                              headers: { "Content-Type": "application/json" },
-                                              body: JSON.stringify({ status: "completed" })
-                                            })
-                                            .then(() => {
-                                              setBookings(prev => prev.map(x => x.id === b.id ? { ...x, status: "completed" } : x));
-                                              triggerNotification(
-                                                b.id,
-                                                b.customerId || "9999999999",
-                                                language === "ta" ? "🎉 பணி நிறைவடைந்தது" : "🎉 Shift Completed",
-                                                language === "ta"
-                                                  ? "பணி வெற்றிகரமாக முடிக்கப்பட்டு முன்பதிவு பூர்த்தி செய்யப்பட்டது."
-                                                  : `${b.itemName} has been marked as completed successfully. Thank you!`,
-                                                "general"
-                                              );
-                                            })
-                                            .catch(err => console.error("Failed to complete booking:", err));
-                                          }
+                                          showConfirm(
+                                            language === "ta" ? "முன்பதிவை முடி" : "Complete Booking",
+                                            language === "ta" ? "இந்த முன்பதிவை வெற்றிகரமாக முடிக்க விரும்புகிறீர்களா?" : "Are you sure you want to complete this booking?",
+                                            () => {
+                                              fetch(`/api/bookings/${b.id}`, {
+                                                method: "PUT",
+                                                headers: { "Content-Type": "application/json" },
+                                                body: JSON.stringify({ status: "completed" })
+                                              })
+                                              .then(() => {
+                                                setBookings(prev => prev.map(x => x.id === b.id ? { ...x, status: "completed" } : x));
+                                                triggerNotification(
+                                                  b.id,
+                                                  b.customerId || "9999999999",
+                                                  language === "ta" ? "🎉 பணி நிறைவடைந்தது" : "🎉 Shift Completed",
+                                                  language === "ta"
+                                                    ? "பணி வெற்றிகரமாக முடிக்கப்பட்டு முன்பதிவு பூர்த்தி செய்யப்பட்டது."
+                                                    : `${b.itemName} has been marked as completed successfully. Thank you!`,
+                                                  "general"
+                                                );
+                                              })
+                                              .catch(err => console.error("Failed to complete booking:", err));
+                                            }
+                                          );
                                         }}
                                         className="bg-emerald-600 hover:bg-emerald-700 text-white text-[9px] font-black px-3 py-1.5 rounded-lg transition-all cursor-pointer shadow-xs flex items-center gap-1"
                                       >
@@ -5079,6 +5299,165 @@ export default function App() {
                     className="w-full bg-slate-200/60 dark:bg-slate-800 text-slate-500 hover:bg-slate-300/60 text-xs font-bold py-2 rounded-xl cursor-pointer"
                   >
                     {language === "ta" ? "மூடவும்" : "Cancel"}
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* ==================== CUSTOM CONSTRUCTED DIALOG (REPLACES WINDOW.CONFIRM/PROMPT) ==================== */}
+        <AnimatePresence>
+          {customDialog.isOpen && (
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/60 z-50 flex items-center justify-center p-4"
+            >
+              <motion.div 
+                initial={{ scale: 0.9, y: 20 }}
+                animate={{ scale: 1, y: 0 }}
+                exit={{ scale: 0.9, y: 20 }}
+                className="w-full max-w-xs bg-[#FAF7F2] dark:bg-slate-900 rounded-2xl p-5 border border-[#E8E6E1] dark:border-slate-800 shadow-2xl"
+              >
+                <div className="text-2xl mb-1 text-center">💬</div>
+                <h3 className="text-sm font-black text-[#2D2D2A] dark:text-slate-100 tracking-tight text-center">
+                  {customDialog.title}
+                </h3>
+                <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-relaxed mt-2 text-center">
+                  {customDialog.message}
+                </p>
+
+                {customDialog.type === "prompt" && (
+                  <div className="mt-3">
+                    <input
+                      type="text"
+                      value={customDialog.inputValue || ""}
+                      onChange={(e) => setCustomDialog(prev => ({ ...prev, inputValue: e.target.value }))}
+                      placeholder={customDialog.placeholder || "Enter details..."}
+                      className="w-full bg-white dark:bg-[#1A2320] border border-[#E8E6E1] dark:border-slate-800 rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-[#3E5C31] dark:text-slate-100 outline-none text-black dark:text-white"
+                      autoFocus
+                    />
+                  </div>
+                )}
+                
+                <div className="mt-4 flex space-x-2">
+                  <button
+                    onClick={() => {
+                      setCustomDialog(prev => ({ ...prev, isOpen: false }));
+                    }}
+                    className="flex-1 bg-slate-200/60 dark:bg-slate-800 text-slate-500 hover:bg-slate-300/60 text-xs font-bold py-2.5 rounded-xl cursor-pointer text-center"
+                  >
+                    {language === "ta" ? "ரத்துசெய்" : "Cancel"}
+                  </button>
+                  <button
+                    onClick={() => {
+                      customDialog.onConfirm(customDialog.inputValue);
+                    }}
+                    className="flex-1 bg-[#3E5C31] hover:bg-[#344F28] text-white text-xs font-black py-2.5 rounded-xl shadow-xs cursor-pointer text-center"
+                  >
+                    {language === "ta" ? "சரி" : "Confirm"}
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* ==================== CUSTOM CONSTRUCTED STAR RATING DIALOG ==================== */}
+        <AnimatePresence>
+          {showReviewModal && reviewBooking && (
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/60 z-50 flex items-center justify-center p-4"
+            >
+              <motion.div 
+                initial={{ scale: 0.9, y: 20 }}
+                animate={{ scale: 1, y: 0 }}
+                exit={{ scale: 0.9, y: 20 }}
+                className="w-full max-w-xs bg-[#FAF7F2] dark:bg-slate-900 rounded-2xl p-5 border border-[#E8E6E1] dark:border-slate-800 shadow-2xl space-y-4"
+              >
+                <div className="text-center">
+                  <div className="text-3xl mb-1 text-center">⭐</div>
+                  <h3 className="text-sm font-black text-[#2D2D2A] dark:text-slate-100 tracking-tight">
+                    {language === "ta" ? "மதிப்பாய்வு மற்றும் கருத்து" : "Rate & Review"}
+                  </h3>
+                  <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                    {language === "ta" 
+                      ? `${reviewBooking.itemName} உடனான உங்கள் அனுபவம் எப்படி இருந்தது?`
+                      : `How was your experience with ${reviewBooking.itemName}?`}
+                  </p>
+                </div>
+
+                {/* Star Row */}
+                <div className="flex justify-center items-center space-x-1.5 py-2">
+                  {[1, 2, 3, 4, 5].map((starValue) => {
+                    const isActive = starValue <= reviewRating;
+                    return (
+                      <motion.button
+                        key={starValue}
+                        type="button"
+                        whileHover={{ scale: 1.2 }}
+                        whileTap={{ scale: 0.9 }}
+                        onClick={() => setReviewRating(starValue)}
+                        className="focus:outline-none p-1 cursor-pointer"
+                      >
+                        <Star 
+                          className={`w-8 h-8 transition-colors ${
+                            isActive 
+                              ? "text-amber-500 fill-amber-500 drop-shadow-[0_0_4px_rgba(245,158,11,0.4)]" 
+                              : "text-slate-300 dark:text-slate-700 hover:text-amber-300"
+                          }`} 
+                        />
+                      </motion.button>
+                    );
+                  })}
+                </div>
+
+                {/* Rating Label Indicator */}
+                <div className="text-center">
+                  <span className="text-[10px] font-black bg-amber-500/10 text-amber-600 dark:text-amber-400 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                    {reviewRating === 5 ? (language === "ta" ? "சிறப்பானது" : "Excellent") :
+                     reviewRating === 4 ? (language === "ta" ? "மிக நன்று" : "Very Good") :
+                     reviewRating === 3 ? (language === "ta" ? "நன்று" : "Good") :
+                     reviewRating === 2 ? (language === "ta" ? "சராசரி" : "Average") :
+                     (language === "ta" ? "மோசம்" : "Poor")}
+                  </span>
+                </div>
+
+                {/* Custom Review Input */}
+                <div className="space-y-1">
+                  <label className="text-[9px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-wider">
+                    {language === "ta" ? "கருத்துரை (விரும்பினால்)" : "Review Comment (Optional)"}
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={reviewComment}
+                    onChange={(e) => setReviewComment(e.target.value)}
+                    placeholder={language === "ta" ? "இங்கு உங்கள் கருத்துக்களைப் பகிரவும்..." : "Share your feedback here..."}
+                    className="w-full bg-white dark:bg-[#1A2320] border border-[#E8E6E1] dark:border-slate-800 rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-[#3E5C31] dark:text-slate-100 outline-none text-black dark:text-white resize-none"
+                  />
+                </div>
+
+                {/* Modal Buttons */}
+                <div className="flex space-x-2 pt-1">
+                  <button
+                    onClick={() => {
+                      setShowReviewModal(false);
+                      setReviewBooking(null);
+                    }}
+                    className="flex-1 bg-slate-200/60 dark:bg-slate-800 text-slate-500 hover:bg-slate-300/60 text-xs font-bold py-2.5 rounded-xl cursor-pointer text-center"
+                  >
+                    {language === "ta" ? "ரத்துசெய்" : "Cancel"}
+                  </button>
+                  <button
+                    onClick={handleSubmitReview}
+                    className="flex-1 bg-[#3E5C31] hover:bg-[#344F28] text-white text-xs font-black py-2.5 rounded-xl shadow-xs cursor-pointer text-center"
+                  >
+                    {language === "ta" ? "சமர்ப்பி" : "Submit"}
                   </button>
                 </div>
               </motion.div>
