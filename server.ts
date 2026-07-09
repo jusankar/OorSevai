@@ -13,12 +13,12 @@ async function startServer() {
 
   app.use(express.json());
 
-  // Run database auto-seeding on startup
+  // Database auto-seeding is disabled per user request
   try {
-    console.log("Checking database and running auto-seeding if needed...");
+    console.log("Database auto-seeding is disabled. Database will remain clean and empty.");
     await autoSeed();
   } catch (seedErr) {
-    console.error("Database initialization / auto-seeding failed:", seedErr);
+    console.error("Database initialization check failed:", seedErr);
   }
 
   // Initialize Gemini SDK with telemetry User-Agent
