@@ -1116,8 +1116,13 @@ export default function App() {
   // Calculate Owner stats
   const ownerEquipment = resolvedEquipmentList.filter(eq => eq.ownerId === "owner-1");
   const ownerTotalEarnings = resolvedBookings
-    .filter(b => b.status === "completed" || b.status === "ongoing")
+    .filter(b => b.type === "equipment" && (b.status === "completed" || b.status === "ongoing"))
     .reduce((sum, b) => sum + (b.totalAmount * 0.9), 0); // 90% goes to owner after 10% commission
+
+  // Calculate Laborer stats
+  const laborTotalEarnings = receivedShiftBookings
+    .filter(b => b.status === "completed" || b.status === "ongoing")
+    .reduce((sum, b) => sum + b.totalAmount, 0); // 100% daily wages go directly to the worker
 
   const [regName, setRegName] = useState("");
   const [regMobile, setRegMobile] = useState("");
@@ -3558,6 +3563,23 @@ export default function App() {
                 </div>
               </div>
 
+              {/* Earnings & Shift Stats widgets */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-white p-4 rounded-2xl border border-[#E8E6E1] shadow-xs space-y-1">
+                  <span className="text-[10px] font-bold text-[#8A867E] uppercase">{language === "ta" ? "மொத்த வருவாய்" : "Total Earnings"}</span>
+                  <h3 className="text-xl font-black text-[#3E5C31]">₹{laborTotalEarnings.toLocaleString()}</h3>
+                  <p className="text-[8px] text-[#8A867E] font-medium">{language === "ta" ? "நேரடி தினசரி ஊதியம் (100% வருவாய்)" : "Direct daily wages (100% payout)"}</p>
+                </div>
+
+                <div className="bg-white p-4 rounded-2xl border border-[#E8E6E1] shadow-xs space-y-1">
+                  <span className="text-[10px] font-bold text-[#8A867E] uppercase">{language === "ta" ? "மொத்த ஷிப்டுகள்" : "Total Shifts"}</span>
+                  <h3 className="text-xl font-black text-[#2D2D2A]">{receivedShiftBookings.length}</h3>
+                  <p className="text-[8px] text-emerald-600 font-bold">
+                    ● {receivedShiftBookings.filter(b => b.status === "ongoing" || b.status === "upcoming").length} {language === "ta" ? "செயலில் உள்ளது" : "active / upcoming"}
+                  </p>
+                </div>
+              </div>
+
               {/* Laborer Work & Shift Calendar */}
               <LaborerCalendar 
                 bookings={receivedShiftBookings} 
@@ -3638,36 +3660,66 @@ export default function App() {
                           <span className="font-extrabold text-[#3E5C31] text-[11px]">Daily Wage: ₹{b.totalAmount}</span>
                           
                           {b.status === "upcoming" && (
-                            <button
-                              type="button"
-                              disabled={isNotified}
-                              onClick={() => {
-                                // Transition booking status to 'ongoing'
-                                fetch(`/api/bookings/${b.id}`, {
-                                  method: "PUT",
-                                  headers: { "Content-Type": "application/json" },
-                                  body: JSON.stringify({ status: "ongoing" })
-                                }).catch(err => console.error("Failed to update booking status:", err));
+                            <div className="flex items-center space-x-1.5">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (confirm(language === "ta" ? "இந்த முன்பதிவை நிராகரிக்க வேண்டுமா?" : "Are you sure you want to reject this booking?")) {
+                                    fetch(`/api/bookings/${b.id}`, {
+                                      method: "PUT",
+                                      headers: { "Content-Type": "application/json" },
+                                      body: JSON.stringify({ status: "cancelled" })
+                                    }).catch(err => console.error("Failed to reject booking:", err));
 
-                                setBookings(prev => prev.map(x => x.id === b.id ? { ...x, status: "ongoing" } : x));
-                                // Push notification
-                                triggerNotification(
-                                  b.id,
-                                  b.customerId || "9999999999",
-                                  "⏰ Labor Shift Starting",
-                                  `${userName || "Raju Krishnan"}'s shift at ${b.location} is starting in 30 minutes! Please prepare the workspace.`,
-                                  "labor_shift_start"
-                                );
-                              }}
-                              className={`text-[9px] font-black px-3 py-1.5 rounded-lg border transition-all cursor-pointer flex items-center gap-1 ${
-                                isNotified 
-                                  ? "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed"
-                                  : "bg-[#3E5C31] text-white border-[#3E5C31] hover:bg-[#3E5C31]/95 shadow-xs"
-                              }`}
-                            >
-                              <Clock className="h-3 w-3" />
-                              {isNotified ? "Starting Notified" : "Notify Shift Starting ⏰"}
-                            </button>
+                                    setBookings(prev => prev.map(x => x.id === b.id ? { ...x, status: "cancelled" } : x));
+                                    
+                                    triggerNotification(
+                                      b.id,
+                                      b.customerId || "9999999999",
+                                      language === "ta" ? "❌ பணி நிராகரிக்கப்பட்டது" : "❌ Hire Request Rejected",
+                                      language === "ta" 
+                                        ? `${userName || "ராஜு கிருஷ்ணன்"} உங்கள் பணி முன்பதிவு கோரிக்கையை நிராகரித்துள்ளார்.` 
+                                        : `${userName || "Raju Krishnan"} has rejected your shift hire request.`,
+                                      "general"
+                                    );
+                                  }
+                                }}
+                                className="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-[9px] font-black px-2.5 py-1.5 rounded-lg transition-all cursor-pointer shadow-xs whitespace-nowrap"
+                              >
+                                {language === "ta" ? "நிராகரி ❌" : "Reject Booking ❌"}
+                              </button>
+
+                              <button
+                                type="button"
+                                disabled={isNotified}
+                                onClick={() => {
+                                  // Transition booking status to 'ongoing'
+                                  fetch(`/api/bookings/${b.id}`, {
+                                    method: "PUT",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({ status: "ongoing" })
+                                  }).catch(err => console.error("Failed to update booking status:", err));
+
+                                  setBookings(prev => prev.map(x => x.id === b.id ? { ...x, status: "ongoing" } : x));
+                                  // Push notification
+                                  triggerNotification(
+                                    b.id,
+                                    b.customerId || "9999999999",
+                                    "⏰ Labor Shift Starting",
+                                    `${userName || "Raju Krishnan"}'s shift at ${b.location} is starting in 30 minutes! Please prepare the workspace.`,
+                                    "labor_shift_start"
+                                  );
+                                }}
+                                className={`text-[9px] font-black px-3 py-1.5 rounded-lg border transition-all cursor-pointer flex items-center gap-1 ${
+                                  isNotified 
+                                    ? "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed"
+                                    : "bg-[#3E5C31] text-white border-[#3E5C31] hover:bg-[#3E5C31]/95 shadow-xs"
+                                }`}
+                              >
+                                <Clock className="h-3 w-3" />
+                                {isNotified ? "Starting Notified" : "Notify Shift Starting ⏰"}
+                              </button>
+                            </div>
                           )}
                         </div>
                       </div>
