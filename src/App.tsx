@@ -107,9 +107,9 @@ export default function App() {
   // Language & Settings states with persistence
   const [language, setLanguage] = useState<Language>(() => {
     if (typeof window !== "undefined") {
-      return (localStorage.getItem("oorsevai_lang") as Language) || "en";
+      return (localStorage.getItem("oorsevai_lang") as Language) || "ta";
     }
-    return "en";
+    return "ta";
   });
   const [ownerImage, setOwnerImage] = useState<string>(() => {
     if (typeof window !== "undefined") {
@@ -1326,14 +1326,14 @@ export default function App() {
         {!isRegistered ? (
           <div className="flex-1 flex flex-col h-full bg-[#FAF7F2] dark:bg-slate-950 overflow-y-auto scrollbar-none">
             {/* Simple Registration Header */}
-            <div className="bg-[#3E5C31] dark:bg-[#203119] text-white px-4 py-4 border-b border-white/10 flex justify-between items-center gap-2 shadow-sm shrink-0">
-              <div className="flex items-center space-x-2 min-w-0 flex-1">
-                <div className="w-8 h-8 bg-white rounded-xl overflow-hidden flex items-center justify-center p-0.5 shadow-sm shrink-0">
+            <div className="bg-[#3E5C31] dark:bg-[#203119] text-white px-4 py-4 border-b border-white/10 flex justify-between items-center gap-3 shadow-sm shrink-0">
+              <div className="flex items-center space-x-3 min-w-0 flex-1">
+                <div className="w-14 h-14 bg-white rounded-2xl overflow-hidden flex items-center justify-center p-1.5 shadow-md shrink-0">
                   <img src="/icon.svg" alt="Oor Sevai" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
                 </div>
                 <div className="min-w-0">
-                  <h1 className="text-sm font-black tracking-tight leading-none text-white">{t("app_title")}</h1>
-                  <span className="text-[8px] uppercase tracking-wider text-white/70 font-bold block whitespace-normal leading-tight">{t("app_subtitle")}</span>
+                  <h1 className="text-base font-black tracking-tight leading-tight text-white">{t("app_title")}</h1>
+                  <span className="text-[10px] uppercase tracking-wider text-white/80 font-bold block whitespace-normal leading-tight mt-0.5">{t("app_subtitle")}</span>
                 </div>
               </div>
               
@@ -1609,14 +1609,14 @@ export default function App() {
             {/* TOP PLATFORM BAR & ROLE SWITCHER */}
             <div id="top-branding-bar" className="bg-[#3E5C31] dark:bg-[#203119] text-white border-b border-white/10 shadow-sm shrink-0 flex flex-col">
               {/* Row 1: Logo & Action Items */}
-              <div className="px-4 py-3 flex items-center justify-between gap-2">
-                <div className="flex items-center space-x-2 min-w-0 flex-1">
-                  <div className="w-8 h-8 bg-white rounded-xl overflow-hidden flex items-center justify-center shadow-xs shrink-0 p-0.5">
+              <div className="px-4 py-3 flex items-center justify-between gap-3">
+                <div className="flex items-center space-x-3 min-w-0 flex-1">
+                  <div className="w-14 h-14 bg-white rounded-2xl overflow-hidden flex items-center justify-center shadow-md shrink-0 p-1.5">
                     <img src="/icon.svg" alt="Oor Sevai Logo" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
                   </div>
-                  <div className="min-w-0">
-                    <h1 className="text-sm font-black tracking-tight leading-none text-white">{t("app_title")}</h1>
-                    <span className="text-[8px] uppercase tracking-wider text-white/70 font-bold block whitespace-normal leading-tight">{t("app_subtitle")}</span>
+                  <div className="min-w-0 flex-1">
+                    <h1 className="text-base font-black tracking-tight leading-tight text-white">{t("app_title")}</h1>
+                    <span className="text-[10px] uppercase tracking-wider text-white/80 font-bold block whitespace-normal leading-tight mt-0.5">{t("app_subtitle")}</span>
                   </div>
                 </div>
                 
@@ -1685,13 +1685,13 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Row 2: Minimalist Interactive Sub-Tabs with Active Indicators (Option 3) */}
-              <div className="px-4 py-1.5 border-t border-white/5 bg-black/15 flex items-center justify-between gap-3 shrink-0 min-w-0">
-                <span className="text-[9px] text-white/50 font-black uppercase tracking-widest flex items-center gap-1 shrink-0 select-none">
+              {/* Row 2: Minimalist Interactive Sub-Tabs with Active Indicators (Option 3 - Prominent) */}
+              <div className="px-4 py-3 border-t border-white/5 bg-black/20 flex items-center justify-between gap-3 shrink-0 min-w-0">
+                <span className="text-[11px] text-white/70 font-black uppercase tracking-widest flex items-center gap-1.5 shrink-0 select-none">
                   <span>🎭</span> {t("role_label")}
                 </span>
                 
-                <div className="flex-1 flex items-center space-x-3.5 py-0.5 overflow-x-auto scrollbar-none justify-start min-w-0 ml-1.5">
+                <div className="flex-1 flex items-center space-x-4 py-0.5 overflow-x-auto scrollbar-none justify-start min-w-0 ml-2">
                   {registeredRoles.map((role) => {
                     const isActive = userRole === role;
                     return (
@@ -1706,17 +1706,17 @@ export default function App() {
                             setActiveTab("dashboard");
                           }
                         }}
-                        className="relative pb-1 pt-0.5 px-1.5 flex flex-col items-center cursor-pointer transition-all duration-200 focus:outline-none shrink-0"
+                        className="relative pb-2 pt-1 px-2 flex flex-col items-center cursor-pointer transition-all duration-200 focus:outline-none shrink-0"
                       >
-                        <div className={`flex items-center space-x-1.5 text-[9px] font-black uppercase tracking-wider transition-colors duration-200 ${
-                          isActive ? "text-white scale-[1.03]" : "text-white/60 hover:text-white/90"
+                        <div className={`flex items-center space-x-2 text-[11px] font-black uppercase tracking-wider transition-colors duration-200 ${
+                          isActive ? "text-white scale-[1.02]" : "text-white/60 hover:text-white/90"
                         }`}>
-                          <span className="text-xs">
+                          <span className="text-sm shrink-0">
                             {role === "customer" ? "🚜" : 
                              role === "owner" ? "🛠️" : 
                              role === "labor" ? "👷" : "🔑"}
                           </span>
-                          <span className="whitespace-normal leading-tight text-left max-w-[95px] text-[8.5px]">
+                          <span className="whitespace-normal leading-snug text-left max-w-[110px] text-[10.5px]">
                             {role === "customer" ? t("role_customer") : 
                              role === "owner" ? t("role_owner") : 
                              role === "labor" ? t("role_labor") : 
@@ -1726,7 +1726,7 @@ export default function App() {
                         {isActive && (
                           <motion.div 
                             layoutId="activeRoleIndicator"
-                            className="absolute bottom-0 h-0.5 w-full bg-emerald-400 rounded-full"
+                            className="absolute bottom-0 h-[3px] w-full bg-emerald-400 rounded-full"
                             transition={{ type: "spring", stiffness: 350, damping: 30 }}
                           />
                         )}
