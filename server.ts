@@ -201,7 +201,8 @@ async function startServer() {
   // ------------------------------------------
   app.get("/api/notifications", async (req, res) => {
     try {
-      const items = await dbService.getNotificationsList();
+      const recipientId = req.query.recipientId as string;
+      const items = await dbService.getNotificationsList(recipientId);
       res.json(items);
     } catch (error: any) {
       res.status(500).json({ error: error.message });

@@ -99,6 +99,7 @@ export interface AppNotification {
   title: string;
   message: string;
   type: "equipment_on_the_way" | "labor_shift_start" | "general";
+  recipientId?: string;
   isRead: boolean;
   timestamp: string;
 }

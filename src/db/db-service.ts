@@ -1,6 +1,6 @@
 import { db } from "./index.ts";
 import { users, equipment, laborers, bookings, disputes, appNotifications } from "./schema.ts";
-import { eq, or, like } from "drizzle-orm";
+import { eq, or, like, isNull } from "drizzle-orm";
 
 // ------------------------------------------
 // 1. Users Queries (Query Layer)
@@ -367,8 +367,19 @@ export async function updateDisputeItem(id: string, item: any) {
 // 6. Notifications Queries (Query Layer)
 // ------------------------------------------
 
-export async function getNotificationsList() {
+export async function getNotificationsList(recipientId?: string) {
   try {
+    if (recipientId) {
+      return await db
+        .select()
+        .from(appNotifications)
+        .where(
+          or(
+            eq(appNotifications.recipientId, recipientId),
+            isNull(appNotifications.recipientId)
+          )
+        );
+    }
     return await db.select().from(appNotifications);
   } catch (error) {
     console.error("Database getNotificationsList failed:", error);
@@ -386,6 +397,7 @@ export async function addNotificationItem(item: any) {
         title: item.title,
         message: item.message,
         type: item.type,
+        recipientId: item.recipientId || null,
         isRead: !!item.isRead,
         timestamp: item.timestamp,
       })

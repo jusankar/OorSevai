@@ -146,12 +146,16 @@ export default function App() {
           ? "/api/bookings"
           : `/api/bookings?customerId=${userMobile}`;
 
+        const notificationsUrl = userRole === "admin"
+          ? "/api/notifications"
+          : `/api/notifications?recipientId=${userMobile}`;
+
         const [eqRes, lbRes, bRes, dRes, nRes] = await Promise.all([
           fetch("/api/equipment").then(r => r.json()),
           fetch("/api/laborers").then(r => r.json()),
           fetch(bookingsUrl).then(r => r.json()),
           fetch("/api/disputes").then(r => r.json()),
-          fetch("/api/notifications").then(r => r.json()),
+          fetch(notificationsUrl).then(r => r.json()),
         ]);
         if (Array.isArray(eqRes)) setEquipmentList(eqRes);
         if (Array.isArray(lbRes)) setLaborersList(lbRes);
@@ -358,14 +362,38 @@ export default function App() {
     });
   }, [bookings, userLocation]);
 
+  // Helper to determine the provider's registered mobile number for a booking
+  const getProviderMobileForBooking = (b: Booking): string => {
+    if (b.type === "equipment") {
+      const eq = equipmentList.find(e => e.id === b.itemId);
+      return eq?.ownerId || "owner-1";
+    } else {
+      const match = b.itemId.match(/lb-(\d+)-/);
+      if (match && match[1]) {
+        return match[1];
+      }
+      if (b.itemId === "lb-4") {
+        return "9876543210"; // Default Raju Krishnan mobile
+      }
+      return b.itemId;
+    }
+  };
+
   // Utility to push new notifications and trigger real-time banner
-  const triggerNotification = (bookingId: string, title: string, message: string, type: "equipment_on_the_way" | "labor_shift_start" | "general") => {
+  const triggerNotification = (
+    bookingId: string,
+    recipientId: string,
+    title: string,
+    message: string,
+    type: "equipment_on_the_way" | "labor_shift_start" | "general"
+  ) => {
     const newNotif: AppNotification = {
       id: `notif-${Date.now()}`,
       bookingId,
       title,
       message,
       type,
+      recipientId,
       isRead: false,
       timestamp: "Just Now"
     };
@@ -377,13 +405,16 @@ export default function App() {
       body: JSON.stringify(newNotif)
     }).catch(err => console.error("Failed to save notification to DB:", err));
 
-    setNotifications(prev => [newNotif, ...prev]);
-    setActiveBannerNotification(newNotif);
-    
-    // Automatically dismiss the banner after 4.5 seconds
-    setTimeout(() => {
-      setActiveBannerNotification(current => current?.id === newNotif.id ? null : current);
-    }, 4500);
+    // Only update local state if the current user is the recipient (or admin)
+    if (recipientId === userMobile || userRole === "admin") {
+      setNotifications(prev => [newNotif, ...prev]);
+      setActiveBannerNotification(newNotif);
+      
+      // Automatically dismiss the banner after 4.5 seconds
+      setTimeout(() => {
+        setActiveBannerNotification(current => current?.id === newNotif.id ? null : current);
+      }, 4500);
+    }
   };
 
   // Chat/AI State
@@ -2466,6 +2497,7 @@ export default function App() {
                                         setBookings(prev => prev.map(x => x.id === b.id ? { ...x, status: "cancelled" } : x));
                                         triggerNotification(
                                           b.id,
+                                          getProviderMobileForBooking(b),
                                           "❌ Booking Cancelled",
                                           `Your booking for ${b.itemName} has been cancelled by the customer.`,
                                           "general"
@@ -2493,6 +2525,7 @@ export default function App() {
                                         setBookings(prev => prev.map(x => x.id === b.id ? { ...x, status: "completed" } : x));
                                         triggerNotification(
                                           b.id,
+                                          getProviderMobileForBooking(b),
                                           "🎉 Booking Completed",
                                           `Your booking for ${b.itemName} has been marked as completed. Thank you!`,
                                           "general"
@@ -2767,6 +2800,7 @@ export default function App() {
                                 // Push notification
                                 triggerNotification(
                                   b.id,
+                                  b.customerId || "9999999999",
                                   "🚚 Equipment On The Way",
                                   `Ravi Kumar's ${b.itemName} has been dispatched and is on the way to your site at ${b.location}! Track delivery fees: ₹${b.deliveryMethod === 'delivery' ? deliveryFee : 0}.`,
                                   "equipment_on_the_way"
@@ -2794,6 +2828,7 @@ export default function App() {
                                 // Push notification
                                 triggerNotification(
                                   b.id,
+                                  b.customerId || "9999999999",
                                   "🏁 Rental Completed",
                                   `Ravi Kumar's ${b.itemName} has been successfully returned and marked completed. Please log operating hours.`,
                                   "general"
@@ -3552,6 +3587,7 @@ export default function App() {
                                 // Push notification
                                 triggerNotification(
                                   b.id,
+                                  b.customerId || "9999999999",
                                   "⏰ Labor Shift Starting",
                                   `${userName || "Raju Krishnan"}'s shift at ${b.location} is starting in 30 minutes! Please prepare the workspace.`,
                                   "labor_shift_start"

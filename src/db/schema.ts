@@ -100,6 +100,7 @@ export const appNotifications = pgTable("app_notifications", {
   title: text("title").notNull(),
   message: text("message").notNull(),
   type: text("type").notNull(), // "equipment_on_the_way" | "labor_shift_start" | "general"
+  recipientId: text("recipient_id"),
   isRead: boolean("is_read").default(false),
   timestamp: text("timestamp").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
