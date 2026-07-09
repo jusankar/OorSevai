@@ -204,7 +204,7 @@ export default function App() {
       if (isMyProfile) {
         return {
           ...lb,
-          name: userName || lb.name,
+          name: lb.name || userName || "Raju Krishnan",
           image: workerImage || lb.image
         };
       }
@@ -362,12 +362,12 @@ export default function App() {
   // Dynamically resolve booking locations to the user's current/registered location
   const resolvedBookings = useMemo(() => {
     return bookings.map(b => {
-      if (b.location === "Coimbatore, Tamil Nadu") {
+      if (b.location === "Coimbatore, Tamil Nadu" && b.customerId === userMobile) {
         return { ...b, location: userLocation };
       }
       return b;
     });
-  }, [bookings, userLocation]);
+  }, [bookings, userLocation, userMobile]);
 
   // Helper to determine the provider's registered mobile number for a booking
   const getProviderMobileForBooking = (b: Booking): string => {
@@ -750,7 +750,7 @@ export default function App() {
       status: "upcoming",
       customerName: userName || "Udaya Kumar",
       customerId: userMobile || "9999999999",
-      location: lb.location,
+      location: userLocation || lb.location,
       paymentStatus: "paid",
       dateBooked: new Date().toISOString().split('T')[0]
     };
@@ -1129,10 +1129,20 @@ export default function App() {
   }, [resolvedBookings, userMobile]);
 
   // Calculate Owner stats
-  const ownerEquipment = resolvedEquipmentList.filter(eq => eq.ownerId === "owner-1");
-  const ownerTotalEarnings = resolvedBookings
-    .filter(b => b.type === "equipment" && (b.status === "completed" || b.status === "ongoing"))
-    .reduce((sum, b) => sum + (b.totalAmount * 0.9), 0); // 90% goes to owner after 10% commission
+  const ownerEquipment = useMemo(() => {
+    return resolvedEquipmentList.filter(eq => {
+      if (userMobile) {
+        return eq.ownerId === userMobile || eq.ownerId === "owner-1" || eq.ownerId === "8963556856";
+      }
+      return eq.ownerId === "owner-1" || eq.ownerId === "8963556856";
+    });
+  }, [resolvedEquipmentList, userMobile]);
+
+  const ownerTotalEarnings = useMemo(() => {
+    return resolvedBookings
+      .filter(b => b.type === "equipment" && (b.status === "completed" || b.status === "ongoing") && ownerEquipment.some(eq => eq.id === b.itemId))
+      .reduce((sum, b) => sum + (b.totalAmount * 0.9), 0); // 90% goes to owner after 10% commission
+  }, [resolvedBookings, ownerEquipment]);
 
   // Calculate Laborer stats
   const laborTotalEarnings = receivedShiftBookings
@@ -2479,7 +2489,7 @@ export default function App() {
                   <div className="flex justify-between items-center">
                     <h2 className="text-lg font-black text-[#2D2D2A]">My Rental Bookings</h2>
                     <span className="text-xs bg-[#3E5C31]/10 text-[#3E5C31] px-2.5 py-0.5 rounded-full font-bold">
-                      {resolvedBookings.length} Total
+                      {resolvedBookings.filter(b => userRole === "admin" ? true : b.customerId === userMobile).length} Total
                     </span>
                   </div>
 
@@ -2823,7 +2833,7 @@ export default function App() {
               <div className="bg-white p-4 rounded-3xl border border-[#E8E6E1] shadow-xs space-y-3">
                 <div className="flex justify-between items-center pb-2 border-b border-[#E8E6E1]">
                   <h3 className="font-extrabold text-xs text-[#2D2D2A] uppercase tracking-wider">
-                    Rent Bookings & Dispatches ({resolvedBookings.filter(b => b.type === "equipment").length})
+                    Rent Bookings & Dispatches ({resolvedBookings.filter(b => b.type === "equipment" && (userRole === "admin" ? true : ownerEquipment.some(eq => eq.id === b.itemId))).length})
                   </h3>
                   <span className="bg-[#3E5C31]/10 text-[#3E5C31] text-[8px] font-black uppercase px-2 py-0.5 rounded truncate max-w-[120px]" title={userLocation}>
                     {userLocation.split(",")[0]} Hub
@@ -2831,7 +2841,7 @@ export default function App() {
                 </div>
 
                 <div className="space-y-3">
-                  {resolvedBookings.filter(b => b.type === "equipment").map((b) => {
+                  {resolvedBookings.filter(b => b.type === "equipment" && (userRole === "admin" ? true : ownerEquipment.some(eq => eq.id === b.itemId))).map((b) => {
                     const equipment = resolvedEquipmentList.find(e => e.id === b.itemId);
                     const isDispatched = notifications.some(n => n.bookingId === b.id && n.type === "equipment_on_the_way");
                     
@@ -3474,7 +3484,17 @@ export default function App() {
                   <span className="text-[9px] bg-[#3E5C31]/10 text-[#3E5C31] font-black uppercase tracking-widest px-2.5 py-1 rounded-full">
                     Labor Hub
                   </span>
-                  <h2 className="text-lg font-black text-[#2D2D2A] mt-1.5">Welcome, {userName || "Raju Krishnan"}</h2>
+                  {(() => {
+                    const myLaborer = resolvedLaborersList.find(l => {
+                      return userMobile 
+                        ? l.id.includes(userMobile) 
+                        : (l.id === "lb-4" || l.name === "Raju Krishnan");
+                    });
+                    const displayName = myLaborer ? myLaborer.name : (userName || "Raju Krishnan");
+                    return (
+                      <h2 className="text-lg font-black text-[#2D2D2A] mt-1.5">Welcome, {displayName}</h2>
+                    );
+                  })()}
                 </div>
                 <div className="relative group w-10 h-10 rounded-full border border-[#3E5C31] p-0.5 shrink-0">
                   <input 
@@ -3621,11 +3641,21 @@ export default function App() {
               </div>
 
               {/* Laborer Work & Shift Calendar */}
-              <LaborerCalendar 
-                bookings={receivedShiftBookings} 
-                language={language} 
-                userName={userName || "Raju Krishnan"} 
-              />
+              {(() => {
+                const myLaborer = resolvedLaborersList.find(l => {
+                  return userMobile 
+                    ? l.id.includes(userMobile) 
+                    : (l.id === "lb-4" || l.name === "Raju Krishnan");
+                });
+                const lName = myLaborer ? myLaborer.name : (userName || "Raju Krishnan");
+                return (
+                  <LaborerCalendar 
+                    bookings={receivedShiftBookings} 
+                    language={language} 
+                    userName={lName} 
+                  />
+                );
+              })()}
 
               {/* My Booked Shifts & Shifts About to Start */}
               <div id="received-shifts-section" className="bg-white p-4 rounded-3xl border border-[#E8E6E1] shadow-xs space-y-3">
@@ -3788,6 +3818,39 @@ export default function App() {
                                       >
                                         <Clock className="h-3 w-3" />
                                         {isNotified ? "Starting Notified" : "Notify Shift Starting ⏰"}
+                                      </button>
+                                    </div>
+                                  )}
+
+                                  {b.status === "ongoing" && (
+                                    <div className="flex items-center space-x-1.5">
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          if (confirm(language === "ta" ? "இந்த முன்பதிவை வெற்றிகரமாக முடிக்க விரும்புகிறீர்களா?" : "Are you sure you want to complete this booking?")) {
+                                            fetch(`/api/bookings/${b.id}`, {
+                                              method: "PUT",
+                                              headers: { "Content-Type": "application/json" },
+                                              body: JSON.stringify({ status: "completed" })
+                                            })
+                                            .then(() => {
+                                              setBookings(prev => prev.map(x => x.id === b.id ? { ...x, status: "completed" } : x));
+                                              triggerNotification(
+                                                b.id,
+                                                b.customerId || "9999999999",
+                                                language === "ta" ? "🎉 பணி நிறைவடைந்தது" : "🎉 Shift Completed",
+                                                language === "ta"
+                                                  ? "பணி வெற்றிகரமாக முடிக்கப்பட்டு முன்பதிவு பூர்த்தி செய்யப்பட்டது."
+                                                  : `${b.itemName} has been marked as completed successfully. Thank you!`,
+                                                "general"
+                                              );
+                                            })
+                                            .catch(err => console.error("Failed to complete booking:", err));
+                                          }
+                                        }}
+                                        className="bg-emerald-600 hover:bg-emerald-700 text-white text-[9px] font-black px-3 py-1.5 rounded-lg transition-all cursor-pointer shadow-xs flex items-center gap-1"
+                                      >
+                                        Complete Booking ✓
                                       </button>
                                     </div>
                                   )}
