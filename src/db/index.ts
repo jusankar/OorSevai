@@ -9,12 +9,12 @@ const { Pool } = pg;
 export const createPool = () => {
   if (process.env.DATABASE_URL) {
     console.log("Using DATABASE_URL for connection...");
+    const isVercel = Boolean(process.env.VERCEL);
     return new Pool({
       connectionString: process.env.DATABASE_URL,
-      connectionTimeoutMillis: 5000,
-      idleTimeoutMillis: 10000,
-      max: 10,
-      keepAlive: true,
+      connectionTimeoutMillis: 15000, // Increased timeout
+      idleTimeoutMillis: isVercel ? 100 : 10000, // Close idle connections quickly on Vercel to prevent stale connections
+      max: isVercel ? 1 : 10, // Max 1 connection per serverless function instance
       ssl: { rejectUnauthorized: false },
     });
   }
