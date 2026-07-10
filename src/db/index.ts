@@ -7,6 +7,18 @@ const { Pool } = pg;
 
 // Function to create a new connection pool.
 export const createPool = () => {
+  if (process.env.DATABASE_URL) {
+    console.log("Using DATABASE_URL for connection...");
+    return new Pool({
+      connectionString: process.env.DATABASE_URL,
+      connectionTimeoutMillis: 5000,
+      idleTimeoutMillis: 10000,
+      max: 10,
+      keepAlive: true,
+      ssl: { rejectUnauthorized: false },
+    });
+  }
+
   const host = process.env.SQL_HOST || "localhost";
   const user = process.env.SQL_USER || "postgres";
   const password = process.env.SQL_PASSWORD;
