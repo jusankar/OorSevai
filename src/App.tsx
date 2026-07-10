@@ -166,7 +166,7 @@ export default function App() {
       setReviewedBookingIds(updatedReviewed);
       localStorage.setItem("oorsevai_reviewed_bookings", JSON.stringify(updatedReviewed));
 
-      // Show success notification
+      // Show success notification to customer
       triggerNotification(
         bookingId,
         userMobile || "9999999999",
@@ -174,6 +174,15 @@ export default function App() {
         language === "ta" 
           ? "மதிப்பாய்வு வழங்கியமைக்கு நன்றி! விவசாயிகளுக்கு இது மிகவும் பயனுள்ளதாக இருக்கும்."
           : `Thank you for leaving a ${ratingValue}-star review for ${reviewBooking.itemName}!`,
+        "general"
+      );
+
+      // Trigger notification to the owner
+      triggerNotification(
+        bookingId,
+        getProviderMobileForBooking(reviewBooking),
+        "⭐ New Review Received",
+        `${userName || "A customer"} left a ${ratingValue}-star review for ${reviewBooking.itemName}.`,
         "general"
       );
 
@@ -295,11 +304,11 @@ export default function App() {
   useEffect(() => {
     const fetchDatabaseData = async () => {
       try {
-        const bookingsUrl = userRole === "admin"
+        const bookingsUrl = (userRole === "admin" || userRole === "owner")
           ? `/api/bookings?_t=${Date.now()}`
           : `/api/bookings?customerId=${userMobile}&_t=${Date.now()}`;
 
-        const notificationsUrl = userRole === "admin"
+        const notificationsUrl = (userRole === "admin" || userRole === "owner")
           ? `/api/notifications?_t=${Date.now()}`
           : `/api/notifications?recipientId=${userMobile}&_t=${Date.now()}`;
 
@@ -591,8 +600,8 @@ export default function App() {
       body: JSON.stringify(newNotif)
     }).catch(err => console.error("Failed to save notification to DB:", err));
 
-    // Only update local state if the current user is the recipient (or admin)
-    if (recipientId === userMobile || userRole === "admin") {
+    // Only update local state if the current user is the recipient
+    if (recipientId === userMobile) {
       setNotifications(prev => [newNotif, ...prev]);
       setActiveBannerNotification(newNotif);
       
@@ -911,6 +920,16 @@ export default function App() {
     }).catch(err => console.error("Failed to save booking to DB:", err));
 
     setBookings((prev) => [newBooking, ...prev]);
+
+    // Trigger notification to the owner
+    triggerNotification(
+      newBooking.id,
+      getProviderMobileForBooking(newBooking),
+      "🚜 New Machinery Rental Request",
+      `${userName || "Udaya Kumar"} has requested to rent your ${selectedEquipment.name}. Please confirm the booking.`,
+      "general"
+    );
+
     setActiveTab("bookings");
     setActiveView("home");
   };
@@ -3101,31 +3120,62 @@ export default function App() {
                           <span className="font-extrabold text-[#3E5C31] text-[11px]">Payout: ₹{Math.round(b.totalAmount * 0.9)}</span>
                           
                           {b.status === "upcoming" && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                // Transition booking status to 'ongoing'
-                                fetch(`/api/bookings/${b.id}`, {
-                                  method: "PUT",
-                                  headers: { "Content-Type": "application/json" },
-                                  body: JSON.stringify({ status: "ongoing" })
-                                }).catch(err => console.error("Failed to update booking status:", err));
+                            <div className="flex space-x-2">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  showConfirm(
+                                    language === "ta" ? "முன்பதிவை ரத்து செய்" : "Cancel Booking",
+                                    language === "ta" ? "இந்த முன்பதிவை ரத்து செய்ய விரும்புகிறீர்களா?" : "Are you sure you want to cancel this booking?",
+                                    () => {
+                                      fetch(`/api/bookings/${b.id}`, {
+                                        method: "PUT",
+                                        headers: { "Content-Type": "application/json" },
+                                        body: JSON.stringify({ status: "cancelled" })
+                                      }).then(() => {
+                                        setBookings(prev => prev.map(x => x.id === b.id ? { ...x, status: "cancelled" } : x));
+                                        // Push notification
+                                        triggerNotification(
+                                          b.id,
+                                          b.customerId || "9999999999",
+                                          "❌ Booking Cancelled",
+                                          `${userName || "The owner"} has cancelled your booking for ${b.itemName}.`,
+                                          "general"
+                                        );
+                                      }).catch(err => console.error("Failed to update booking status:", err));
+                                    }
+                                  );
+                                }}
+                                className="bg-rose-600 text-white border-rose-600 hover:bg-rose-700 text-[9px] font-black px-3 py-1.5 rounded-lg border transition-all cursor-pointer shadow-xs"
+                              >
+                                Cancel ❌
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  // Transition booking status to 'ongoing'
+                                  fetch(`/api/bookings/${b.id}`, {
+                                    method: "PUT",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({ status: "ongoing" })
+                                  }).catch(err => console.error("Failed to update booking status:", err));
 
-                                setBookings(prev => prev.map(x => x.id === b.id ? { ...x, status: "ongoing" } : x));
-                                // Push notification
-                                triggerNotification(
-                                  b.id,
-                                  b.customerId || "9999999999",
-                                  "🚚 Equipment On The Way",
-                                  `Ravi Kumar's ${b.itemName} has been dispatched and is on the way to your site at ${b.location}! Track delivery fees: ₹${b.deliveryMethod === 'delivery' ? deliveryFee : 0}.`,
-                                  "equipment_on_the_way"
-                                );
-                              }}
-                              className="bg-[#3E5C31] text-white border-[#3E5C31] hover:bg-[#3E5C31]/95 text-[9px] font-black px-3 py-1.5 rounded-lg border transition-all cursor-pointer flex items-center gap-1 shadow-xs"
-                            >
-                              <Truck className="h-3 w-3" />
-                              Dispatch: On The Way 🚚
-                            </button>
+                                  setBookings(prev => prev.map(x => x.id === b.id ? { ...x, status: "ongoing" } : x));
+                                  // Push notification
+                                  triggerNotification(
+                                    b.id,
+                                    b.customerId || "9999999999",
+                                    "🚚 Equipment On The Way",
+                                    `${userName || "The owner"}'s ${b.itemName} has been dispatched and is on the way to your site at ${b.location}! Track delivery fees: ₹${b.deliveryMethod === 'delivery' ? deliveryFee : 0}.`,
+                                    "equipment_on_the_way"
+                                  );
+                                }}
+                                className="bg-[#3E5C31] text-white border-[#3E5C31] hover:bg-[#3E5C31]/95 text-[9px] font-black px-3 py-1.5 rounded-lg border transition-all cursor-pointer flex items-center gap-1 shadow-xs"
+                              >
+                                <Truck className="h-3 w-3" />
+                                Dispatch 🚚
+                              </button>
+                            </div>
                           )}
 
                           {b.status === "ongoing" && (
@@ -3145,7 +3195,7 @@ export default function App() {
                                   b.id,
                                   b.customerId || "9999999999",
                                   "🏁 Rental Completed",
-                                  `Ravi Kumar's ${b.itemName} has been successfully returned and marked completed. Please log operating hours.`,
+                                  `${userName || "The owner"}'s ${b.itemName} has been successfully returned and marked completed. Please log operating hours.`,
                                   "general"
                                 );
                               }}

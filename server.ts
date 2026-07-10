@@ -376,6 +376,12 @@ Provide the response in the requested structured JSON.
     console.log(`Server successfully running on port ${PORT}`);
     console.log(`URL: http://localhost:${PORT}`);
   });
+
+  // Global error handler
+  app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+    console.error("Global error handler:", err);
+    res.status(500).json({ error: 'Internal Server Error' });
+  });
 }
 
 startServer().catch((err) => {

@@ -17,7 +17,10 @@ export const createPool = () => {
     user,
     password: typeof password === "string" ? password : "",
     database,
-    connectionTimeoutMillis: 15000,
+    connectionTimeoutMillis: 5000,
+    idleTimeoutMillis: 10000,
+    max: 10,
+    keepAlive: true,
   });
 };
 
