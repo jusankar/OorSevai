@@ -23,6 +23,7 @@ export const createPool = () => {
     idleTimeoutMillis: 10000,
     max: 10,
     keepAlive: true,
+    ssl: host !== "localhost" ? { rejectUnauthorized: false } : false,
   });
 };
 
