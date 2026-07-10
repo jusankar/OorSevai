@@ -379,8 +379,11 @@ export default function App() {
 
   // Dynamically filter active equipment and laborers based on Admin configured location distance
   const filteredEquipmentList = useMemo(() => {
-    return resolvedEquipmentList.filter(item => item.distance <= adminDistance);
-  }, [resolvedEquipmentList, adminDistance]);
+    return resolvedEquipmentList.filter(item => {
+      const isMyEquipment = userMobile && (item.ownerId === userMobile || item.ownerId === "owner-1" || item.ownerId === "8963556856");
+      return item.distance <= adminDistance && !isMyEquipment;
+    });
+  }, [resolvedEquipmentList, adminDistance, userMobile]);
 
   const filteredLaborersList = useMemo(() => {
     return resolvedLaborersList.filter(item => {
