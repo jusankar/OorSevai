@@ -11,10 +11,12 @@ export const createPool = () => {
   const user = process.env.SQL_USER || "postgres";
   const password = process.env.SQL_PASSWORD;
   const database = process.env.SQL_DB_NAME || "oorsevai";
+  const port = process.env.SQL_PORT || 5432;
 
   return new Pool({
     host,
     user,
+    port: Number(port),
     password: typeof password === "string" ? password : "",
     database,
     connectionTimeoutMillis: 5000,
