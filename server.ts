@@ -2,25 +2,14 @@ import "dotenv/config";
 import express from "express";
 import path from "path";
 import { GoogleGenAI, Type } from "@google/genai";
-import { createServer as createViteServer } from "vite";
 import { autoSeed } from "./src/db/seed-auto.ts";
 import * as dbService from "./src/db/db-service.ts";
 
 
-async function startServer() {
-  const app = express();
-  const PORT = 3000;
+export const app = express();
 
-  app.use(express.json({ limit: "10mb" }));
-  app.use(express.urlencoded({ limit: "10mb", extended: true }));
-
-  // Database auto-seeding is disabled per user request
-  try {
-    console.log("Database auto-seeding is disabled. Database will remain clean and empty.");
-    await autoSeed();
-  } catch (seedErr) {
-    console.error("Database initialization check failed:", seedErr);
-  }
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ limit: "10mb", extended: true }));
 
   // Initialize Gemini SDK with telemetry User-Agent
   const ai = new GoogleGenAI({
@@ -355,9 +344,27 @@ Provide the response in the requested structured JSON.
     }
   });
 
+  // Global error handler
+  app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+    console.error("Global error handler:", err);
+    res.status(500).json({ error: 'Internal Server Error' });
+  });
+
+async function startServer() {
+  const PORT = process.env.PORT || 3000;
+  
+  // Database auto-seeding is disabled per user request
+  try {
+    console.log("Database auto-seeding is disabled. Database will remain clean and empty.");
+    await autoSeed();
+  } catch (seedErr) {
+    console.error("Database initialization check failed:", seedErr);
+  }
+
   // Setup Vite development middleware OR static production build serving
   if (process.env.NODE_ENV !== "production") {
     console.log("Starting server in DEVELOPMENT mode...");
+    const { createServer: createViteServer } = await import("vite");
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
@@ -372,18 +379,14 @@ Provide the response in the requested structured JSON.
     });
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
+  app.listen(Number(PORT), "0.0.0.0", () => {
     console.log(`Server successfully running on port ${PORT}`);
     console.log(`URL: http://localhost:${PORT}`);
   });
-
-  // Global error handler
-  app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
-    console.error("Global error handler:", err);
-    res.status(500).json({ error: 'Internal Server Error' });
-  });
 }
 
-startServer().catch((err) => {
-  console.error("Critical server failure:", err);
-});
+if (!process.env.VERCEL) {
+  startServer().catch((err) => {
+    console.error("Critical server failure:", err);
+  });
+}
