@@ -1,5 +1,5 @@
-import { db } from "./index.ts";
-import { users, equipment, laborers, bookings, disputes, appNotifications } from "./schema.ts";
+import { db } from "./index";
+import { users, equipment, laborers, bookings, disputes, appNotifications } from "./schema";
 import { eq, or, like, isNull } from "drizzle-orm";
 
 // ------------------------------------------

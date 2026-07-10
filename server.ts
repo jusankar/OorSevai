@@ -2,8 +2,8 @@ import "dotenv/config";
 import express from "express";
 import path from "path";
 import { GoogleGenAI, Type } from "@google/genai";
-import { autoSeed } from "./src/db/seed-auto.ts";
-import * as dbService from "./src/db/db-service.ts";
+import { autoSeed } from "./src/db/seed-auto";
+import * as dbService from "./src/db/db-service";
 
 
 export const app = express();
