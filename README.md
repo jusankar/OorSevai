@@ -1,20 +1,47 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://ai.google.dev/static/site-assets/images/share-ais-513315318.png" />
-</div>
+# OorSevai Database Schema Migrations
 
-# Run and deploy your AI Studio app
+This document explains how to update the database schema using Drizzle Kit.
 
-This contains everything you need to run your app locally.
+## Prerequisite
+Make sure you have your `.env` file configured in the **project root directory** with the following variables:
+```env
+SQL_HOST=your_database_host
+SQL_DB_NAME=your_database_name
+SQL_ADMIN_USER=your_admin_user
+SQL_ADMIN_PASSWORD=your_admin_password
+```
 
-View your app in AI Studio: https://ai.studio/apps/76fee48c-2418-4b08-ae64-9bbbfaea2e76
+---
 
-## Run Locally
+## How to Update the Database Schema
 
-**Prerequisites:**  Node.js
+To push your latest schema changes from `./src/db/schema.ts` to your Cloud SQL database, **always run the command from the project root directory** (where your `.env` file is located).
 
+### Push Command
+Run this command in your terminal from the **project root**:
+```bash
+npx drizzle-kit push --config=src/db/drizzle.config.ts
+```
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+---
+
+## Why did I get `SQL_HOST must be set in environment variables`?
+
+If you navigate into the `src/db` subdirectory and run:
+```bash
+# ❌ INCORRECT (Will fail with environment variable errors)
+cd src/db
+npx drizzle-kit push --config=drizzle.config.ts
+```
+
+You will get the error:
+`SQL_HOST must be set in environment variables.`
+
+### The Reason
+Drizzle Kit runs the config file `drizzle.config.ts` which uses `dotenv` to load configuration:
+```typescript
+dotenv.config();
+```
+By default, `dotenv` looks for the `.env` file in the **current working directory** of the terminal process. 
+- If you are inside `src/db`, `dotenv` searches for `src/db/.env` (which does not exist), so none of your database credentials are loaded.
+- By running the command from the **project root** and specifying the path to the config file (`--config=src/db/drizzle.config.ts`), `dotenv` correctly finds and loads the `.env` file located at the project root.

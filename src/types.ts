@@ -74,6 +74,7 @@ export interface Booking {
   paymentStatus: "paid" | "refunded" | "pending";
   dateBooked: string;
   loggedHours?: number;
+  createdAt?: string;
 }
 
 export interface ChatMessage {

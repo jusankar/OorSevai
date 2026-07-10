@@ -896,7 +896,8 @@ export default function App() {
       deliveryMethod: deliveryMethod,
       operatorOption: operatorOption,
       paymentStatus: "paid",
-      dateBooked: new Date().toISOString().split('T')[0]
+      dateBooked: new Date().toISOString().split('T')[0],
+      createdAt: new Date().toISOString()
     };
 
     // Save to serverless PostgreSQL database
@@ -928,7 +929,8 @@ export default function App() {
       customerId: userMobile || "9999999999",
       location: userLocation || lb.location,
       paymentStatus: "paid",
-      dateBooked: new Date().toISOString().split('T')[0]
+      dateBooked: new Date().toISOString().split('T')[0],
+      createdAt: new Date().toISOString()
     };
 
     // Save to serverless PostgreSQL database
@@ -1311,12 +1313,19 @@ export default function App() {
   }, [resolvedBookings, userMobile, bookingTab, userRole]);
 
   const receivedShiftBookings = useMemo(() => {
-    return resolvedBookings.filter(b => {
+    const filtered = resolvedBookings.filter(b => {
       if (b.type !== "labor") return false;
       const isMyProfile = userMobile 
         ? b.itemId.includes(userMobile) 
         : b.itemId === "lb-4";
       return isMyProfile;
+    });
+    // Sort descending (newest first)
+    return [...filtered].sort((a, b) => {
+      const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      if (timeB !== timeA) return timeB - timeA;
+      return b.id.localeCompare(a.id);
     });
   }, [resolvedBookings, userMobile]);
 
