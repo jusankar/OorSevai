@@ -1,4 +1,4 @@
-import { app } from '../server';
+import { app } from '../server.js';
 
 // Disable Vercel's default body parser so Express can process the raw request stream
 export const config = {
