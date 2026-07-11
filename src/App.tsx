@@ -1845,7 +1845,7 @@ export default function App() {
     <div id="main-app-container" className={`min-h-screen bg-[#FAF7F2] dark:bg-slate-950 font-sans flex flex-col items-center justify-start py-0 md:py-8 transition-colors duration-300 ${darkMode ? "dark" : ""}`}>
       
       {/* High Fidelity Screen Wrapper framing a mobile emulator feel on desktop */}
-      <div className={`w-full max-w-md bg-[#FDFCF9] dark:bg-[#121212] dark:text-[#F1F5F9] md:rounded-3xl md:shadow-2xl border-0 md:border md:border-[#E8E6E1] dark:border-0 dark:md:border-slate-800 overflow-hidden flex flex-col h-screen md:h-[840px] max-h-screen md:max-h-[840px] relative transition-all duration-300 ${darkMode ? "dark" : ""}`}>
+      <div className={`w-full max-w-lg bg-[#FDFCF9] dark:bg-[#121212] dark:text-[#F1F5F9] md:rounded-3xl md:shadow-2xl border-0 md:border md:border-[#E8E6E1] dark:border-0 dark:md:border-slate-800 overflow-hidden flex flex-col h-screen md:h-[840px] max-h-screen md:max-h-[840px] relative transition-all duration-300 ${darkMode ? "dark" : ""}`}>
         
         {!isRegistered ? (
           <div className="flex-1 flex flex-col h-full bg-[#FAF7F2] dark:bg-slate-950 overflow-y-auto scrollbar-none">
