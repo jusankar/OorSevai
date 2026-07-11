@@ -35,7 +35,7 @@ export default defineConfig({
     user: user,
     password: password,
     database: sqlDbName,
-    ssl: "require",
+    ssl: (sqlHost !== "localhost" && !sqlHost.startsWith("/")) ? "require" : undefined,
   },
   verbose: true,
 });

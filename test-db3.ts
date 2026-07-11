@@ -1,24 +1,15 @@
 import "dotenv/config";
-import { db } from "./src/db/index.ts";
-import { equipment } from "./src/db/schema.ts";
+import { db } from "./src/db/index.js";
+import { equipment, laborers } from "./src/db/schema.js";
 
 async function test() {
   try {
-    const result = await db.insert(equipment).values({
-        id: '123',
-        name: 'Test Eq',
-        category: 'Heavy',
-        subCategory: 'Excavator',
-        image: 'http://example.com/img.jpg',
-        pricePerDay: 100,
-        about: 'Test About',
-        ownerId: '9876543210',
-        status: 'available',
-        location: 'Chennai',
-        ownerName: 'Arun',
-        specs: 'Test Specs'
-    }).returning();
-    console.log("Insert result:", result);
+    const eqRows = await db.select().from(equipment);
+    const lbRows = await db.select().from(laborers);
+    console.log("EQUIPMENT COUNT:", eqRows.length);
+    eqRows.forEach(r => console.log(`  - ID: ${r.id}, Name: ${r.name}, Cat: ${r.category}, Sub: ${r.subCategory}, Loc: ${r.location}, Status: ${r.status}`));
+    console.log("LABORERS COUNT:", lbRows.length);
+    lbRows.forEach(r => console.log(`  - ID: ${r.id}, Name: ${r.name}, Cat: ${r.category}, Loc: ${r.location}, Avail: ${r.availability}, Verified: ${r.verified}`));
   } catch (err) {
     console.error("DB Error:", err);
   }

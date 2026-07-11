@@ -408,8 +408,12 @@ export default function App() {
           fetch(`/api/disputes?_t=${Date.now()}`).then(r => r.json()),
           fetch(notificationsUrl).then(r => r.json()),
         ]);
-        if (Array.isArray(eqRes)) setEquipmentList(eqRes);
-        if (Array.isArray(lbRes)) setLaborersList(lbRes);
+        if (Array.isArray(eqRes)) {
+          setEquipmentList(eqRes);
+        }
+        if (Array.isArray(lbRes)) {
+          setLaborersList(lbRes);
+        }
         if (Array.isArray(bRes)) setBookings(bRes);
         if (Array.isArray(dRes)) setDisputes(dRes);
         if (Array.isArray(nRes)) {
@@ -478,21 +482,17 @@ export default function App() {
   // Dynamically filter active equipment and laborers based on Admin configured location distance
   const filteredEquipmentList = useMemo(() => {
     return resolvedEquipmentList.filter(item => {
-      const isMyEquipment = userMobile && (item.ownerId === userMobile || item.ownerId === "owner-1" || item.ownerId === "8963556856");
       const computedDistance = getDistanceBetween(item.location || "Coimbatore, Tamil Nadu", adminLocation);
-      return computedDistance <= adminDistance && !isMyEquipment;
+      return computedDistance <= adminDistance;
     });
-  }, [resolvedEquipmentList, adminDistance, adminLocation, userMobile]);
+  }, [resolvedEquipmentList, adminDistance, adminLocation]);
 
   const filteredLaborersList = useMemo(() => {
     return resolvedLaborersList.filter(item => {
-      const isMyProfile = userMobile 
-        ? item.id.includes(userMobile) 
-        : (item.id === "lb-4" || item.name === "Raju Krishnan");
       const computedDistance = getDistanceBetween(item.location || "Coimbatore, Tamil Nadu", adminLocation);
-      return computedDistance <= adminDistance && !isMyProfile;
+      return computedDistance <= adminDistance;
     });
-  }, [resolvedLaborersList, adminDistance, adminLocation, userMobile]);
+  }, [resolvedLaborersList, adminDistance, adminLocation]);
 
   // PWA (Progressive Web App) states
   const [isOnline, setIsOnline] = useState(typeof window !== "undefined" ? navigator.onLine : true);
@@ -2190,6 +2190,23 @@ export default function App() {
                         id="theme-toggle-btn"
                       >
                         {darkMode ? "☀️" : "🌙"}
+                      </button>
+
+                      {/* Notification Bell */}
+                      <button
+                        type="button"
+                        onClick={() => setShowNotificationsDropdown(!showNotificationsDropdown)}
+                        className="relative p-1.5 bg-white/10 hover:bg-white/20 border border-white/10 rounded-xl transition-all duration-200 focus:outline-none cursor-pointer flex items-center justify-center text-white shrink-0"
+                        title="Notifications"
+                        id="notifications-toggle-btn"
+                      >
+                        <Bell className="h-4 w-4 text-white" />
+                        {resolvedNotifications.filter(n => !n.isRead).length > 0 && (
+                          <span className="absolute -top-0.5 -right-0.5 flex h-2 w-2">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
+                          </span>
+                        )}
                       </button>
 
                       {/* Settings Icon Toggle */}

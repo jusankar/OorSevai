@@ -353,9 +353,9 @@ Provide the response in the requested structured JSON.
 async function startServer() {
   const PORT = process.env.PORT || 3000;
   
-  // Database auto-seeding is disabled per user request
+  // Ensure database has seed data if empty
   try {
-    console.log("Database auto-seeding is disabled. Database will remain clean and empty.");
+    console.log("Checking database seed status...");
     await autoSeed();
   } catch (seedErr) {
     console.error("Database initialization check failed:", seedErr);
