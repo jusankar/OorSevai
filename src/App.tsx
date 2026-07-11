@@ -1850,19 +1850,19 @@ export default function App() {
         {!isRegistered ? (
           <div className="flex-1 flex flex-col h-full bg-[#FAF7F2] dark:bg-slate-950 overflow-y-auto scrollbar-none">
             {/* Simple Registration Header */}
-            <div className="bg-[#3E5C31] dark:bg-[#203119] text-white px-4 py-4 border-b border-white/10 shadow-sm shrink-0 flex flex-col">
+            <div className="bg-[#3E5C31] dark:bg-[#203119] text-white px-4 py-2 border-b border-white/10 shadow-sm shrink-0 flex flex-col">
               {/* Logo Merged with 2 Rows on the Right */}
-              <div className="px-4 py-3 flex items-start space-x-3 min-w-0">
+              <div className="px-4 py-1 flex items-center space-x-3 min-w-0">
                 {/* Merged Logo (two row height) */}
-                <div className="w-14 h-14 bg-white rounded-2xl overflow-hidden flex items-center justify-center shadow-md shrink-0 p-1.5 mt-0.5">
+                <div className="w-9 h-9 bg-white rounded-lg overflow-hidden flex items-center justify-center shadow-md shrink-0 p-1">
                   <img src="/icon.svg" alt="Oor Sevai Logo" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
                 </div>
 
                 {/* Right columns with 2 rows */}
-                <div className="flex-1 flex flex-col justify-between min-w-0 h-14">
+                <div className="flex-1 flex flex-col justify-center space-y-0.5 min-w-0">
                   {/* Row 1: App Title & Menu buttons */}
                   <div className="flex items-center justify-between w-full min-w-0">
-                    <h1 className="text-2xl md:text-3xl font-black tracking-tight leading-none text-white truncate">{t("app_title")}</h1>
+                    <h1 className="text-base md:text-lg font-black tracking-tight leading-none text-white truncate">{t("app_title")}</h1>
                     
                     {/* Menu items */}
                     <div className="flex items-center space-x-1.5 shrink-0 ml-2">
@@ -2144,20 +2144,20 @@ export default function App() {
           </div>
         ) : (
           <>
-            {/* TOP PLATFORM BAR & ROLE SWITCHER */}
+             {/* TOP PLATFORM BAR & ROLE SWITCHER */}
             <div id="top-branding-bar" className="bg-[#3E5C31] dark:bg-[#203119] text-white border-b border-white/10 shadow-sm shrink-0 flex flex-col">
               {/* Logo Merged with 2 Rows on the Right */}
-              <div className="px-4 py-3 flex items-start space-x-3 min-w-0">
+              <div className="px-4 py-1.5 flex items-center space-x-3 min-w-0">
                 {/* Merged Logo (two row height) */}
-                <div className="w-14 h-14 bg-white rounded-2xl overflow-hidden flex items-center justify-center shadow-md shrink-0 p-1.5 mt-0.5">
+                <div className="w-9 h-9 bg-white rounded-lg overflow-hidden flex items-center justify-center shadow-md shrink-0 p-1">
                   <img src="/icon.svg" alt="Oor Sevai Logo" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
                 </div>
 
                 {/* Right columns with 2 rows */}
-                <div className="flex-1 flex flex-col justify-between min-w-0 h-14">
+                <div className="flex-1 flex flex-col justify-center space-y-0.5 min-w-0">
                   {/* Row 1: App Title & Menu buttons */}
                   <div className="flex items-center justify-between w-full min-w-0">
-                    <h1 className="text-2xl md:text-3xl font-black tracking-tight leading-none text-white truncate">{t("app_title")}</h1>
+                    <h1 className="text-base md:text-lg font-black tracking-tight leading-none text-white truncate">{t("app_title")}</h1>
                     
                     {/* Menu items */}
                     <div className="flex items-center space-x-1.5 shrink-0 ml-2">
@@ -2217,12 +2217,12 @@ export default function App() {
               </div>
 
               {/* Row 2: Minimalist Interactive Sub-Tabs with Active Indicators (Option 3 - Prominent) */}
-              <div className="px-4 py-3 border-t border-white/5 bg-black/20 flex items-center justify-between gap-3 shrink-0 min-w-0">
-                <span className="text-[11px] text-white/70 font-black uppercase tracking-widest flex items-center gap-1.5 shrink-0 select-none">
+              <div className="px-4 py-1.5 border-t border-white/5 bg-black/20 flex items-center justify-between gap-3 shrink-0 min-w-0">
+                <span className="text-[10px] text-white/70 font-black uppercase tracking-widest flex items-center gap-1 shrink-0 select-none">
                   <span>🎭</span> {t("role_label")}
                 </span>
                 
-                <div className="flex-1 flex items-center space-x-4 py-0.5 overflow-x-auto scrollbar-none justify-start min-w-0 ml-2">
+                <div className="flex-1 flex items-center space-x-3 py-0.5 overflow-x-auto scrollbar-none justify-start min-w-0 ml-2">
                   {registeredRoles.map((role) => {
                     const isActive = userRole === role;
                     return (
@@ -2237,17 +2237,17 @@ export default function App() {
                             setActiveTab("dashboard");
                           }
                         }}
-                        className="relative pb-2 pt-1 px-2 flex flex-col items-center cursor-pointer transition-all duration-200 focus:outline-none shrink-0"
+                        className="relative pb-1 pt-0.5 px-1.5 flex flex-col items-center cursor-pointer transition-all duration-200 focus:outline-none shrink-0"
                       >
-                        <div className={`flex items-center space-x-2 text-[11px] font-black uppercase tracking-wider transition-colors duration-200 ${
-                          isActive ? "text-white scale-[1.02]" : "text-white/60 hover:text-white/90"
+                        <div className={`flex items-center space-x-1.5 text-[10px] font-black uppercase tracking-wider transition-colors duration-200 ${
+                          isActive ? "text-white scale-[1.01]" : "text-white/60 hover:text-white/90"
                         }`}>
-                          <span className="text-sm shrink-0">
+                          <span className="text-xs shrink-0">
                             {role === "customer" ? "🚜" : 
                              role === "owner" ? "🛠️" : 
                              role === "labor" ? "👷" : "🔑"}
                           </span>
-                          <span className="whitespace-normal leading-snug text-left max-w-[110px] text-[10.5px]">
+                          <span className="whitespace-nowrap leading-none text-left max-w-[100px] text-[10px]">
                             {role === "customer" ? t("role_customer") : 
                              role === "owner" ? t("role_owner") : 
                              role === "labor" ? t("role_labor") : 
@@ -2257,7 +2257,7 @@ export default function App() {
                         {isActive && (
                           <motion.div 
                             layoutId="activeRoleIndicator"
-                            className="absolute bottom-0 h-[3px] w-full bg-emerald-400 rounded-full"
+                            className="absolute bottom-0 h-[2px] w-full bg-emerald-400 rounded-full"
                             transition={{ type: "spring", stiffness: 350, damping: 30 }}
                           />
                         )}

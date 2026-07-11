@@ -475,17 +475,17 @@ export default function HomeView({
           {/* Left Column: Greeting, App Title */}
           <div className="flex-1 min-w-0">
             {/* Top location & Greeting info */}
-            <div className="flex items-center space-x-2">
-              <div className="bg-white h-9 w-9 rounded-xl overflow-hidden flex items-center justify-center shadow-sm p-0.5 border border-[#E8E6E1] dark:border-slate-800 shrink-0">
+            <div className="flex items-center space-x-1.5">
+              <div className="bg-white h-7.5 w-7.5 rounded-lg overflow-hidden flex items-center justify-center shadow-xs p-0.5 border border-[#E8E6E1] dark:border-slate-800 shrink-0">
                 <img src="/icon.svg" alt="Oor Sevai Logo" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
               </div>
               <div className="min-w-0">
-                <div className="flex items-center text-[#8A867E] dark:text-slate-300 text-[10px]">
-                  <MapPin className="h-3 w-3 text-[#3E5C31] dark:text-emerald-400 mr-0.5 shrink-0" />
-                  <span className="font-semibold text-[#2D2D2A] dark:text-slate-100 max-w-[90px] truncate animate-pulse" title={adminLocation}>
+                <div className="flex items-center text-[#8A867E] dark:text-slate-300 text-[9px]">
+                  <MapPin className="h-2.5 w-2.5 text-[#3E5C31] dark:text-emerald-400 mr-0.5 shrink-0" />
+                  <span className="font-semibold text-[#2D2D2A] dark:text-slate-100 max-w-[80px] truncate animate-pulse" title={adminLocation}>
                     {adminLocation.split(",")[0]}
                   </span>
-                  <span className="ml-1 text-[8px] bg-emerald-50 dark:bg-[#3E5C31]/20 text-[#3E5C31] dark:text-emerald-400 px-1 py-0.2 rounded font-black border border-emerald-100/60 dark:border-[#3E5C31]/30 shrink-0">
+                  <span className="ml-1 text-[7.5px] bg-emerald-50 dark:bg-[#3E5C31]/20 text-[#3E5C31] dark:text-emerald-400 px-0.5 py-0.2 rounded font-black border border-emerald-100/60 dark:border-[#3E5C31]/30 shrink-0">
                     {adminDistance} KM
                   </span>
                 </div>
@@ -499,7 +499,7 @@ export default function HomeView({
           </div>
 
           {/* Right Column: Bookings Calendar & Profile */}
-          <div className="flex flex-row items-center gap-2 shrink-0 select-none">
+          <div className="flex flex-row items-center gap-1.5 shrink-0 select-none">
             {/* Bookings Calendar Button */}
             <button
               onClick={() => onNavigate("bookings")}

@@ -21,7 +21,9 @@ export const createPool = () => {
   const user = process.env.SQL_USER || "postgres";
   const password = process.env.SQL_PASSWORD;
   const database = process.env.SQL_DB_NAME || "oorsevai";
-  const port = process.env.SQL_PORT || 5432;
+  // If host is a UNIX socket path starting with "/", the proxy socket file is .s.PGSQL.5432.
+  // We must set the port to 5432 so the driver searches for the correct file path.
+  const port = host.startsWith("/") ? 5432 : (process.env.SQL_PORT || 5432);
 
   return new Pool({
     host,
@@ -33,7 +35,7 @@ export const createPool = () => {
     idleTimeoutMillis: 10000,
     max: 10,
     keepAlive: true,
-    ssl: host !== "localhost" ? { rejectUnauthorized: false } : false,
+    ssl: (host !== "localhost" && !host.startsWith("/")) ? { rejectUnauthorized: false } : false,
   });
 };
 
