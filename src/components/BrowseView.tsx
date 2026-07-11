@@ -122,11 +122,17 @@ export default function BrowseView({
     return ["All"];
   }, [activeCategory]);
 
-  // Handle category changes - reset subcategory & rating filter
+  // Sync searchQuery prop to local state
+  React.useEffect(() => {
+    setLocalSearch(searchQuery || "");
+  }, [searchQuery]);
+
+  // Handle category changes - reset subcategory, search, & rating filter
   const handleCategoryChange = (catId: string) => {
     setActiveCategory(catId);
     setSelectedSubCategory("All");
     setMinRating(0);
+    setLocalSearch("");
   };
 
   // Pre-calculate dynamic distances based on current adminLocation
