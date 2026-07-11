@@ -3,7 +3,7 @@ import { motion } from "motion/react";
 import { 
   Search, Sprout, HardHat, Wrench, Tent, Users, 
   MapPin, Bell, Shield, BadgePercent, ThumbsUp, Sparkles, ArrowRight,
-  Cloud, Sun, CloudRain, CloudLightning, CloudSun, Droplets, Thermometer, Loader2, Locate,
+  Cloud, Sun, CloudRain, CloudLightning, CloudSun, Droplets, Thermometer, Loader2, Locate, ChevronDown, ChevronUp,
   Mic, MicOff
 } from "lucide-react";
 import { Equipment } from "../types";
@@ -203,6 +203,7 @@ export default function HomeView({
   const [weatherError, setWeatherError] = useState<string | null>(null);
   const [weatherData, setWeatherData] = useState<any[] | null>(null);
   const [selectedWeatherDayIndex, setSelectedWeatherDayIndex] = useState(0);
+  const [weatherExpanded, setWeatherExpanded] = useState(false);
   const [weatherLocation, setWeatherLocation] = useState({
     name: adminLocation || "Coimbatore, Tamil Nadu",
     latitude: 11.0168,
@@ -526,7 +527,7 @@ export default function HomeView({
               placeholder={t("search_placeholder")}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-[#F3F1ED] dark:bg-[#252F2A] text-[#2D2D2A] dark:text-slate-100 pl-11 pr-[96px] py-3.5 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-[#3E5C31] dark:focus:ring-emerald-500 border border-[#E8E6E1] dark:border-slate-800 focus:bg-white dark:focus:bg-[#1C2420] transition-all shadow-inner"
+              className="w-full debossed-input text-[#2D2D2A] dark:text-slate-100 pl-11 pr-[96px] py-3.5 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-[#3E5C31] dark:focus:ring-emerald-500 transition-all"
             />
             <Search className="absolute left-4 h-4 w-4 text-[#8A867E]" />
             
@@ -569,10 +570,10 @@ export default function HomeView({
             <button 
               type="button"
               onClick={toggleListening}
-              className={`absolute right-[52px] p-2.5 rounded-xl transition-all ${
+              className={`absolute right-[52px] p-2.5 rounded-xl transition-all flex items-center justify-center cursor-pointer ${
                 isListening 
                   ? "bg-red-500 hover:bg-red-600 text-white shadow-md shadow-red-500/20" 
-                  : "bg-[#FAF7F2] dark:bg-[#25302A] hover:bg-[#F3F1ED] dark:hover:bg-[#2E3C34] text-[#3E5C31] dark:text-emerald-400 border border-[#E8E6E1] dark:border-slate-800"
+                  : "embossed-btn-secondary text-[#3E5C31] dark:text-emerald-400"
               }`}
               title={language === "ta" ? "குரல் தேடல்" : "Voice Search"}
             >
@@ -586,7 +587,7 @@ export default function HomeView({
             {/* Standard Submit Button */}
             <button 
               type="submit"
-              className="absolute right-2 bg-[#3E5C31] hover:bg-[#3E5C31]/95 text-white p-2.5 rounded-xl transition-all"
+              className="absolute right-2 text-white p-2.5 rounded-xl transition-all embossed-btn cursor-pointer flex items-center justify-center"
             >
               <Search className="h-4 w-4" />
             </button>
@@ -685,165 +686,6 @@ export default function HomeView({
         </div>
       </div>
 
-      {/* Trust & Verification badging */}
-      <div id="trust-banner" className="mx-4 bg-white dark:bg-[#1C2420] border border-[#E8E6E1] dark:border-slate-800 rounded-2xl p-3 grid grid-cols-4 gap-1 text-center shadow-xs">
-        <div className="flex flex-col items-center">
-          <div className="bg-[#3E5C31]/10 dark:bg-emerald-500/10 text-[#3E5C31] dark:text-emerald-400 p-1.5 rounded-lg mb-1">
-            <Shield className="h-3.5 w-3.5" />
-          </div>
-          <span className="text-[9px] font-bold text-[#2D2D2A] dark:text-slate-200">{t("verified_owners")}</span>
-        </div>
-        <div className="flex flex-col items-center">
-          <div className="bg-[#D97706]/10 dark:bg-amber-500/10 text-[#D97706] dark:text-amber-400 p-1.5 rounded-lg mb-1">
-            <ThumbsUp className="h-3.5 w-3.5" />
-          </div>
-          <span className="text-[9px] font-bold text-[#2D2D2A] dark:text-slate-200">{t("quality_assured")}</span>
-        </div>
-        <div className="flex flex-col items-center">
-          <div className="bg-amber-50 dark:bg-amber-500/10 text-[#D97706] dark:text-amber-400 p-1.5 rounded-lg mb-1">
-            <BadgePercent className="h-3.5 w-3.5" />
-          </div>
-          <span className="text-[9px] font-bold text-[#2D2D2A] dark:text-slate-200">{t("best_prices")}</span>
-        </div>
-        <div className="flex flex-col items-center">
-          <div className="bg-purple-50 dark:bg-purple-500/10 text-purple-600 dark:text-purple-400 p-1.5 rounded-lg mb-1">
-            <Sparkles className="h-3.5 w-3.5" />
-          </div>
-          <span className="text-[9px] font-bold text-[#2D2D2A] dark:text-slate-200">{t("secure_escrow")}</span>
-        </div>
-      </div>
-
-      {/* Local Farming Weather Widget */}
-      <div id="farming-weather-widget" className="mx-4 bg-white dark:bg-[#1C2420] border border-[#E8E6E1] dark:border-slate-800 rounded-3xl p-4 shadow-xs space-y-3.5">
-        <div className="flex justify-between items-center">
-          <div className="flex items-center space-x-2">
-            <div className="bg-[#3E5C31]/10 dark:bg-[#3E5C31]/20 text-[#3E5C31] dark:text-emerald-400 p-1.5 rounded-xl">
-              <Sun className="h-4 w-4" />
-            </div>
-            <div>
-              <h3 className="font-extrabold text-[#2D2D2A] dark:text-slate-100 text-xs uppercase tracking-wider">{t("local_farming_weather")}</h3>
-              <p className="text-[10px] text-[#8A867E] dark:text-slate-300 flex items-center mt-0.5">
-                <MapPin className="h-3 w-3 mr-0.5 text-[#3E5C31] dark:text-emerald-400" />
-                <span className="font-semibold text-slate-700 dark:text-slate-200">{weatherLocation.name}</span>
-              </p>
-            </div>
-          </div>
-          <button 
-            onClick={handleDetectLocation}
-            disabled={weatherLoading}
-            className="flex items-center space-x-1 bg-[#FAF7F2] dark:bg-[#25302A] hover:bg-[#F3F1ED] dark:hover:bg-[#2E3C34] border border-[#E8E6E1] dark:border-slate-800 text-[#3E5C31] dark:text-emerald-400 text-[10px] font-bold px-2.5 py-1.5 rounded-xl transition-all shadow-2xs active:scale-95 disabled:opacity-50 cursor-pointer"
-          >
-            {weatherLoading ? (
-              <Loader2 className="h-3 w-3 animate-spin" />
-            ) : (
-              <Locate className="h-3 w-3" />
-            )}
-            <span>{weatherLoading ? t("locating") : t("use_my_location")}</span>
-          </button>
-        </div>
-
-        {weatherError && (
-          <div className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 p-2.5 rounded-xl font-medium">
-            ⚠️ {weatherError}
-          </div>
-        )}
-
-        {weatherLoading && !weatherData && (
-          <div className="flex flex-col items-center justify-center py-6 space-y-2 text-[#8A867E]">
-            <Loader2 className="h-6 w-6 animate-spin text-[#3E5C31]" />
-            <span className="text-xs font-semibold">{t("retrieving_forecast")}</span>
-          </div>
-        )}
-
-        {weatherData && (
-          <div className="space-y-3">
-            {/* 3-Day Horizontal Grid */}
-            <div className="grid grid-cols-3 gap-2">
-              {weatherData.map((day, idx) => {
-                const details = getWeatherDetails(day.code, day.rain);
-                const DayIcon = details.icon;
-                const isSelected = selectedWeatherDayIndex === idx;
-                
-                return (
-                  <button
-                    key={idx}
-                    type="button"
-                    onClick={() => setSelectedWeatherDayIndex(idx)}
-                    className={`p-2 rounded-2xl border text-center transition-all flex flex-col items-center justify-between space-y-1 cursor-pointer relative ${
-                      isSelected 
-                        ? "bg-[#3E5C31]/5 border-[#3E5C31] ring-1 ring-[#3E5C31]/30 shadow-xs" 
-                        : "bg-[#FAF7F2] border-[#E8E6E1] hover:bg-[#F3F1ED]"
-                    }`}
-                  >
-                    {idx === 0 && (
-                      <span className="absolute -top-1.5 left-1/2 transform -translate-x-1/2 text-[7px] font-black tracking-wider uppercase bg-[#3E5C31] text-white px-1.5 py-0.5 rounded-full shadow-xs">
-                        {t("today")}
-                      </span>
-                    )}
-                    
-                    <span className="text-[9px] font-bold text-[#8A867E] mt-1">{day.date}</span>
-                    
-                    <div className={`p-1.5 rounded-xl ${details.accentBg} ${details.iconColor} flex items-center justify-center`}>
-                      <DayIcon className="h-4 w-4" />
-                    </div>
-
-                    <div className="space-y-0.5">
-                      <div className="text-[10px] font-black text-[#2D2D2A] flex items-center justify-center">
-                        <Thermometer className="h-2.5 w-2.5 text-red-500 mr-0.5" />
-                        <span>{day.tempMax}°C</span>
-                      </div>
-                      <div className="text-[8px] font-bold text-sky-600">
-                        {day.rain > 0 ? `💧 ${day.rain.toFixed(1)}mm` : t("no_rain")}
-                      </div>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Selected Day Crop & Planting Guidance details */}
-            {weatherData[selectedWeatherDayIndex] && (() => {
-              const selectedDay = weatherData[selectedWeatherDayIndex];
-              const details = getWeatherDetails(selectedDay.code, selectedDay.rain);
-              const DayIcon = details.icon;
-              
-              return (
-                <div className={`p-3 rounded-2xl border ${details.bgColor} transition-all space-y-2`}>
-                  <div className="flex justify-between items-center">
-                    <span className="text-[9px] font-black tracking-wider uppercase text-slate-500">
-                      {t("farming_guidance")} ({selectedDay.date})
-                    </span>
-                    <div className="flex items-center space-x-1 bg-white/75 dark:bg-[#25302A]/80 backdrop-blur-xs px-2 py-0.5 rounded-md border border-[#E8E6E1] dark:border-slate-700 text-[9px] font-extrabold text-[#2D2D2A] dark:text-slate-100">
-                      <DayIcon className={`h-3 w-3 ${details.iconColor}`} />
-                      <span>{details.label}</span>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-start space-x-2">
-                    <div className="bg-[#3E5C31]/10 text-[#3E5C31] p-1.5 rounded-lg shrink-0 text-[10px] font-bold mt-0.5">
-                      🌾 {t("advice")}
-                    </div>
-                    <p className="text-[11px] text-[#2D2D2A] dark:text-slate-100 leading-relaxed font-semibold">
-                      {details.advice}
-                    </p>
-                  </div>
-
-                  {/* Highlighting specific weather conditions */}
-                  <div className="grid grid-cols-2 gap-2 pt-1 border-t border-slate-200/50 dark:border-slate-800 text-[9px] text-slate-600 dark:text-slate-300 font-medium">
-                    <div>🌡️ Temp range: <span className="font-extrabold text-[#2D2D2A] dark:text-white">{selectedDay.tempMin}°C - {selectedDay.tempMax}°C</span></div>
-                    <div>🌧️ Rainfall: <span className="font-extrabold text-[#2D2D2A] dark:text-white">{selectedDay.rain.toFixed(1)} mm</span></div>
-                  </div>
-                </div>
-              );
-            })()}
-          </div>
-        )}
-        
-        <div className="flex items-center justify-between text-[9px] text-[#8A867E] dark:text-slate-400 pt-1.5 border-t border-[#E8E6E1]/60 dark:border-slate-800/60">
-          <span>⚡ {t("live_open_meteo")}</span>
-          <span className="font-semibold text-[#3E5C31] dark:text-emerald-400">{t("smart_sowing_advice")}</span>
-        </div>
-      </div>
 
       {/* Popular listings near you */}
       <div id="popular-listings" className="px-4 space-y-3">
@@ -947,6 +789,210 @@ export default function HomeView({
               referrerPolicy="no-referrer"
             />
           </div>
+        </div>
+      </div>
+
+      {/* Local Farming Weather Widget */}
+      <div 
+        id="farming-weather-widget" 
+        className="mx-4 embossed-card rounded-3xl p-4 space-y-3"
+      >
+        {!weatherExpanded ? (
+          /* Compact View: Click to Expand */
+          <div 
+            onClick={() => setWeatherExpanded(true)}
+            className="flex justify-between items-center cursor-pointer group text-left"
+          >
+            <div className="flex items-center space-x-3">
+              <div className="bg-[#3E5C31]/10 dark:bg-[#3E5C31]/20 text-[#3E5C31] dark:text-emerald-400 p-2 rounded-2xl group-hover:scale-105 transition-transform">
+                <Sun className="h-4 w-4" />
+              </div>
+              <div>
+                <h3 className="font-extrabold text-[#2D2D2A] dark:text-slate-100 text-xs uppercase tracking-wider flex flex-wrap items-center gap-1.5">
+                  {t("local_farming_weather")}
+                  <span className="text-[9px] text-[#3E5C31] dark:text-emerald-400 font-bold normal-case">({weatherLocation.name})</span>
+                </h3>
+                <p className="text-[10px] text-[#8A867E] dark:text-slate-400 font-medium">
+                  {weatherData && weatherData[0] 
+                    ? `Today: ${weatherData[0].tempMax}°C • ${getWeatherDetails(weatherData[0].code, weatherData[0].rain).label}. Tap to expand guidance & forecast.`
+                    : "Tap to view crop guidance & 3-day weather forecast."
+                  }
+                </p>
+              </div>
+            </div>
+            <div className="embossed-btn-secondary p-1.5 rounded-xl text-[#3E5C31] dark:text-emerald-400 shrink-0 flex items-center justify-center">
+              <ChevronDown className="h-4 w-4" />
+            </div>
+          </div>
+        ) : (
+          /* Fully Expanded View */
+          <>
+            <div className="flex justify-between items-center">
+              <div className="flex items-center space-x-2">
+                <div className="bg-[#3E5C31]/10 dark:bg-[#3E5C31]/20 text-[#3E5C31] dark:text-emerald-400 p-1.5 rounded-xl">
+                  <Sun className="h-4 w-4" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-[#2D2D2A] dark:text-slate-100 text-xs uppercase tracking-wider">{t("local_farming_weather")}</h3>
+                  <p className="text-[10px] text-[#8A867E] dark:text-slate-300 flex items-center mt-0.5">
+                    <MapPin className="h-3 w-3 mr-0.5 text-[#3E5C31] dark:text-emerald-400" />
+                    <span className="font-semibold text-slate-700 dark:text-slate-200">{weatherLocation.name}</span>
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center space-x-1.5">
+                <button 
+                  onClick={handleDetectLocation}
+                  disabled={weatherLoading}
+                  className="flex items-center space-x-1 embossed-btn-secondary text-[#3E5C31] dark:text-emerald-400 text-[10px] font-bold px-2.5 py-1.5 rounded-xl cursor-pointer disabled:opacity-50"
+                >
+                  {weatherLoading ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <Locate className="h-3 w-3" />
+                  )}
+                  <span>{weatherLoading ? t("locating") : t("use_my_location")}</span>
+                </button>
+                <button
+                  onClick={() => setWeatherExpanded(false)}
+                  className="embossed-btn-secondary p-1.5 rounded-xl cursor-pointer"
+                  title="Collapse"
+                >
+                  <ChevronUp className="h-4 w-4 text-slate-500" />
+                </button>
+              </div>
+            </div>
+
+            {weatherError && (
+              <div className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 p-2.5 rounded-xl font-medium">
+                ⚠️ {weatherError}
+              </div>
+            )}
+
+            {weatherLoading && !weatherData && (
+              <div className="flex flex-col items-center justify-center py-6 space-y-2 text-[#8A867E]">
+                <Loader2 className="h-6 w-6 animate-spin text-[#3E5C31]" />
+                <span className="text-xs font-semibold">{t("retrieving_forecast")}</span>
+              </div>
+            )}
+
+            {weatherData && (
+              <div className="space-y-3">
+                {/* 3-Day Horizontal Grid */}
+                <div className="grid grid-cols-3 gap-2">
+                  {weatherData.map((day, idx) => {
+                    const details = getWeatherDetails(day.code, day.rain);
+                    const DayIcon = details.icon;
+                    const isSelected = selectedWeatherDayIndex === idx;
+                    
+                    return (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => setSelectedWeatherDayIndex(idx)}
+                        className={`p-2 rounded-2xl border text-center transition-all flex flex-col items-center justify-between space-y-1 cursor-pointer relative ${
+                          isSelected 
+                            ? "bg-[#3E5C31]/5 border-[#3E5C31] ring-1 ring-[#3E5C31]/30 shadow-xs" 
+                            : "bg-[#FAF7F2] border-[#E8E6E1] hover:bg-[#F3F1ED]"
+                        }`}
+                      >
+                        {idx === 0 && (
+                          <span className="absolute -top-1.5 left-1/2 transform -translate-x-1/2 text-[7px] font-black tracking-wider uppercase bg-[#3E5C31] text-white px-1.5 py-0.5 rounded-full shadow-xs">
+                            {t("today")}
+                          </span>
+                        )}
+                        
+                        <span className="text-[9px] font-bold text-[#8A867E] mt-1">{day.date}</span>
+                        
+                        <div className={`p-1.5 rounded-xl ${details.accentBg} ${details.iconColor} flex items-center justify-center`}>
+                          <DayIcon className="h-4 w-4" />
+                        </div>
+
+                        <div className="space-y-0.5">
+                          <div className="text-[10px] font-black text-[#2D2D2A] flex items-center justify-center">
+                            <Thermometer className="h-2.5 w-2.5 text-red-500 mr-0.5" />
+                            <span>{day.tempMax}°C</span>
+                          </div>
+                          <div className="text-[8px] font-bold text-sky-600">
+                            {day.rain > 0 ? `💧 ${day.rain.toFixed(1)}mm` : t("no_rain")}
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Selected Day Crop & Planting Guidance details */}
+                {weatherData[selectedWeatherDayIndex] && (() => {
+                  const selectedDay = weatherData[selectedWeatherDayIndex];
+                  const details = getWeatherDetails(selectedDay.code, selectedDay.rain);
+                  const DayIcon = details.icon;
+                  
+                  return (
+                    <div className={`p-3 rounded-2xl border ${details.bgColor} transition-all space-y-2`}>
+                      <div className="flex justify-between items-center">
+                        <span className="text-[9px] font-black tracking-wider uppercase text-slate-500">
+                          {t("farming_guidance")} ({selectedDay.date})
+                        </span>
+                        <div className="flex items-center space-x-1 bg-white/75 dark:bg-[#25302A]/80 backdrop-blur-xs px-2 py-0.5 rounded-md border border-[#E8E6E1] dark:border-slate-700 text-[9px] font-extrabold text-[#2D2D2A] dark:text-slate-100">
+                          <DayIcon className={`h-3 w-3 ${details.iconColor}`} />
+                          <span>{details.label}</span>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-start space-x-2">
+                        <div className="bg-[#3E5C31]/10 text-[#3E5C31] p-1.5 rounded-lg shrink-0 text-[10px] font-bold mt-0.5">
+                          🌾 {t("advice")}
+                        </div>
+                        <p className="text-[11px] text-[#2D2D2A] dark:text-slate-100 leading-relaxed font-semibold">
+                          {details.advice}
+                        </p>
+                      </div>
+
+                      {/* Highlighting specific weather conditions */}
+                      <div className="grid grid-cols-2 gap-2 pt-1 border-t border-slate-200/50 dark:border-slate-800 text-[9px] text-slate-600 dark:text-slate-300 font-medium">
+                        <div>🌡️ Temp range: <span className="font-extrabold text-[#2D2D2A] dark:text-white">{selectedDay.tempMin}°C - {selectedDay.tempMax}°C</span></div>
+                        <div>🌧️ Rainfall: <span className="font-extrabold text-[#2D2D2A] dark:text-white">{selectedDay.rain.toFixed(1)} mm</span></div>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
+            
+            <div className="flex items-center justify-between text-[9px] text-[#8A867E] dark:text-slate-400 pt-1.5 border-t border-[#E8E6E1]/60 dark:border-slate-800/60">
+              <span>⚡ {t("live_open_meteo")}</span>
+              <span className="font-semibold text-[#3E5C31] dark:text-emerald-400">{t("smart_sowing_advice")}</span>
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* Trust & Verification badging */}
+      <div id="trust-banner" className="mx-4 embossed-card rounded-2xl p-3 grid grid-cols-4 gap-1 text-center">
+        <div className="flex flex-col items-center">
+          <div className="bg-[#3E5C31]/10 dark:bg-emerald-500/10 text-[#3E5C31] dark:text-emerald-400 p-1.5 rounded-lg mb-1">
+            <Shield className="h-3.5 w-3.5" />
+          </div>
+          <span className="text-[9px] font-bold text-[#2D2D2A] dark:text-slate-200">{t("verified_owners")}</span>
+        </div>
+        <div className="flex flex-col items-center">
+          <div className="bg-[#D97706]/10 dark:bg-amber-500/10 text-[#D97706] dark:text-amber-400 p-1.5 rounded-lg mb-1">
+            <ThumbsUp className="h-3.5 w-3.5" />
+          </div>
+          <span className="text-[9px] font-bold text-[#2D2D2A] dark:text-slate-200">{t("quality_assured")}</span>
+        </div>
+        <div className="flex flex-col items-center">
+          <div className="bg-amber-50 dark:bg-amber-500/10 text-[#D97706] dark:text-amber-400 p-1.5 rounded-lg mb-1">
+            <BadgePercent className="h-3.5 w-3.5" />
+          </div>
+          <span className="text-[9px] font-bold text-[#2D2D2A] dark:text-slate-200">{t("best_prices")}</span>
+        </div>
+        <div className="flex flex-col items-center">
+          <div className="bg-purple-50 dark:bg-purple-500/10 text-purple-600 dark:text-purple-400 p-1.5 rounded-lg mb-1">
+            <Sparkles className="h-3.5 w-3.5" />
+          </div>
+          <span className="text-[9px] font-bold text-[#2D2D2A] dark:text-slate-200">{t("secure_escrow")}</span>
         </div>
       </div>
 

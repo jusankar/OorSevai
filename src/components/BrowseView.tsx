@@ -1,9 +1,49 @@
 import React, { useState, useMemo } from "react";
-import { motion } from "motion/react";
-import { Search, MapPin, SlidersHorizontal, ArrowLeft, Star, ArrowUpDown } from "lucide-react";
+import { motion, AnimatePresence } from "motion/react";
+import { Search, MapPin, SlidersHorizontal, ArrowLeft, Star, ArrowUpDown, X, Check, RotateCcw } from "lucide-react";
 import { Equipment, Laborer, Booking } from "../types";
 import { CATEGORIES_METADATA } from "../data";
 import { getTranslation, Language } from "../translate";
+
+const getDistanceBetween = (locA: string, locB: string): number => {
+  const clean = (s: string) => s.toLowerCase().replace(/,?\s*tamil\s*nadu/gi, "").trim();
+  const a = clean(locA);
+  const b = clean(locB);
+  if (a === b || a.includes(b) || b.includes(a)) return 2.5;
+
+  const matrix: Record<string, Record<string, number>> = {
+    "coimbatore": { "pollachi": 40, "sulur": 18, "mettupalayam": 35, "peedampalli": 12, "rs puram": 3, "peelamedu": 6, "thudiyalur": 9 },
+    "pollachi": { "coimbatore": 40, "sulur": 45, "mettupalayam": 75, "peedampalli": 38, "rs puram": 42, "peelamedu": 44, "thudiyalur": 48 },
+    "sulur": { "coimbatore": 18, "pollachi": 45, "mettupalayam": 48, "peedampalli": 5, "rs puram": 21, "peelamedu": 12, "thudiyalur": 26 },
+    "mettupalayam": { "coimbatore": 35, "pollachi": 75, "sulur": 48, "peedampalli": 42, "rs puram": 33, "peelamedu": 36, "thudiyalur": 28 },
+    "peedampalli": { "coimbatore": 12, "pollachi": 38, "sulur": 5, "mettupalayam": 42, "rs puram": 15, "peelamedu": 8, "thudiyalur": 20 }
+  };
+
+  const findKey = (str: string) => {
+    for (const key of Object.keys(matrix)) {
+      if (str.includes(key)) return key;
+    }
+    return null;
+  };
+
+  const keyA = findKey(a);
+  const keyB = findKey(b);
+
+  if (keyA && keyB) {
+    if (keyA === keyB) return 2.0;
+    return matrix[keyA][keyB] || 15.0;
+  }
+
+  let hash = 0;
+  for (let i = 0; i < a.length; i++) {
+    hash = (hash << 5) - hash + a.charCodeAt(i);
+  }
+  for (let i = 0; i < b.length; i++) {
+    hash = (hash << 5) - hash + b.charCodeAt(i);
+  }
+  const rawDist = Math.abs(hash % 30);
+  return rawDist < 5 ? rawDist + 2 : rawDist;
+};
 
 interface BrowseViewProps {
   initialCategory: string;
@@ -47,6 +87,18 @@ export default function BrowseView({
     verifiedOnly: false,
     lowestPrice: false,
   });
+  const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState<boolean>(false);
+
+  const activeFiltersCount = useMemo(() => {
+    let count = 0;
+    if (activeCategory !== "all") count++;
+    if (selectedSubCategory !== "All") count++;
+    if (minRating > 0) count++;
+    if (quickFilters.availableToday) count++;
+    if (quickFilters.verifiedOnly) count++;
+    if (quickFilters.lowestPrice) count++;
+    return count;
+  }, [activeCategory, selectedSubCategory, minRating, quickFilters]);
 
   const isLaborSelected = activeCategory === "labor";
 
@@ -77,11 +129,26 @@ export default function BrowseView({
     setMinRating(0);
   };
 
+  // Pre-calculate dynamic distances based on current adminLocation
+  const mappedEquipment = useMemo(() => {
+    return allEquipment.map(eq => ({
+      ...eq,
+      distance: getDistanceBetween(eq.location || "Coimbatore, Tamil Nadu", adminLocation)
+    }));
+  }, [allEquipment, adminLocation]);
+
+  const mappedLaborers = useMemo(() => {
+    return allLaborers.map(lb => ({
+      ...lb,
+      distance: getDistanceBetween(lb.location || "Coimbatore, Tamil Nadu", adminLocation)
+    }));
+  }, [allLaborers, adminLocation]);
+
   // Filter & Sort listings
   const filteredItems = useMemo(() => {
     // 1. FILTERING LABORS
     if (isLaborSelected) {
-      return allLaborers.filter((lb) => {
+      return mappedLaborers.filter((lb) => {
         const matchesSub = selectedSubCategory === "All" || lb.category.toLowerCase().includes(selectedSubCategory.toLowerCase().split(" ")[0]);
         const matchesSearch = localSearch === "" || 
           lb.name.toLowerCase().includes(localSearch.toLowerCase()) ||
@@ -101,7 +168,7 @@ export default function BrowseView({
     }
 
     // 2. FILTERING EQUIPMENT
-    return allEquipment.filter((eq) => {
+    return mappedEquipment.filter((eq) => {
       const matchesCat = activeCategory === "all" || eq.category === activeCategory;
       const matchesSub = selectedSubCategory === "All" || eq.subCategory.toLowerCase() === selectedSubCategory.toLowerCase() || eq.name.toLowerCase().includes(selectedSubCategory.toLowerCase());
       const matchesSearch = localSearch === "" || 
@@ -123,7 +190,7 @@ export default function BrowseView({
       if (activeSortBy === "rating") return b.rating - a.rating;
       return 0;
     });
-  }, [isLaborSelected, allEquipment, allLaborers, activeCategory, selectedSubCategory, localSearch, sortBy, minRating, quickFilters, bookings]);
+  }, [isLaborSelected, mappedEquipment, mappedLaborers, activeCategory, selectedSubCategory, localSearch, sortBy, minRating, quickFilters, bookings]);
 
   return (
     <div id="browse-view-container" className="space-y-4 max-w-lg mx-auto bg-[#FDFCF9] dark:bg-[#111613] min-h-screen pb-20 text-[#2D2D2A] dark:text-slate-100">
@@ -144,27 +211,100 @@ export default function BrowseView({
               placeholder={`${t("search_in")} ${isLaborSelected ? t("labor") : t("agriculture")}...`}
               value={localSearch}
               onChange={(e) => setLocalSearch(e.target.value)}
-              className="w-full bg-[#F3F1ED] dark:bg-[#252F2A] text-[#2D2D2A] dark:text-slate-100 pl-10 pr-4 py-2 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#3E5C31] dark:focus:ring-emerald-500 border border-transparent dark:border-slate-800 focus:bg-white dark:focus:bg-[#1C2420] transition-all"
+              className="w-full debossed-input text-[#2D2D2A] dark:text-slate-100 pl-10 pr-4 py-2 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#3E5C31] dark:focus:ring-emerald-500 transition-all"
             />
             <Search className="absolute left-3.5 top-2.5 h-4 w-4 text-[#8A867E]" />
           </div>
         </div>
 
-        {/* Scrollable Category selector pills */}
-        <div className="flex space-x-1.5 overflow-x-auto pb-1 scrollbar-none -mx-4 px-4">
-          {availableCategories.map((cat) => (
+        {/* All Filters Single Row */}
+        <div className="flex items-center space-x-2 overflow-x-auto pb-1 scrollbar-none -mx-4 px-4">
+          {/* Main Filter Button */}
+          <button
+            onClick={() => setIsFilterDrawerOpen(true)}
+            className={`flex items-center space-x-1.5 px-3.5 py-1.5 rounded-full text-[10px] font-black tracking-wider uppercase transition-all shrink-0 cursor-pointer border-none ${
+              activeFiltersCount > 0
+                ? "embossed-btn text-white"
+                : "embossed-btn-secondary text-[#2D2D2A] dark:text-slate-200"
+            }`}
+          >
+            <SlidersHorizontal className="h-3 w-3 shrink-0" />
+            <span>{t("filters")}</span>
+            {activeFiltersCount > 0 && (
+              <span className="flex items-center justify-center bg-white text-[#3E5C31] text-[9px] font-black w-4 h-4 rounded-full ml-1">
+                {activeFiltersCount}
+              </span>
+            )}
+          </button>
+
+          {/* Active Category Pill */}
+          {activeCategory !== "all" && (
             <button
-              key={cat.id}
-              onClick={() => handleCategoryChange(cat.id)}
-              className={`text-xs font-bold px-3.5 py-1.5 rounded-full border transition-all shrink-0 cursor-pointer ${
-                activeCategory === cat.id
-                  ? "bg-[#3E5C31] dark:bg-emerald-600 text-white border-[#3E5C31] dark:border-emerald-600 shadow-sm"
-                  : "bg-white dark:bg-[#252F2A] text-[#5C5952] dark:text-slate-300 border-[#E8E6E1] dark:border-slate-800 hover:bg-[#FAF7F2] dark:hover:bg-[#2E3C34] shadow-xs hover:shadow-sm"
-              }`}
+              onClick={() => handleCategoryChange("all")}
+              className="flex items-center space-x-1 bg-emerald-50 dark:bg-emerald-950/40 text-[#3E5C31] dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/40 px-3 py-1 rounded-full text-[10px] font-bold shrink-0 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 transition"
             >
-              {cat.label}
+              <span className="capitalize">{availableCategories.find(c => c.id === activeCategory)?.label || activeCategory}</span>
+              <X className="h-3 w-3 shrink-0" />
             </button>
-          ))}
+          )}
+
+          {/* Active Subcategory Pill */}
+          {selectedSubCategory !== "All" && (
+            <button
+              onClick={() => setSelectedSubCategory("All")}
+              className="flex items-center space-x-1 bg-emerald-50 dark:bg-emerald-950/40 text-[#3E5C31] dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/40 px-3 py-1 rounded-full text-[10px] font-bold shrink-0 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 transition"
+            >
+              <span>{selectedSubCategory}</span>
+              <X className="h-3 w-3 shrink-0" />
+            </button>
+          )}
+
+          {/* Active Rating Pill */}
+          {minRating > 0 && (
+            <button
+              onClick={() => setMinRating(0)}
+              className="flex items-center space-x-1 bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400 border border-amber-100 dark:border-amber-900/30 px-3 py-1 rounded-full text-[10px] font-bold shrink-0 hover:bg-amber-100 dark:hover:bg-amber-900/50 transition"
+            >
+              <span className="flex items-center space-x-0.5">
+                <Star className="h-3 w-3 text-amber-500 fill-amber-500 shrink-0" />
+                <span>{minRating}+</span>
+              </span>
+              <X className="h-3 w-3 shrink-0" />
+            </button>
+          )}
+
+          {/* Active Available Today Pill */}
+          {quickFilters.availableToday && (
+            <button
+              onClick={() => setQuickFilters(prev => ({ ...prev, availableToday: false }))}
+              className="flex items-center space-x-1 bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-900/30 px-3 py-1 rounded-full text-[10px] font-bold shrink-0 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition"
+            >
+              <span>⚡ {t("available_today")}</span>
+              <X className="h-3 w-3 shrink-0" />
+            </button>
+          )}
+
+          {/* Active Verified Only Pill */}
+          {quickFilters.verifiedOnly && (
+            <button
+              onClick={() => setQuickFilters(prev => ({ ...prev, verifiedOnly: false }))}
+              className="flex items-center space-x-1 bg-[#3E5C31]/10 dark:bg-emerald-950/30 text-[#3E5C31] dark:text-emerald-400 border border-[#3E5C31]/20 dark:border-emerald-900/30 px-3 py-1 rounded-full text-[10px] font-bold shrink-0 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 transition"
+            >
+              <span>🛡️ {t("verified_only")}</span>
+              <X className="h-3 w-3 shrink-0" />
+            </button>
+          )}
+
+          {/* Active Lowest Price Pill */}
+          {quickFilters.lowestPrice && (
+            <button
+              onClick={() => setQuickFilters(prev => ({ ...prev, lowestPrice: false }))}
+              className="flex items-center space-x-1 bg-purple-50 dark:bg-purple-950/30 text-purple-600 dark:text-purple-400 border border-purple-100 dark:border-purple-900/30 px-3 py-1 rounded-full text-[10px] font-bold shrink-0 hover:bg-purple-100 dark:hover:bg-purple-900/50 transition"
+            >
+              <span>💰 {t("lowest_price_first")}</span>
+              <X className="h-3 w-3 shrink-0" />
+            </button>
+          )}
         </div>
       </div>
 
@@ -181,133 +321,8 @@ export default function BrowseView({
         </span>
       </div>
 
-      {/* Subcategory scrollable & Sorting block */}
+      {/* Sorting and result metrics block */}
       <div className="px-4 space-y-2.5">
-        
-        {/* Dynamic Subcategories tab from images (All, Tractor, Tillage, etc.) */}
-        {subCategories.length > 1 && (
-          <div className="flex space-x-2 overflow-x-auto pb-1.5 scrollbar-none">
-            {subCategories.map((sub) => (
-              <button
-                key={sub}
-                onClick={() => setSelectedSubCategory(sub)}
-                className={`text-xs font-semibold px-4 py-1.5 rounded-xl border transition-all shrink-0 cursor-pointer ${
-                  selectedSubCategory === sub
-                    ? "bg-[#2D2D2A] dark:bg-emerald-600 text-white border-[#2D2D2A] dark:border-emerald-600 shadow-sm"
-                    : "bg-white dark:bg-[#252F2A] text-[#5C5952] dark:text-slate-300 border-[#E8E6E1] dark:border-slate-800 hover:bg-[#FAF7F2] dark:hover:bg-[#2E3C34] shadow-xs hover:shadow-sm"
-                }`}
-              >
-                {sub}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {/* Quick Filters */}
-        <div id="quick-filters-container" className="bg-[#FAF7F2] dark:bg-[#1A221E] p-2.5 rounded-2xl border border-[#E8E6E1] dark:border-slate-800 space-y-2">
-          <div className="flex justify-between items-center text-[10px] text-[#5C5952] dark:text-slate-400 font-black uppercase tracking-wider">
-            <span className="flex items-center gap-1">
-              <SlidersHorizontal className="h-3 w-3 text-[#3E5C31] dark:text-emerald-400" />
-              {t("quick_filters")}
-            </span>
-            {(quickFilters.availableToday || quickFilters.verifiedOnly || quickFilters.lowestPrice) && (
-              <button
-                onClick={() => setQuickFilters({ availableToday: false, verifiedOnly: false, lowestPrice: false })}
-                className="text-rose-600 font-extrabold normal-case hover:underline cursor-pointer focus:outline-none"
-              >
-                {t("reset_filters")}
-              </button>
-            )}
-          </div>
-          <div className="flex space-x-1.5 overflow-x-auto scrollbar-none pb-0.5">
-            {/* Available Today Chip */}
-            <button
-              onClick={() => setQuickFilters(prev => ({ ...prev, availableToday: !prev.availableToday }))}
-              className={`text-[11px] font-bold px-3 py-1.5 rounded-xl border transition-all shrink-0 cursor-pointer flex items-center space-x-1 ${
-                quickFilters.availableToday
-                  ? "bg-[#3E5C31] dark:bg-emerald-600 text-white border-[#3E5C31] dark:border-emerald-600 shadow-xs"
-                  : "bg-white dark:bg-[#252F2A] text-[#5C5952] dark:text-slate-300 border-[#E8E6E1] dark:border-slate-800 hover:bg-amber-50/40 dark:hover:bg-slate-800/50 hover:border-amber-200"
-              }`}
-            >
-              <span>⚡</span>
-              <span>{t("available_today")}</span>
-            </button>
-
-            {/* Verified Only Chip */}
-            <button
-              onClick={() => setQuickFilters(prev => ({ ...prev, verifiedOnly: !prev.verifiedOnly }))}
-              className={`text-[11px] font-bold px-3 py-1.5 rounded-xl border transition-all shrink-0 cursor-pointer flex items-center space-x-1 ${
-                quickFilters.verifiedOnly
-                  ? "bg-[#3E5C31] dark:bg-emerald-600 text-white border-[#3E5C31] dark:border-emerald-600 shadow-xs"
-                  : "bg-white dark:bg-[#252F2A] text-[#5C5952] dark:text-slate-300 border-[#E8E6E1] dark:border-slate-800 hover:bg-amber-50/40 dark:hover:bg-slate-800/50 hover:border-amber-200"
-              }`}
-            >
-              <span>🛡️</span>
-              <span>{t("verified_only")}</span>
-            </button>
-
-            {/* Lowest Price First Chip */}
-            <button
-              onClick={() => setQuickFilters(prev => ({ ...prev, lowestPrice: !prev.lowestPrice }))}
-              className={`text-[11px] font-bold px-3 py-1.5 rounded-xl border transition-all shrink-0 cursor-pointer flex items-center space-x-1 ${
-                quickFilters.lowestPrice
-                  ? "bg-[#3E5C31] dark:bg-emerald-600 text-white border-[#3E5C31] dark:border-emerald-600 shadow-xs"
-                  : "bg-white dark:bg-[#252F2A] text-[#5C5952] dark:text-slate-300 border-[#E8E6E1] dark:border-slate-800 hover:bg-amber-50/40 dark:hover:bg-slate-800/50 hover:border-amber-200"
-              }`}
-            >
-              <span>💰</span>
-              <span>{t("lowest_price_first")}</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Star Rating Filter */}
-        <div id="star-rating-filter-container" className="bg-[#FAF7F2] dark:bg-[#1A221E] p-2.5 rounded-2xl border border-[#E8E6E1] dark:border-slate-800 space-y-2">
-          <div className="flex justify-between items-center text-[10px] text-[#5C5952] dark:text-slate-400 font-black uppercase tracking-wider">
-            <span className="flex items-center gap-1">
-              <Star className="h-3 w-3 text-amber-500 fill-amber-500" />
-              {t("filter_by_rating")}
-            </span>
-            {minRating > 0 && (
-              <button
-                onClick={() => setMinRating(0)}
-                className="text-rose-600 dark:text-rose-400 font-extrabold normal-case hover:underline cursor-pointer focus:outline-none"
-              >
-                {t("clear_filter")}
-              </button>
-            )}
-          </div>
-          <div className="flex space-x-1.5 overflow-x-auto scrollbar-none pb-0.5">
-            {[
-              { label: t("all_ratings"), value: 0 },
-              { label: `4.7 ★ ${t("and_above")}`, value: 4.7 },
-              { label: `4.5 ★ ${t("and_above")}`, value: 4.5 },
-              { label: `4.3 ★ ${t("and_above")}`, value: 4.3 },
-            ].map((opt) => {
-              const isSelected = minRating === opt.value;
-              return (
-                <button
-                  key={opt.value}
-                  onClick={() => setMinRating(opt.value)}
-                  className={`text-[11px] font-bold px-3 py-1.5 rounded-xl border transition-all shrink-0 cursor-pointer flex items-center space-x-1 ${
-                    isSelected
-                      ? "bg-[#3E5C31] dark:bg-emerald-600 text-white border-[#3E5C31] dark:border-emerald-600 shadow-xs"
-                      : "bg-white dark:bg-[#252F2A] text-[#5C5952] dark:text-slate-300 border-[#E8E6E1] dark:border-slate-800 hover:bg-amber-50/40 dark:hover:bg-slate-800/50 hover:border-amber-200"
-                  }`}
-                >
-                  {opt.value > 0 && (
-                    <Star
-                      className={`h-2.5 w-2.5 ${
-                        isSelected ? "text-white fill-white" : "text-amber-500 fill-amber-500"
-                      }`}
-                    />
-                  )}
-                  <span>{opt.label}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
 
         {/* Sorting and result metrics */}
         <div className="flex justify-between items-center text-xs text-[#8A867E] dark:text-slate-400">
@@ -433,6 +448,308 @@ export default function BrowseView({
           })
         )}
       </div>
+
+      {/* Filters Slide-up Bottom Sheet Drawer */}
+      <AnimatePresence>
+        {isFilterDrawerOpen && (
+          <div className="fixed inset-0 z-50 flex items-end justify-center">
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsFilterDrawerOpen(false)}
+              className="absolute inset-0 bg-black/60 backdrop-blur-xs"
+            />
+            
+            {/* Drawer */}
+            <motion.div
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ type: "spring", damping: 25, stiffness: 280 }}
+              className="relative bg-[#FDFCF9] dark:bg-[#151B18] w-full max-w-lg rounded-t-[28px] shadow-2xl overflow-hidden flex flex-col z-10 border-t border-[#E8E6E1] dark:border-slate-800 pb-safe"
+            >
+              {/* Drag Handle Indicator */}
+              <div className="w-12 h-1.5 bg-[#E8E6E1] dark:bg-slate-700 rounded-full mx-auto my-3 shrink-0" />
+              
+              {/* Header */}
+              <div className="flex items-center justify-between px-5 pb-3 border-b border-[#E8E6E1] dark:border-slate-800 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveCategory("all");
+                    setSelectedSubCategory("All");
+                    setMinRating(0);
+                    setQuickFilters({ availableToday: false, verifiedOnly: false, lowestPrice: false });
+                    setSortBy("distance");
+                  }}
+                  className="text-xs font-bold text-slate-500 hover:text-slate-800 dark:hover:text-white flex items-center space-x-1.5 cursor-pointer bg-transparent border-none py-1"
+                >
+                  <RotateCcw className="h-3.5 w-3.5" />
+                  <span>{t("reset_filters")}</span>
+                </button>
+                
+                <h2 className="text-xs font-black text-center text-[#2D2D2A] dark:text-slate-100 uppercase tracking-wider">
+                  {language === "ta" ? "வடிகட்டி & வரிசைப்படுத்து" : "Filter & Sort"}
+                </h2>
+                
+                <button
+                  type="button"
+                  onClick={() => setIsFilterDrawerOpen(false)}
+                  className="p-1.5 hover:bg-[#FAF7F2] dark:hover:bg-[#1C2420] rounded-full border border-[#E8E6E1] dark:border-slate-800 transition text-slate-500 hover:text-slate-800 dark:hover:text-white cursor-pointer"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+              
+              {/* Scrollable Content */}
+              <div className="overflow-y-auto max-h-[55vh] px-5 py-4 space-y-6">
+                
+                {/* 1. Category Selection */}
+                <div className="space-y-2.5">
+                  <h3 className="text-[10px] font-black text-[#5C5952] dark:text-slate-400 uppercase tracking-wider">
+                    {language === "ta" ? "சேவை பிரிவு" : "Service Category"}
+                  </h3>
+                  <div className="grid grid-cols-3 gap-2">
+                    {availableCategories.map((cat) => {
+                      const isActive = activeCategory === cat.id;
+                      let icon = "📦";
+                      if (cat.id === "agriculture") icon = "🚜";
+                      else if (cat.id === "labor") icon = "👷";
+                      else if (cat.id === "construction") icon = "🏗️";
+                      else if (cat.id === "tools") icon = "🔧";
+                      else if (cat.id === "function") icon = "🎪";
+                      else if (cat.id === "all") icon = "🌈";
+
+                      return (
+                        <button
+                          key={cat.id}
+                          type="button"
+                          onClick={() => handleCategoryChange(cat.id)}
+                          className={`flex flex-col items-center justify-center p-3 rounded-2xl border text-center transition-all cursor-pointer ${
+                            isActive
+                              ? "bg-[#3E5C31] text-white border-[#3E5C31] shadow-xs"
+                              : "bg-[#FAF7F2] dark:bg-[#1C2420] text-[#2D2D2A] dark:text-slate-300 border-[#E8E6E1] dark:border-slate-800 hover:bg-white dark:hover:bg-slate-800/50"
+                          }`}
+                        >
+                          <span className="text-lg mb-1">{icon}</span>
+                          <span className="text-[9px] font-black leading-tight tracking-tight">{cat.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* 2. Subcategory Selection */}
+                {subCategories.length > 1 && (
+                  <div className="space-y-2.5">
+                    <h3 className="text-[10px] font-black text-[#5C5952] dark:text-slate-400 uppercase tracking-wider">
+                      {t("browse_categories")} ({availableCategories.find(c => c.id === activeCategory)?.label})
+                    </h3>
+                    <div className="flex flex-wrap gap-1.5">
+                      {subCategories.map((sub) => {
+                        const isActive = selectedSubCategory === sub;
+                        return (
+                          <button
+                            key={sub}
+                            type="button"
+                            onClick={() => setSelectedSubCategory(sub)}
+                            className={`text-[10px] font-bold px-3 py-1.5 rounded-full border transition-all cursor-pointer ${
+                              isActive
+                                ? "bg-[#3E5C31] text-white border-[#3E5C31] shadow-xs"
+                                : "bg-[#FAF7F2] dark:bg-[#1C2420] text-[#2D2D2A] dark:text-slate-300 border-[#E8E6E1] dark:border-slate-800 hover:bg-white dark:hover:bg-slate-800/50"
+                            }`}
+                          >
+                            {sub}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* 3. Sort By Options */}
+                <div className="space-y-2.5">
+                  <h3 className="text-[10px] font-black text-[#5C5952] dark:text-slate-400 uppercase tracking-wider">
+                    {t("sort_by")}
+                  </h3>
+                  <div className="grid grid-cols-2 gap-2">
+                    {[
+                      { id: "distance", label: t("nearby"), icon: "📍" },
+                      { id: "price_low", label: t("price_low_high"), icon: "📉" },
+                      { id: "price_high", label: t("price_high_low") || "Price: High to Low", icon: "📈" },
+                      { id: "rating", label: t("top_rated") || "Top Rated", icon: "★" }
+                    ].map((option) => {
+                      const isActive = sortBy === option.id;
+                      return (
+                        <button
+                          key={option.id}
+                          type="button"
+                          onClick={() => setSortBy(option.id as any)}
+                          className={`flex items-center space-x-2 p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                            isActive
+                              ? "bg-[#3E5C31]/10 text-[#3E5C31] border-[#3E5C31] dark:bg-emerald-950/30 dark:text-emerald-400"
+                              : "bg-[#FAF7F2] dark:bg-[#1C2420] text-[#2D2D2A] dark:text-slate-300 border-[#E8E6E1] dark:border-slate-800 hover:bg-white dark:hover:bg-slate-800/50"
+                          }`}
+                        >
+                          <span className="text-xs">{option.icon}</span>
+                          <span className="text-[11px] font-bold">{option.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* 4. Min Rating Options */}
+                <div className="space-y-2.5">
+                  <h3 className="text-[10px] font-black text-[#5C5952] dark:text-slate-400 uppercase tracking-wider">
+                    {language === "ta" ? "மதிப்பீடு" : "Minimum Rating"}
+                  </h3>
+                  <div className="flex items-center space-x-1.5">
+                    {[0, 4.3, 4.5, 4.7].map((ratingVal) => {
+                      const isActive = minRating === ratingVal;
+                      return (
+                        <button
+                          key={ratingVal}
+                          type="button"
+                          onClick={() => setMinRating(ratingVal)}
+                          className={`flex-1 flex items-center justify-center space-x-1 py-2 px-1.5 rounded-xl border text-[10px] font-black transition-all cursor-pointer ${
+                            isActive
+                              ? "bg-amber-500 text-white border-amber-500 shadow-xs"
+                              : "bg-[#FAF7F2] dark:bg-[#1C2420] text-[#2D2D2A] dark:text-slate-300 border-[#E8E6E1] dark:border-slate-800 hover:bg-white dark:hover:bg-slate-800/50"
+                          }`}
+                        >
+                          {ratingVal === 0 ? (
+                            <span>{t("all_ratings")}</span>
+                          ) : (
+                            <>
+                              <span>{ratingVal}</span>
+                              <Star className={`h-3 w-3 ${isActive ? "text-white fill-white" : "text-amber-500 fill-amber-500"}`} />
+                            </>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* 5. Quick Status Switches */}
+                <div className="space-y-2.5">
+                  <h3 className="text-[10px] font-black text-[#5C5952] dark:text-slate-400 uppercase tracking-wider">
+                    {t("filters")}
+                  </h3>
+                  <div className="space-y-2">
+                    {/* Available Today */}
+                    <button
+                      type="button"
+                      onClick={() => setQuickFilters(prev => ({ ...prev, availableToday: !prev.availableToday }))}
+                      className={`w-full flex items-center justify-between p-3 rounded-xl border transition-all text-left cursor-pointer ${
+                        quickFilters.availableToday
+                          ? "bg-blue-50/50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-900/40 text-blue-900 dark:text-blue-300"
+                          : "bg-[#FAF7F2] dark:bg-[#1C2420] border-[#E8E6E1] dark:border-slate-800 text-[#2D2D2A] dark:text-slate-300 hover:bg-white dark:hover:bg-slate-800/50"
+                      }`}
+                    >
+                      <div className="flex items-center space-x-2.5">
+                        <span className="text-sm">⚡</span>
+                        <div>
+                          <div className="text-[11px] font-black">{t("available_today")}</div>
+                          <div className="text-[9px] text-slate-500 dark:text-slate-400 mt-0.5 leading-tight">
+                            {language === "ta" ? "இன்று வாடகைக்குக் கிடைக்கக்கூடியவை மட்டும்" : "Show items ready to be hired immediately"}
+                          </div>
+                        </div>
+                      </div>
+                      <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center transition-all shrink-0 ${
+                        quickFilters.availableToday
+                          ? "border-blue-500 bg-blue-500 text-white"
+                          : "border-slate-300 dark:border-slate-700"
+                      }`}>
+                        {quickFilters.availableToday && <Check className="h-2.5 w-2.5 stroke-[3px]" />}
+                      </div>
+                    </button>
+
+                    {/* Verified Only */}
+                    <button
+                      type="button"
+                      onClick={() => setQuickFilters(prev => ({ ...prev, verifiedOnly: !prev.verifiedOnly }))}
+                      className={`w-full flex items-center justify-between p-3 rounded-xl border transition-all text-left cursor-pointer ${
+                        quickFilters.verifiedOnly
+                          ? "bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900/40 text-emerald-900 dark:text-emerald-300"
+                          : "bg-[#FAF7F2] dark:bg-[#1C2420] border-[#E8E6E1] dark:border-slate-800 text-[#2D2D2A] dark:text-slate-300 hover:bg-white dark:hover:bg-slate-800/50"
+                      }`}
+                    >
+                      <div className="flex items-center space-x-2.5">
+                        <span className="text-sm">🛡️</span>
+                        <div>
+                          <div className="text-[11px] font-black">{t("verified_only")}</div>
+                          <div className="text-[9px] text-slate-500 dark:text-slate-400 mt-0.5 leading-tight">
+                            {language === "ta" ? "அரசு ஐடி மற்றும் KYC சரிபார்க்கப்பட்ட உரிமையாளர்கள் மட்டும்" : "Verified KYC & Government ID verified partners only"}
+                          </div>
+                        </div>
+                      </div>
+                      <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center transition-all shrink-0 ${
+                        quickFilters.verifiedOnly
+                          ? "border-[#3E5C31] bg-[#3E5C31] text-white"
+                          : "border-slate-300 dark:border-slate-700"
+                      }`}>
+                        {quickFilters.verifiedOnly && <Check className="h-2.5 w-2.5 stroke-[3px]" />}
+                      </div>
+                    </button>
+
+                    {/* Lowest Price first */}
+                    <button
+                      type="button"
+                      onClick={() => setQuickFilters(prev => ({ ...prev, lowestPrice: !prev.lowestPrice }))}
+                      className={`w-full flex items-center justify-between p-3 rounded-xl border transition-all text-left cursor-pointer ${
+                        quickFilters.lowestPrice
+                          ? "bg-purple-50/50 dark:bg-purple-950/20 border-purple-200 dark:border-purple-900/40 text-purple-900 dark:text-purple-300"
+                          : "bg-[#FAF7F2] dark:bg-[#1C2420] border-[#E8E6E1] dark:border-slate-800 text-[#2D2D2A] dark:text-slate-300 hover:bg-white dark:hover:bg-slate-800/50"
+                      }`}
+                    >
+                      <div className="flex items-center space-x-2.5">
+                        <span className="text-sm">💰</span>
+                        <div>
+                          <div className="text-[11px] font-black">{t("lowest_price_first")}</div>
+                          <div className="text-[9px] text-slate-500 dark:text-slate-400 mt-0.5 leading-tight">
+                            {language === "ta" ? "விலை குறைந்த வரிசையில் காண்பிக்கவும்" : "Show lowest daily hire rates first"}
+                          </div>
+                        </div>
+                      </div>
+                      <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center transition-all shrink-0 ${
+                        quickFilters.lowestPrice
+                          ? "border-purple-500 bg-purple-500 text-white"
+                          : "border-slate-300 dark:border-slate-700"
+                      }`}>
+                        {quickFilters.lowestPrice && <Check className="h-2.5 w-2.5 stroke-[3px]" />}
+                      </div>
+                    </button>
+                  </div>
+                </div>
+
+              </div>
+              
+              {/* Apply Footer */}
+              <div className="p-4 bg-white dark:bg-[#1C2420] border-t border-[#E8E6E1] dark:border-slate-800 shrink-0 flex items-center justify-between gap-4 pb-safe">
+                <div className="text-left shrink-0">
+                  <div className="text-[9px] text-slate-500 uppercase font-black tracking-wider">
+                    {language === "ta" ? "முடிவுகள்" : "Matching Results"}
+                  </div>
+                  <div className="text-xs font-black text-[#3E5C31] dark:text-emerald-400">
+                    {filteredItems.length} {isLaborSelected ? t("labor") : t("all_items")}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsFilterDrawerOpen(false)}
+                  className="flex-1 bg-[#3E5C31] hover:bg-[#324a27] text-white py-3 px-6 rounded-2xl text-[10px] font-black uppercase tracking-wider transition-all shadow-md cursor-pointer text-center"
+                >
+                  {language === "ta" ? "வடிகட்டிகளைப் பயன்படுத்து" : "Apply Filters"}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
     </div>
   );

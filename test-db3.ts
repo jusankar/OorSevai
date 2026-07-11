@@ -13,7 +13,10 @@ async function test() {
         pricePerDay: 100,
         about: 'Test About',
         ownerId: '9876543210',
-        status: 'available'
+        status: 'available',
+        location: 'Chennai',
+        ownerName: 'Arun',
+        specs: 'Test Specs'
     }).returning();
     console.log("Insert result:", result);
   } catch (err) {

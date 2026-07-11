@@ -27,3 +27,201 @@
   scrollbar-width: none;  /* Firefox */
 }
 
+/* --- PREMIUM GRADIENTS --- */
+.organic-gradient {
+  background: linear-gradient(135deg, #4D733E 0%, #3E5C31 100%) !important;
+}
+
+.organic-gradient-hover {
+  background: linear-gradient(135deg, #598548 0%, #466937 100%) !important;
+}
+
+.gold-gradient {
+  background: linear-gradient(135deg, #FBBF24 0%, #D97706 100%) !important;
+}
+
+.warm-gradient {
+  background: linear-gradient(135deg, #FDFCF9 0%, #F5F2E9 100%) !important;
+}
+
+.dark .warm-gradient {
+  background: linear-gradient(135deg, #252F2A 0%, #171F1B 100%) !important;
+}
+
+/* --- TACTILE EMBOSSED & DEBOSSED STYLES --- */
+
+/* Embossed Card (Softly Raised 3D Panel) */
+.embossed-card {
+  background: linear-gradient(135deg, #FDFCF9 0%, #F6F3EC 100%);
+  border: 1px solid rgba(232, 230, 225, 0.6);
+  box-shadow: 
+    inset 1.5px 1.5px 0px rgba(255, 255, 255, 0.9),
+    inset -1px -1px 0px rgba(0, 0, 0, 0.02),
+    0px 2px 5px rgba(45, 45, 42, 0.03),
+    0px 8px 20px rgba(45, 45, 42, 0.04);
+}
+
+.dark .embossed-card {
+  background: linear-gradient(135deg, #1C2420 0%, #131A17 100%);
+  border: 1px solid rgba(255, 255, 255, 0.03);
+  box-shadow: 
+    inset 1px 1px 0px rgba(255, 255, 255, 0.06),
+    inset -1px -1px 0px rgba(0, 0, 0, 0.2),
+    0px 2px 6px rgba(0, 0, 0, 0.2),
+    0px 10px 25px rgba(0, 0, 0, 0.35);
+}
+
+/* Flat but slightly raised, good for list elements */
+.embossed-item {
+  border: 1px solid rgba(232, 230, 225, 0.8);
+  box-shadow: 
+    inset 1px 1px 0px rgba(255, 255, 255, 0.9),
+    0px 1.5px 3px rgba(45, 45, 42, 0.02);
+}
+
+.dark .embossed-item {
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  box-shadow: 
+    inset 1px 1px 0px rgba(255, 255, 255, 0.05),
+    0px 2px 4px rgba(0, 0, 0, 0.15);
+}
+
+/* Embossed Primary Button (Forest Green tactile button) */
+.embossed-btn {
+  background: linear-gradient(135deg, #4D733E 0%, #3E5C31 100%);
+  border: 1px solid #354F2A;
+  box-shadow: 
+    inset 0px 1.5px 0px rgba(255, 255, 255, 0.22),
+    0px 1.5px 2px rgba(0, 0, 0, 0.12),
+    0px 4px 8px rgba(0, 0, 0, 0.08);
+  transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.embossed-btn:hover {
+  background: linear-gradient(135deg, #598548 0%, #466937 100%);
+  box-shadow: 
+    inset 0px 1.5px 0px rgba(255, 255, 255, 0.3),
+    0px 3px 6px rgba(0, 0, 0, 0.15),
+    0px 6px 12px rgba(0, 0, 0, 0.1);
+  transform: translateY(-0.5px);
+}
+
+.embossed-btn:active {
+  background: linear-gradient(135deg, #3E5C31 0%, #354F2A 100%);
+  box-shadow: 
+    inset 0px 2px 4px rgba(0, 0, 0, 0.25),
+    0px 1px 1px rgba(255, 255, 255, 0.1);
+  transform: translateY(1px);
+}
+
+/* Embossed Secondary Button (Warm Light tactile button) */
+.embossed-btn-secondary {
+  background: linear-gradient(135deg, #FDFCF9 0%, #F3F0E6 100%);
+  border: 1px solid #E3E0D8;
+  color: #2D2D2A;
+  box-shadow: 
+    inset 0px 1.5px 0px rgba(255, 255, 255, 0.95),
+    0px 1.5px 2.5px rgba(0, 0, 0, 0.04),
+    0px 3px 6px rgba(0, 0, 0, 0.03);
+  transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.dark .embossed-btn-secondary {
+  background: linear-gradient(135deg, #252F2A 0%, #19211D 100%);
+  border: 1px solid #2B3731;
+  color: #E2E8F0;
+  box-shadow: 
+    inset 0px 1px 0px rgba(255, 255, 255, 0.08),
+    0px 1.5px 2px rgba(0, 0, 0, 0.2);
+}
+
+.embossed-btn-secondary:hover {
+  background: linear-gradient(135deg, #FDFCF9 0%, #E9E6DC 100%);
+  border-color: #D3D0C7;
+  box-shadow: 
+    inset 0px 1.5px 0px rgba(255, 255, 255, 0.95),
+    0px 2.5px 5px rgba(0, 0, 0, 0.06);
+  transform: translateY(-0.5px);
+}
+
+.dark .embossed-btn-secondary:hover {
+  background: linear-gradient(135deg, #2C3832 0%, #1C2621 100%);
+  border-color: #37463E;
+}
+
+.embossed-btn-secondary:active {
+  background: linear-gradient(135deg, #ECE9DE 0%, #E1DDD2 100%);
+  box-shadow: 
+    inset 0px 2px 4px rgba(0, 0, 0, 0.06),
+    0px 1px 1px rgba(255, 255, 255, 0.8);
+  transform: translateY(1px);
+}
+
+.dark .embossed-btn-secondary:active {
+  background: linear-gradient(135deg, #161E1A 0%, #111714 100%);
+  box-shadow: 
+    inset 0px 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* Debossed Well / Inset Input Field (Recessed 3D Well) */
+.debossed-input {
+  background-color: #FAF8F3 !important;
+  border: 1px solid #E1DDD3 !important;
+  box-shadow: 
+    inset 1px 1.5px 3.5px rgba(45, 45, 42, 0.06),
+    0px 1px 0px rgba(255, 255, 255, 0.9);
+}
+
+.dark .debossed-input {
+  background-color: #0E1311 !important;
+  border: 1px solid #1E2622 !important;
+  box-shadow: 
+    inset 1px 1.5px 4px rgba(0, 0, 0, 0.35),
+    0px 1px 0px rgba(255, 255, 255, 0.04);
+}
+
+.debossed-well {
+  background-color: #F5F2E9;
+  border: 1px solid #E1DDD3;
+  box-shadow: inset 1px 1.5px 3px rgba(45, 45, 42, 0.05);
+}
+
+.dark .debossed-well {
+  background-color: #0E1311;
+  border: 1px solid #1C2420;
+  box-shadow: inset 1px 1.5px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* Embossed Icons and Badges */
+.embossed-icon-wrapper {
+  background: linear-gradient(135deg, #FDFCF9 0%, #ECE9DF 100%);
+  border: 1px solid #DFDBD1;
+  box-shadow: 
+    inset 1px 1px 0px rgba(255, 255, 255, 0.95),
+    0px 1.5px 3px rgba(0, 0, 0, 0.03);
+}
+
+.dark .embossed-icon-wrapper {
+  background: linear-gradient(135deg, #252F2A 0%, #19211D 100%);
+  border: 1px solid #2B3731;
+  box-shadow: 
+    inset 1px 1px 0px rgba(255, 255, 255, 0.06),
+    0px 1.5px 3px rgba(0, 0, 0, 0.25);
+}
+
+.embossed-pill {
+  background: linear-gradient(135deg, #F6F3EB 0%, #ECE8DD 100%);
+  border: 1px solid #DFDCD1;
+  box-shadow: 
+    inset 0.5px 1px 0px rgba(255, 255, 255, 0.9),
+    0px 1px 2px rgba(0, 0, 0, 0.02);
+}
+
+.dark .embossed-pill {
+  background: linear-gradient(135deg, #1E2622 0%, #151B18 100%);
+  border: 1px solid #27332D;
+  box-shadow: 
+    inset 0.5px 1px 0px rgba(255, 255, 255, 0.05),
+    0px 1px 2px rgba(0, 0, 0, 0.15);
+}
+

@@ -18,6 +18,46 @@ import GeofenceMap from "./components/GeofenceMap";
 import NotificationCenter from "./components/NotificationCenter";
 import { LaborerCalendar } from "./components/LaborerCalendar";
 
+const getDistanceBetween = (locA: string, locB: string): number => {
+  const clean = (s: string) => s.toLowerCase().replace(/,?\s*tamil\s*nadu/gi, "").trim();
+  const a = clean(locA);
+  const b = clean(locB);
+  if (a === b || a.includes(b) || b.includes(a)) return 2.5;
+
+  const matrix: Record<string, Record<string, number>> = {
+    "coimbatore": { "pollachi": 40, "sulur": 18, "mettupalayam": 35, "peedampalli": 12, "rs puram": 3, "peelamedu": 6, "thudiyalur": 9 },
+    "pollachi": { "coimbatore": 40, "sulur": 45, "mettupalayam": 75, "peedampalli": 38, "rs puram": 42, "peelamedu": 44, "thudiyalur": 48 },
+    "sulur": { "coimbatore": 18, "pollachi": 45, "mettupalayam": 48, "peedampalli": 5, "rs puram": 21, "peelamedu": 12, "thudiyalur": 26 },
+    "mettupalayam": { "coimbatore": 35, "pollachi": 75, "sulur": 48, "peedampalli": 42, "rs puram": 33, "peelamedu": 36, "thudiyalur": 28 },
+    "peedampalli": { "coimbatore": 12, "pollachi": 38, "sulur": 5, "mettupalayam": 42, "rs puram": 15, "peelamedu": 8, "thudiyalur": 20 }
+  };
+
+  const findKey = (str: string) => {
+    for (const key of Object.keys(matrix)) {
+      if (str.includes(key)) return key;
+    }
+    return null;
+  };
+
+  const keyA = findKey(a);
+  const keyB = findKey(b);
+
+  if (keyA && keyB) {
+    if (keyA === keyB) return 2.0;
+    return matrix[keyA][keyB] || 15.0;
+  }
+
+  let hash = 0;
+  for (let i = 0; i < a.length; i++) {
+    hash = (hash << 5) - hash + a.charCodeAt(i);
+  }
+  for (let i = 0; i < b.length; i++) {
+    hash = (hash << 5) - hash + b.charCodeAt(i);
+  }
+  const rawDist = Math.abs(hash % 30);
+  return rawDist < 5 ? rawDist + 2 : rawDist;
+};
+
 export default function App() {
   // Application Roles
   const [userRole, setUserRole] = useState<"customer" | "owner" | "labor" | "admin">(() => {
@@ -261,7 +301,8 @@ export default function App() {
   const [adminDistance, setAdminDistance] = useState<number>(() => {
     if (typeof window !== "undefined") {
       const saved = localStorage.getItem("admin_distance");
-      return saved ? parseInt(saved, 10) : 15; // default 15 KM
+      const val = saved ? parseInt(saved, 10) : 15; // default 15 KM
+      return val > 25 ? 25 : val; // Apply a maximum service radius of 25 km
     }
     return 15;
   });
@@ -299,6 +340,54 @@ export default function App() {
       document.documentElement.classList.remove("dark");
     }
   }, [darkMode]);
+
+  // On load, if there's no saved admin location, try to detect and replace the default "Coimbatore"
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const savedAdminLoc = localStorage.getItem("admin_location");
+      const savedUserLoc = localStorage.getItem("oorsevai_user_location");
+      
+      if (savedUserLoc || savedAdminLoc) {
+        const initialLoc = savedUserLoc || savedAdminLoc || "Coimbatore, Tamil Nadu";
+        setAdminLocation(initialLoc);
+        localStorage.setItem("admin_location", initialLoc);
+      } else if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          async (position) => {
+            const { latitude, longitude } = position.coords;
+            let detectedName = `Near ${latitude.toFixed(4)}°N, ${longitude.toFixed(4)}°E`;
+            try {
+              const geoRes = await fetch(
+                `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&accept-language=${language}`
+              );
+              if (geoRes.ok) {
+                const geoData = await geoRes.json();
+                const addr = geoData.address || {};
+                const parts: string[] = [];
+                if (addr.village || addr.town || addr.city) {
+                  parts.push(addr.village || addr.town || addr.city);
+                }
+                if (addr.state) {
+                  parts.push(addr.state);
+                }
+                if (parts.length > 0) {
+                  detectedName = parts.join(", ");
+                }
+              }
+            } catch (e) {
+              console.error("Init reverse geocoding failed, using coordinates:", e);
+            }
+            setAdminLocation(detectedName);
+            localStorage.setItem("admin_location", detectedName);
+          },
+          (err) => {
+            console.log("Initial geolocation failed or denied:", err);
+          },
+          { timeout: 5000 }
+        );
+      }
+    }
+  }, [language]);
 
   // Load persistent datasets from serverless PostgreSQL database on mount with automatic sync polling
   useEffect(() => {
@@ -390,18 +479,20 @@ export default function App() {
   const filteredEquipmentList = useMemo(() => {
     return resolvedEquipmentList.filter(item => {
       const isMyEquipment = userMobile && (item.ownerId === userMobile || item.ownerId === "owner-1" || item.ownerId === "8963556856");
-      return item.distance <= adminDistance && !isMyEquipment;
+      const computedDistance = getDistanceBetween(item.location || "Coimbatore, Tamil Nadu", adminLocation);
+      return computedDistance <= adminDistance && !isMyEquipment;
     });
-  }, [resolvedEquipmentList, adminDistance, userMobile]);
+  }, [resolvedEquipmentList, adminDistance, adminLocation, userMobile]);
 
   const filteredLaborersList = useMemo(() => {
     return resolvedLaborersList.filter(item => {
       const isMyProfile = userMobile 
         ? item.id.includes(userMobile) 
         : (item.id === "lb-4" || item.name === "Raju Krishnan");
-      return item.distance <= adminDistance && !isMyProfile;
+      const computedDistance = getDistanceBetween(item.location || "Coimbatore, Tamil Nadu", adminLocation);
+      return computedDistance <= adminDistance && !isMyProfile;
     });
-  }, [resolvedLaborersList, adminDistance, userMobile]);
+  }, [resolvedLaborersList, adminDistance, adminLocation, userMobile]);
 
   // PWA (Progressive Web App) states
   const [isOnline, setIsOnline] = useState(typeof window !== "undefined" ? navigator.onLine : true);
@@ -729,6 +820,7 @@ export default function App() {
   const [newLaborKycDocType, setNewLaborKycDocType] = useState("Aadhaar Card");
   const [newLaborKycFileName, setNewLaborKycFileName] = useState("");
   const [newLaborImage, setNewLaborImage] = useState("");
+  const [laborError, setLaborError] = useState("");
   const [isLaborRegistered, setIsLaborRegistered] = useState(false);
 
   // Dynamic database-driven KYC requests derived from laborersList
@@ -1036,6 +1128,20 @@ export default function App() {
     e.preventDefault();
     if (!newLaborName || !newLaborPrice) return;
 
+    if (laborError) {
+      alert(`Cannot submit form: ${laborError}`);
+      return;
+    }
+
+    if (newLaborImage && newLaborImage.length > 1.8 * 1024 * 1024) {
+      const err = "The selected profile photo is too large (must be under 1MB). Please remove and choose a smaller photo.";
+      setLaborError(err);
+      alert(err);
+      return;
+    }
+
+    setLaborError("");
+
     // Use a custom image depending on gender selection
     let defaultImg = "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=150&q=80"; // male default
     if (newLaborGender === "Female") {
@@ -1080,6 +1186,7 @@ export default function App() {
     setNewLaborPrice("");
     setNewLaborKycFileName("");
     setNewLaborImage("");
+    setLaborError("");
   };
 
   // Toggle equipment status (Active / Inactive)
@@ -1583,6 +1690,77 @@ export default function App() {
     );
   };
 
+  const handleDetectAdminLocation = () => {
+    if (!navigator.geolocation) {
+      alert(language === "ta" ? "உங்கள் உலாவி இருப்பிடத்தைக் கண்டறிவதை ஆதரிக்கவில்லை" : "Geolocation is not supported by your browser");
+      return;
+    }
+    setIsDetectingLocation(true);
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        let detectedName = `Near ${latitude.toFixed(4)}°N, ${longitude.toFixed(4)}°E`;
+        try {
+          const geoRes = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&accept-language=${language}`
+          );
+          if (geoRes.ok) {
+            const geoData = await geoRes.json();
+            const addr = geoData.address || {};
+            const parts: string[] = [];
+            
+            if (addr.amenity) parts.push(addr.amenity);
+            else if (addr.building) parts.push(addr.building);
+
+            if (addr.house_number) {
+              if (addr.road) parts.push(`${addr.house_number}, ${addr.road}`);
+              else parts.push(addr.house_number);
+            } else if (addr.road) {
+              parts.push(addr.road);
+            }
+
+            if (addr.neighbourhood) parts.push(addr.neighbourhood);
+            if (addr.suburb && addr.suburb !== addr.neighbourhood) parts.push(addr.suburb);
+            
+            const localPlace = addr.village || addr.town || addr.city;
+            if (localPlace && !parts.includes(localPlace)) {
+              parts.push(localPlace);
+            }
+
+            if (addr.county) {
+              const countyClean = addr.county.replace(/\s+District/gi, "").replace(/\s+மாவட்டம்/g, "");
+              if (!parts.includes(countyClean) && countyClean !== localPlace) {
+                parts.push(countyClean);
+              }
+            }
+            if (addr.state) {
+              const stateClean = addr.state.replace(/\s+State/gi, "").replace(/\s+மாநிலம்/g, "");
+              if (!parts.includes(stateClean)) {
+                parts.push(stateClean);
+              }
+            }
+            if (addr.postcode) {
+              parts.push(addr.postcode);
+            }
+
+            detectedName = parts.length > 1 ? parts.join(", ") : geoData.display_name || detectedName;
+          }
+        } catch (e) {
+          console.error("Reverse geocoding failed, using coordinates:", e);
+        }
+        setAdminLocation(detectedName);
+        localStorage.setItem("admin_location", detectedName);
+        setIsDetectingLocation(false);
+      },
+      (error) => {
+        console.error("Geolocation error:", error);
+        alert(language === "ta" ? "இருப்பிடத்தை அணுக முடியவில்லை. கைமுறையாக தட்டச்சு செய்யவும்." : "Location access denied or unavailable. Please type manually.");
+        setIsDetectingLocation(false);
+      },
+      { enableHighAccuracy: true, timeout: 5000 }
+    );
+  };
+
   const handleRegisterSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!regName.trim()) {
@@ -1739,7 +1917,7 @@ export default function App() {
                       if (regError) setRegError("");
                     }}
                     placeholder={t("reg_name_placeholder")}
-                    className="w-full bg-white dark:bg-[#1A2320] border border-[#E8E6E1] dark:border-slate-800 rounded-xl px-3.5 py-2.5 text-xs focus:ring-2 focus:ring-[#3E5C31] focus:border-[#3E5C31] dark:text-slate-100 outline-none transition-all"
+                    className="w-full debossed-input rounded-xl px-3.5 py-2.5 text-xs focus:ring-2 focus:ring-[#3E5C31] dark:text-slate-100 outline-none transition-all"
                   />
                 </div>
 
@@ -1757,7 +1935,7 @@ export default function App() {
                       }}
                       maxLength={10}
                       placeholder={t("reg_mobile_placeholder")}
-                      className="w-full bg-white dark:bg-[#1A2320] border border-[#E8E6E1] dark:border-slate-800 rounded-xl px-3.5 py-2.5 text-xs focus:ring-2 focus:ring-[#3E5C31] focus:border-[#3E5C31] dark:text-slate-100 outline-none transition-all"
+                      className="w-full debossed-input rounded-xl px-3.5 py-2.5 text-xs focus:ring-2 focus:ring-[#3E5C31] dark:text-slate-100 outline-none transition-all"
                     />
                     {isCheckingUser && (
                       <span className="absolute right-3.5 top-3.5 flex h-4 w-4 items-center justify-center">
@@ -1921,7 +2099,7 @@ export default function App() {
                         value={adminCodeInput}
                         onChange={(e) => setAdminCodeInput(e.target.value)}
                         placeholder={t("reg_admin_placeholder")}
-                        className="w-full bg-white dark:bg-[#1A2320] border border-[#E8E6E1] dark:border-slate-800 rounded-xl px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-[#3E5C31] dark:text-slate-100"
+                        className="w-full debossed-input rounded-xl px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-[#3E5C31] dark:text-slate-100"
                       />
                       {adminCodeInput.trim() && (
                         <p className="text-[10px] font-bold">
@@ -1941,7 +2119,7 @@ export default function App() {
                 <div className="pt-4 mt-auto">
                   <button
                     type="submit"
-                    className="w-full bg-[#3E5C31] hover:bg-[#344F28] dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white font-black py-3 px-4 rounded-xl shadow-md transition-all text-xs cursor-pointer active:scale-[0.98] flex items-center justify-center gap-1.5 animate-pulse"
+                    className="w-full text-white font-black py-3 px-4 rounded-xl transition-all text-xs cursor-pointer flex items-center justify-center gap-1.5 embossed-btn"
                   >
                     <span>{t("reg_btn_submit")}</span>
                     <ArrowRight className="w-4 h-4" />
@@ -4279,8 +4457,20 @@ export default function App() {
                           accept="image/*"
                           className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                           onChange={(e) => {
+                            setLaborError("");
                             if (e.target.files && e.target.files[0]) {
                               const file = e.target.files[0];
+                              
+                              if (!file.type.startsWith("image/")) {
+                                setLaborError("Invalid file type. Please upload a PNG, JPG, or WEBP image.");
+                                return;
+                              }
+                              
+                              if (file.size > 1 * 1024 * 1024) {
+                                setLaborError("Profile photo is too large (must be under 1MB). Please compress or choose a smaller image.");
+                                return;
+                              }
+
                               const reader = new FileReader();
                               reader.onloadend = () => {
                                 setNewLaborImage(reader.result as string);
@@ -4380,10 +4570,16 @@ export default function App() {
                         </div>
                       )}
                     </div>
+                    
+                    {laborError && (
+                      <div className="bg-rose-50 border border-rose-200 text-rose-700 text-[10px] font-semibold p-2.5 rounded-xl leading-normal">
+                        ⚠️ {laborError}
+                      </div>
+                    )}
 
                     <button
                       type="submit"
-                      className="w-full bg-[#3E5C31] hover:bg-[#3E5C31]/95 text-white font-black py-2 rounded-xl"
+                      className="w-full bg-[#3E5C31] hover:bg-[#3E5C31]/95 text-white font-black py-2 rounded-xl cursor-pointer"
                     >
                       Submit Registration For Approval
                     </button>
@@ -4471,18 +4667,29 @@ export default function App() {
                     <label className="block text-[10px] font-black text-[#5C5952] uppercase tracking-wider">
                       Center Location (Where service is set)
                     </label>
-                    <div className="relative">
-                      <input
-                        type="text"
-                        value={adminLocation}
-                        onChange={(e) => {
-                          setAdminLocation(e.target.value);
-                          localStorage.setItem("admin_location", e.target.value);
-                        }}
-                        placeholder="Enter village, town or city..."
-                        className="w-full bg-[#FAF7F2] text-[#2D2D2A] border border-[#E8E6E1] rounded-xl px-3.5 py-2 pl-9 font-medium text-xs focus:ring-2 focus:ring-[#3E5C31] focus:bg-white outline-none transition-all font-sans"
-                      />
-                      <MapPin className="absolute left-3 top-2.5 h-3.5 w-3.5 text-[#3E5C31]" />
+                    <div className="flex gap-2">
+                      <div className="relative flex-1">
+                        <input
+                          type="text"
+                          value={adminLocation}
+                          onChange={(e) => {
+                            setAdminLocation(e.target.value);
+                            localStorage.setItem("admin_location", e.target.value);
+                          }}
+                          placeholder="Enter village, town or city..."
+                          className="w-full bg-[#FAF7F2] text-[#2D2D2A] border border-[#E8E6E1] rounded-xl px-3.5 py-2 pl-9 font-medium text-xs focus:ring-2 focus:ring-[#3E5C31] focus:bg-white outline-none transition-all font-sans"
+                        />
+                        <MapPin className="absolute left-3 top-2.5 h-3.5 w-3.5 text-[#3E5C31]" />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleDetectAdminLocation}
+                        disabled={isDetectingLocation}
+                        className="bg-[#3E5C31] hover:bg-[#3E5C31]/90 disabled:opacity-50 text-white font-extrabold text-[10px] px-3.5 py-2 rounded-xl transition-all cursor-pointer flex items-center space-x-1 uppercase shrink-0 shadow-xs"
+                      >
+                        <span>📍</span>
+                        <span>{isDetectingLocation ? "Detecting..." : "Detect Location"}</span>
+                      </button>
                     </div>
                     {/* Common village suggestions for demo */}
                     <div className="flex flex-wrap gap-1.5 pt-1">
@@ -4520,10 +4727,10 @@ export default function App() {
                       <input
                         type="range"
                         min="1"
-                        max="50"
+                        max="25"
                         value={adminDistance}
                         onChange={(e) => {
-                          const val = parseInt(e.target.value, 10);
+                          const val = Math.min(25, parseInt(e.target.value, 10) || 1);
                           setAdminDistance(val);
                           localStorage.setItem("admin_distance", val.toString());
                         }}
@@ -4532,10 +4739,14 @@ export default function App() {
                       <input
                         type="number"
                         min="1"
-                        max="100"
+                        max="25"
                         value={adminDistance}
                         onChange={(e) => {
-                          const val = parseInt(e.target.value, 10) || 1;
+                          let val = parseInt(e.target.value, 10) || 1;
+                          if (val > 25) {
+                            val = 25;
+                            alert("Maximum allowed service radius is 25 km under current regulations.");
+                          }
                           setAdminDistance(val);
                           localStorage.setItem("admin_distance", val.toString());
                         }}
@@ -4578,14 +4789,61 @@ export default function App() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => {
-                      setAdminLocation("Coimbatore, Tamil Nadu");
-                      setAdminDistance(15);
-                      localStorage.setItem("admin_location", "Coimbatore, Tamil Nadu");
-                      localStorage.setItem("admin_distance", "15");
-                      alert("Geofencing coverage reset to defaults (Coimbatore, 15 KM).");
+                    onClick={async () => {
+                      if (navigator.geolocation) {
+                        setIsDetectingLocation(true);
+                        navigator.geolocation.getCurrentPosition(
+                          async (position) => {
+                            const { latitude, longitude } = position.coords;
+                            let detectedName = `Near ${latitude.toFixed(4)}°N, ${longitude.toFixed(4)}°E`;
+                            try {
+                              const geoRes = await fetch(
+                                `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&accept-language=${language}`
+                              );
+                              if (geoRes.ok) {
+                                const geoData = await geoRes.json();
+                                const addr = geoData.address || {};
+                                const parts: string[] = [];
+                                if (addr.village || addr.town || addr.city) {
+                                  parts.push(addr.village || addr.town || addr.city);
+                                }
+                                if (addr.state) {
+                                  parts.push(addr.state);
+                                }
+                                if (parts.length > 0) {
+                                  detectedName = parts.join(", ");
+                                }
+                              }
+                            } catch (e) {
+                              console.error(e);
+                            }
+                            setAdminLocation(detectedName);
+                            setAdminDistance(15);
+                            localStorage.setItem("admin_location", detectedName);
+                            localStorage.setItem("admin_distance", "15");
+                            setIsDetectingLocation(false);
+                            alert(`Geofencing coverage reset to your detected location: ${detectedName} (15 KM).`);
+                          },
+                          (err) => {
+                            const userLoc = localStorage.getItem("oorsevai_user_location") || "Coimbatore, Tamil Nadu";
+                            setAdminLocation(userLoc);
+                            setAdminDistance(15);
+                            localStorage.setItem("admin_location", userLoc);
+                            localStorage.setItem("admin_distance", "15");
+                            setIsDetectingLocation(false);
+                            alert(`Geofencing coverage reset to default saved location: ${userLoc} (15 KM).`);
+                          }
+                        );
+                      } else {
+                        const userLoc = localStorage.getItem("oorsevai_user_location") || "Coimbatore, Tamil Nadu";
+                        setAdminLocation(userLoc);
+                        setAdminDistance(15);
+                        localStorage.setItem("admin_location", userLoc);
+                        localStorage.setItem("admin_distance", "15");
+                        alert(`Geofencing coverage reset to default saved location: ${userLoc} (15 KM).`);
+                      }
                     }}
-                    className="bg-[#FAF7F2] hover:bg-[#F3F1ED] border border-[#E8E6E1] text-slate-600 text-[10px] font-bold px-3 py-2.5 rounded-xl cursor-pointer transition-colors"
+                    className="bg-[#FAF7F2] hover:bg-[#F3F1ED] border border-[#E8E6E1] text-slate-600 text-[10px] font-bold px-3 py-2.5 rounded-xl cursor-pointer transition-colors shrink-0"
                   >
                     Reset
                   </button>
