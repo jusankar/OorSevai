@@ -482,17 +482,29 @@ export default function App() {
   // Dynamically filter active equipment and laborers based on Admin configured location distance
   const filteredEquipmentList = useMemo(() => {
     return resolvedEquipmentList.filter(item => {
+      // Exclude current user's own equipment from listings
+      const isMyEquipment = userMobile 
+        ? (item.ownerId === userMobile || item.ownerId === "owner-1" || item.ownerId === "8963556856")
+        : (item.ownerId === "owner-1" || item.ownerId === "8963556856");
+      if (isMyEquipment) return false;
+
       const computedDistance = getDistanceBetween(item.location || "Coimbatore, Tamil Nadu", adminLocation);
       return computedDistance <= adminDistance;
     });
-  }, [resolvedEquipmentList, adminDistance, adminLocation]);
+  }, [resolvedEquipmentList, adminDistance, adminLocation, userMobile]);
 
   const filteredLaborersList = useMemo(() => {
     return resolvedLaborersList.filter(item => {
+      // Exclude current user's own laborer profile from listings
+      const isMyProfile = userMobile 
+        ? item.id.includes(userMobile) 
+        : (item.id === "lb-4" || item.name === "Raju Krishnan");
+      if (isMyProfile) return false;
+
       const computedDistance = getDistanceBetween(item.location || "Coimbatore, Tamil Nadu", adminLocation);
       return computedDistance <= adminDistance;
     });
-  }, [resolvedLaborersList, adminDistance, adminLocation]);
+  }, [resolvedLaborersList, adminDistance, adminLocation, userMobile]);
 
   // PWA (Progressive Web App) states
   const [isOnline, setIsOnline] = useState(typeof window !== "undefined" ? navigator.onLine : true);
