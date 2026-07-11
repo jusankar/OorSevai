@@ -3,7 +3,8 @@ export const TRANSLATIONS = {
     // Top branding bar / General
     app_title: "OorSevai",
     app_subtitle: "All Village Services in One App.",
-    demo_profile: "Demo Profile",
+    demo_profile: "Profile",
+    my_bookings: "My Bookings",
     mvp: "⭐ MVP",
     role_customer: "Customer",
     role_owner: "Owner",
@@ -255,7 +256,8 @@ export const TRANSLATIONS = {
     // Top branding bar / General
     app_title: "ஊர்சேவை",
     app_subtitle: "அனைத்து கிராம சேவைகளும் ஒரே செயலியில்.",
-    demo_profile: "டெமோ சுயவிவரம்",
+    demo_profile: "சுயவிவரம்",
+    my_bookings: "எனது பதிவுகள்",
     mvp: "⭐ MVP",
     role_customer: "வாடிக்கையாளர்",
     role_owner: "உரிமையாளர்",
@@ -293,9 +295,9 @@ export const TRANSLATIONS = {
     // Home View
     hello_user: "வணக்கம், உதயா 👋",
     radius: "வட்டம்",
-    rent_anything: "எதையும் வாடகைக்கு எடுங்கள்.",
-    get_work_done: "வேலைகளை முடித்திடுங்கள்.",
-    tagline: "உரிமையாளர்கள், உள்ளூர் தொழிலாளர்கள் மற்றும் வாடகைதாரர்களை மிக நெருக்கமாக இணைக்கிறது.",
+    rent_anything: "உங்கள் தேவை,",
+    get_work_done: "எங்கள் சேவை!",
+    tagline: "உங்கள் பகுதியில் உள்ள உரிமையாளர்கள், தொழிலாளர்கள் மற்றும் வாடகையாளர்களை ஒன்றிணைக்கும் தளம்.",
     search_placeholder: "டிராக்டர், தொழிலாளர்கள், ரோட்டாவேட்டர்களைத் தேடுங்கள்...",
     explore_cat: "சேவை பிரிவுகளை ஆராயுங்கள்",
     agriculture: "விவசாயம்",

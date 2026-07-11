@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { motion } from "motion/react";
 import { 
   Search, Sprout, HardHat, Wrench, Tent, Users, 
-  MapPin, Bell, Shield, BadgePercent, ThumbsUp, Sparkles, ArrowRight,
+  MapPin, CalendarCheck, Shield, BadgePercent, ThumbsUp, Sparkles, ArrowRight, User,
   Cloud, Sun, CloudRain, CloudLightning, CloudSun, Droplets, Thermometer, Loader2, Locate, ChevronDown, ChevronUp,
   Mic, MicOff
 } from "lucide-react";
@@ -471,52 +471,78 @@ export default function HomeView({
       
       {/* Header Section */}
       <div id="home-header" className="bg-white dark:bg-[#1C2420] px-4 pt-6 pb-5 rounded-b-3xl shadow-xs border-b border-[#E8E6E1] dark:border-slate-800 space-y-4">
-        <div className="flex justify-between items-center">
-          <div className="flex items-center space-x-2">
-            <div className="bg-white h-9 w-9 rounded-xl overflow-hidden flex items-center justify-center shadow-sm p-0.5 border border-[#E8E6E1] dark:border-slate-800 shrink-0">
-              <img src="/icon.svg" alt="Oor Sevai Logo" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
-            </div>
-            <div>
-              <div className="flex items-center text-[#8A867E] dark:text-slate-300 text-xs">
-                <MapPin className="h-3.5 w-3.5 text-[#3E5C31] dark:text-emerald-400 mr-1 shrink-0" />
-                <span className="font-semibold text-[#2D2D2A] dark:text-slate-100 max-w-[130px] truncate" title={adminLocation}>
-                  {adminLocation.split(",")[0]}
-                </span>
-                <span className="ml-1 text-[8px] bg-emerald-50 dark:bg-[#3E5C31]/20 text-[#3E5C31] dark:text-emerald-400 px-1.5 py-0.5 rounded font-black border border-emerald-100/60 dark:border-[#3E5C31]/30 shrink-0">
-                  {adminDistance} KM {t("radius")}
-                </span>
+        <div className="flex justify-between items-center gap-4">
+          {/* Left Column: Greeting, App Title */}
+          <div className="flex-1 min-w-0">
+            {/* Top location & Greeting info */}
+            <div className="flex items-center space-x-2">
+              <div className="bg-white h-9 w-9 rounded-xl overflow-hidden flex items-center justify-center shadow-sm p-0.5 border border-[#E8E6E1] dark:border-slate-800 shrink-0">
+                <img src="/icon.svg" alt="Oor Sevai Logo" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
               </div>
-              <h2 className="text-sm font-semibold text-[#2D2D2A] dark:text-slate-100">
-                {userName 
-                  ? (language === "ta" ? `வணக்கம், ${userName} 👋` : `Hello, ${userName} 👋`)
-                  : t("hello_user")}
-              </h2>
+              <div className="min-w-0">
+                <div className="flex items-center text-[#8A867E] dark:text-slate-300 text-[10px]">
+                  <MapPin className="h-3 w-3 text-[#3E5C31] dark:text-emerald-400 mr-0.5 shrink-0" />
+                  <span className="font-semibold text-[#2D2D2A] dark:text-slate-100 max-w-[90px] truncate animate-pulse" title={adminLocation}>
+                    {adminLocation.split(",")[0]}
+                  </span>
+                  <span className="ml-1 text-[8px] bg-emerald-50 dark:bg-[#3E5C31]/20 text-[#3E5C31] dark:text-emerald-400 px-1 py-0.2 rounded font-black border border-emerald-100/60 dark:border-[#3E5C31]/30 shrink-0">
+                    {adminDistance} KM
+                  </span>
+                </div>
+                <h2 className="text-xs sm:text-sm font-bold text-[#2D2D2A] dark:text-slate-100 truncate">
+                  {userName 
+                    ? (language === "ta" ? `வணக்கம், ${userName} 👋` : `Hello, ${userName} 👋`)
+                    : t("hello_user")}
+                </h2>
+              </div>
             </div>
           </div>
-          <div className="flex items-center space-x-2">
-            <button className="relative bg-[#F3F1ED] dark:bg-[#25302A] p-2 rounded-full text-[#2D2D2A] dark:text-slate-100 hover:bg-slate-200 dark:hover:bg-[#2E3C34]">
-               <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-[#D97706] rounded-full border border-white dark:border-slate-800"></span>
-              <Bell className="h-4 w-4" />
-            </button>
-            <div 
-              className="bg-[#3E5C31]/10 dark:bg-emerald-500/10 text-[#3E5C31] dark:text-emerald-400 px-2.5 py-1 rounded-lg text-xs font-bold cursor-pointer hover:bg-[#3E5C31]/20 dark:hover:bg-emerald-500/20"
-              onClick={() => onNavigate("profile")}
+
+          {/* Right Column: Bookings Calendar & Profile */}
+          <div className="flex flex-row items-center gap-2 shrink-0 select-none">
+            {/* Bookings Calendar Button */}
+            <button
+              onClick={() => onNavigate("bookings")}
+              className="flex items-center space-x-1 h-8 px-2.5 bg-emerald-50 hover:bg-emerald-100/80 dark:bg-[#3E5C31]/20 dark:hover:bg-[#3E5C31]/35 border border-emerald-100/80 dark:border-[#3E5C31]/30 rounded-xl shadow-xs transition-all cursor-pointer text-left group"
+              title={t("my_bookings")}
             >
-              {t("demo_profile")}
-            </div>
+              <div className="relative flex items-center justify-center shrink-0">
+                <CalendarCheck className="h-3.5 w-3.5 text-slate-800 dark:text-slate-100" />
+                <span className="absolute -top-0.5 -right-0.5 flex h-1.5 w-1.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-rose-500"></span>
+                </span>
+              </div>
+              <span className="text-[11px] font-bold text-[#3E5C31] dark:text-emerald-400 whitespace-nowrap">
+                {t("my_bookings")}
+              </span>
+            </button>
+
+            {/* Profile Badge */}
+            <button
+              onClick={() => onNavigate("profile")}
+              className="flex items-center space-x-1 h-8 px-2.5 bg-emerald-50 hover:bg-emerald-100/80 dark:bg-[#3E5C31]/20 dark:hover:bg-[#3E5C31]/35 border border-emerald-100/80 dark:border-[#3E5C31]/30 rounded-xl shadow-xs transition-all cursor-pointer text-left group"
+              title={t("demo_profile")}
+            >
+              <div className="flex items-center justify-center shrink-0">
+                <User className="h-3.5 w-3.5 text-slate-800 dark:text-slate-100" />
+              </div>
+              <span className="text-[11px] font-bold text-[#3E5C31] dark:text-emerald-400 whitespace-nowrap">
+                {t("demo_profile")}
+              </span>
+            </button>
           </div>
         </div>
 
-        <div className="space-y-1.5">
-          <div className="flex items-center space-x-1.5">
-            <span className="text-[9px] font-black tracking-widest text-[#3E5C31] dark:text-emerald-400 uppercase bg-[#3E5C31]/10 dark:bg-[#3E5C31]/20 px-2 py-0.5 rounded-md">{t("app_title")}</span>
-            <span className="text-[10px] font-bold text-[#8A867E] dark:text-slate-400">{t("app_subtitle")}</span>
-          </div>
-          <h1 className="text-2xl font-black text-[#2D2D2A] dark:text-white tracking-tight leading-tight">
+        {/* Highlighted text & Tagline */}
+        <div className="space-y-1.5 pt-1">
+          <h1 className="text-xl font-black text-[#2D2D2A] dark:text-white tracking-tight leading-tight">
             {t("rent_anything")}<br />
             <span className="text-[#3E5C31] dark:text-emerald-400 font-extrabold">{t("get_work_done")}</span>
           </h1>
-          <p className="text-xs text-[#8A867E] dark:text-slate-300">{t("tagline")}</p>
+          <p className="text-xs text-[#8A867E] dark:text-slate-300 leading-relaxed">
+            {t("tagline")}
+          </p>
         </div>
 
         {/* Search Input */}

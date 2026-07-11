@@ -1850,44 +1850,58 @@ export default function App() {
         {!isRegistered ? (
           <div className="flex-1 flex flex-col h-full bg-[#FAF7F2] dark:bg-slate-950 overflow-y-auto scrollbar-none">
             {/* Simple Registration Header */}
-            <div className="bg-[#3E5C31] dark:bg-[#203119] text-white px-4 py-4 border-b border-white/10 flex justify-between items-center gap-3 shadow-sm shrink-0">
-              <div className="flex items-center space-x-3 min-w-0 flex-1">
-                <div className="w-14 h-14 bg-white rounded-2xl overflow-hidden flex items-center justify-center p-1.5 shadow-md shrink-0">
-                  <img src="/icon.svg" alt="Oor Sevai" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
+            <div className="bg-[#3E5C31] dark:bg-[#203119] text-white px-4 py-4 border-b border-white/10 shadow-sm shrink-0 flex flex-col">
+              {/* Logo Merged with 2 Rows on the Right */}
+              <div className="px-4 py-3 flex items-start space-x-3 min-w-0">
+                {/* Merged Logo (two row height) */}
+                <div className="w-14 h-14 bg-white rounded-2xl overflow-hidden flex items-center justify-center shadow-md shrink-0 p-1.5 mt-0.5">
+                  <img src="/icon.svg" alt="Oor Sevai Logo" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
                 </div>
-                <div className="min-w-0">
-                  <h1 className="text-base font-black tracking-tight leading-tight text-white">{t("app_title")}</h1>
-                  <span className="text-[10px] uppercase tracking-wider text-white/80 font-bold block whitespace-normal leading-tight mt-0.5">{t("app_subtitle")}</span>
-                </div>
-              </div>
-              
-              <div className="flex items-center space-x-1.5">
-                {/* Language Switcher */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    const newLang = language === "en" ? "ta" : "en";
-                    setLanguage(newLang);
-                    localStorage.setItem("oorsevai_lang", newLang);
-                  }}
-                  className="text-[10px] bg-white/10 hover:bg-white/20 border border-white/10 text-white px-2.5 py-1.5 rounded-xl font-bold transition-all duration-200 cursor-pointer flex items-center space-x-1"
-                >
-                  <span>🌐</span>
-                  <span className="font-extrabold">{language === "en" ? "EN" : "தம"}</span>
-                </button>
 
-                {/* Theme Switcher */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    const newMode = !darkMode;
-                    setDarkMode(newMode);
-                    localStorage.setItem("oorsevai_dark", newMode ? "true" : "false");
-                  }}
-                  className="p-1.5 bg-white/10 hover:bg-white/20 border border-white/10 rounded-xl transition-all duration-200 cursor-pointer"
-                >
-                  {darkMode ? "☀️" : "🌙"}
-                </button>
+                {/* Right columns with 2 rows */}
+                <div className="flex-1 flex flex-col justify-between min-w-0 h-14">
+                  {/* Row 1: App Title & Menu buttons */}
+                  <div className="flex items-center justify-between w-full min-w-0">
+                    <h1 className="text-2xl md:text-3xl font-black tracking-tight leading-none text-white truncate">{t("app_title")}</h1>
+                    
+                    {/* Menu items */}
+                    <div className="flex items-center space-x-1.5 shrink-0 ml-2">
+                      {/* Language Switcher */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const newLang = language === "en" ? "ta" : "en";
+                          setLanguage(newLang);
+                          localStorage.setItem("oorsevai_lang", newLang);
+                        }}
+                        className="text-[10px] bg-white/10 hover:bg-white/20 border border-white/10 text-white px-2.5 py-1.5 rounded-xl font-bold transition-all duration-200 cursor-pointer flex items-center space-x-1 shrink-0"
+                        title={language === "en" ? "தமிழ் மொழிக்கு மாற்றவும்" : "Switch to English"}
+                        id="language-toggle-btn"
+                      >
+                        <span>🌐</span>
+                        <span className="font-extrabold text-[9px]">{language === "en" ? "EN" : "தம"}</span>
+                      </button>
+
+                      {/* Theme Switcher */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const newMode = !darkMode;
+                          setDarkMode(newMode);
+                          localStorage.setItem("oorsevai_dark", newMode ? "true" : "false");
+                        }}
+                        className="p-1.5 bg-white/10 hover:bg-white/20 border border-white/10 rounded-xl transition-all duration-200 cursor-pointer text-xs"
+                      >
+                        {darkMode ? "☀️" : "🌙"}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Row 2: Subtitle */}
+                  <div className="w-full min-w-0">
+                    <span className="text-[11px] uppercase tracking-wider text-white/85 font-bold block whitespace-normal leading-tight">{t("app_subtitle")}</span>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -2132,80 +2146,73 @@ export default function App() {
           <>
             {/* TOP PLATFORM BAR & ROLE SWITCHER */}
             <div id="top-branding-bar" className="bg-[#3E5C31] dark:bg-[#203119] text-white border-b border-white/10 shadow-sm shrink-0 flex flex-col">
-              {/* Row 1: Logo & Action Items */}
-              <div className="px-4 py-3 flex items-center justify-between gap-3">
-                <div className="flex items-center space-x-3 min-w-0 flex-1">
-                  <div className="w-14 h-14 bg-white rounded-2xl overflow-hidden flex items-center justify-center shadow-md shrink-0 p-1.5">
-                    <img src="/icon.svg" alt="Oor Sevai Logo" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <h1 className="text-base font-black tracking-tight leading-tight text-white">{t("app_title")}</h1>
-                    <span className="text-[10px] uppercase tracking-wider text-white/80 font-bold block whitespace-normal leading-tight mt-0.5">{t("app_subtitle")}</span>
-                  </div>
+              {/* Logo Merged with 2 Rows on the Right */}
+              <div className="px-4 py-3 flex items-start space-x-3 min-w-0">
+                {/* Merged Logo (two row height) */}
+                <div className="w-14 h-14 bg-white rounded-2xl overflow-hidden flex items-center justify-center shadow-md shrink-0 p-1.5 mt-0.5">
+                  <img src="/icon.svg" alt="Oor Sevai Logo" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
                 </div>
-                
-                {/* Quick Multi-Language / Support Badges & Notifications */}
-                <div className="flex items-center space-x-1.5 shrink-0">
-                  {/* Language Switcher Toggle */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const newLang = language === "en" ? "ta" : "en";
-                      setLanguage(newLang);
-                      localStorage.setItem("oorsevai_lang", newLang);
-                    }}
-                    className="text-[10px] bg-white/10 hover:bg-white/20 border border-white/10 text-white px-2.5 py-1 rounded-xl font-bold transition-all duration-200 cursor-pointer flex items-center space-x-1 shrink-0"
-                    title={language === "en" ? "தமிழ் மொழிக்கு மாற்றவும்" : "Switch to English"}
-                    id="language-toggle-btn"
-                  >
-                    <span>🌐</span>
-                    <span className="font-extrabold">{language === "en" ? "EN" : "தம"}</span>
-                  </button>
 
-                  {/* Theme Switcher Toggle */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const newMode = !darkMode;
-                      setDarkMode(newMode);
-                      localStorage.setItem("oorsevai_dark", newMode ? "true" : "false");
-                    }}
-                    className="p-1.5 bg-white/10 hover:bg-white/20 border border-white/10 rounded-xl transition-all duration-200 focus:outline-none cursor-pointer flex items-center justify-center text-white text-sm select-none shrink-0"
-                    title={darkMode ? "Switch to Light Theme ☀️" : "Switch to Dark Theme 🌙"}
-                    id="theme-toggle-btn"
-                  >
-                    {darkMode ? "☀️" : "🌙"}
-                  </button>
+                {/* Right columns with 2 rows */}
+                <div className="flex-1 flex flex-col justify-between min-w-0 h-14">
+                  {/* Row 1: App Title & Menu buttons */}
+                  <div className="flex items-center justify-between w-full min-w-0">
+                    <h1 className="text-2xl md:text-3xl font-black tracking-tight leading-none text-white truncate">{t("app_title")}</h1>
+                    
+                    {/* Menu items */}
+                    <div className="flex items-center space-x-1.5 shrink-0 ml-2">
+                      {/* Language Switcher Toggle */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const newLang = language === "en" ? "ta" : "en";
+                          setLanguage(newLang);
+                          localStorage.setItem("oorsevai_lang", newLang);
+                        }}
+                        className="text-[10px] bg-white/10 hover:bg-white/20 border border-white/10 text-white px-2.5 py-1.5 rounded-xl font-bold transition-all duration-200 cursor-pointer flex items-center space-x-1 shrink-0"
+                        title={language === "en" ? "தமிழ் மொழிக்கு மாற்றவும்" : "Switch to English"}
+                        id="language-toggle-btn"
+                      >
+                        <span>🌐</span>
+                        <span className="font-extrabold text-[9px]">{language === "en" ? "EN" : "தம"}</span>
+                      </button>
 
-                  {/* Notification Bell Icon */}
-                  <button
-                    type="button"
-                    onClick={() => setShowNotificationsDropdown(!showNotificationsDropdown)}
-                    className="relative p-1.5 bg-white/10 hover:bg-white/20 border border-white/10 rounded-xl transition-all duration-200 focus:outline-none cursor-pointer flex items-center justify-center shrink-0"
-                    title="Notifications"
-                  >
-                    <Bell className="h-4 w-4 text-white" />
-                    {resolvedNotifications.filter(n => !n.isRead).length > 0 && (
-                      <span className="absolute -top-1 -right-1 h-4 w-4 bg-rose-500 text-white font-black text-[8px] rounded-full flex items-center justify-center border border-[#3E5C31] shadow-xs">
-                        {resolvedNotifications.filter(n => !n.isRead).length}
+                      {/* Theme Switcher Toggle */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const newMode = !darkMode;
+                          setDarkMode(newMode);
+                          localStorage.setItem("oorsevai_dark", newMode ? "true" : "false");
+                        }}
+                        className="p-1.5 bg-white/10 hover:bg-white/20 border border-white/10 rounded-xl transition-all duration-200 focus:outline-none cursor-pointer flex items-center justify-center text-white text-xs select-none shrink-0"
+                        title={darkMode ? "Switch to Light Theme ☀️" : "Switch to Dark Theme 🌙"}
+                        id="theme-toggle-btn"
+                      >
+                        {darkMode ? "☀️" : "🌙"}
+                      </button>
+
+                      {/* Settings Icon Toggle */}
+                      <button
+                        type="button"
+                        onClick={() => setShowSettingsModal(true)}
+                        className="p-1.5 bg-white/10 hover:bg-white/20 border border-white/10 rounded-xl transition-all duration-200 focus:outline-none cursor-pointer flex items-center justify-center text-white shrink-0"
+                        title="Settings"
+                        id="settings-toggle-btn"
+                      >
+                        <Settings className="h-4 w-4 text-white" />
+                      </button>
+       
+                      <span className="text-[9px] bg-[#E9C46A] text-[#2D2D2A] px-2 py-1.2 rounded-xl font-extrabold flex items-center space-x-0.5 shadow-xs shrink-0">
+                        <span>{t("mvp")}</span>
                       </span>
-                    )}
-                  </button>
+                    </div>
+                  </div>
 
-                  {/* Settings Icon Toggle */}
-                  <button
-                    type="button"
-                    onClick={() => setShowSettingsModal(true)}
-                    className="p-1.5 bg-white/10 hover:bg-white/20 border border-white/10 rounded-xl transition-all duration-200 focus:outline-none cursor-pointer flex items-center justify-center text-white shrink-0"
-                    title="Settings"
-                    id="settings-toggle-btn"
-                  >
-                    <Settings className="h-4 w-4 text-white" />
-                  </button>
-   
-                  <span className="text-[9px] bg-[#E9C46A] text-[#2D2D2A] px-2 py-1.2 rounded-xl font-extrabold flex items-center space-x-0.5 shadow-xs shrink-0">
-                    <span>{t("mvp")}</span>
-                  </span>
+                  {/* Row 2: Subtitle */}
+                  <div className="w-full min-w-0">
+                    <span className="text-[11px] uppercase tracking-wider text-white/80 font-bold block whitespace-normal leading-tight">{t("app_subtitle")}</span>
+                  </div>
                 </div>
               </div>
 
