@@ -826,7 +826,6 @@ export default function App() {
     if (typeof window === "undefined") return;
 
     if (isNavigatingFromPopstate.current) {
-      isNavigatingFromPopstate.current = false;
       return;
     }
 
@@ -873,6 +872,8 @@ export default function App() {
       const state = event.state;
       if (!state) return;
 
+      isNavigatingFromPopstate.current = true;
+
       if (state.isAppRoot) {
         if (isHandlingExitConfirmation.current) {
           // Double click back button to exit app completely
@@ -882,7 +883,6 @@ export default function App() {
         }
 
         isHandlingExitConfirmation.current = true;
-        isNavigatingFromPopstate.current = true;
 
         showConfirm(
           language === "ta" ? "வெளியேறு" : "Exit App",
@@ -903,13 +903,16 @@ export default function App() {
           selectedEquipmentId: null,
           selectedLaborerId: null
         }, "");
+
+        setTimeout(() => {
+          isNavigatingFromPopstate.current = false;
+        }, 250);
         return;
       }
 
       // Cancel exit dialog if navigating to any other history state
       isHandlingExitConfirmation.current = false;
 
-      isNavigatingFromPopstate.current = true;
       if (state.tab) setActiveTab(state.tab);
       if (state.view) setActiveView(state.view);
 
@@ -926,6 +929,10 @@ export default function App() {
       } else {
         setSelectedLaborer(null);
       }
+
+      setTimeout(() => {
+        isNavigatingFromPopstate.current = false;
+      }, 250);
     };
 
     window.addEventListener("popstate", handlePopState);
