@@ -47,6 +47,7 @@ const getDistanceBetween = (locA: string, locB: string): number => {
     return matrix[keyA][keyB] || 15.0;
   }
 
+
   let hash = 0;
   for (let i = 0; i < a.length; i++) {
     hash = (hash << 5) - hash + a.charCodeAt(i);
@@ -58,11 +59,69 @@ const getDistanceBetween = (locA: string, locB: string): number => {
   return rawDist < 5 ? rawDist + 2 : rawDist;
 };
 
+const getCategorySpecsConfig = (category: string) => {
+  switch (category) {
+    case "construction":
+      return {
+        field1Label: "Engine Output",
+        field1Placeholder: "e.g., 76 HP / 62 kVA",
+        field2Label: "Power Source",
+        field2Placeholder: "e.g., Diesel / Petrol",
+        field3Label: "Mobility/Mount",
+        field3Placeholder: "e.g., Crawler / Wheel",
+        field1Key: "power",
+        field2Key: "fuel",
+        field3Key: "drive"
+      };
+    case "tools":
+      return {
+        field1Label: "Operating Power",
+        field1Placeholder: "e.g., 1500W / 2 HP",
+        field2Label: "Power Source",
+        field2Placeholder: "e.g., Electric / Battery",
+        field3Label: "Tool Weight",
+        field3Placeholder: "e.g., 6 kg / 12 kg",
+        field1Key: "power",
+        field2Key: "fuel",
+        field3Key: "drive"
+      };
+    case "function":
+      return {
+        field1Label: "Size / Dimension",
+        field1Placeholder: "e.g., 40x60 ft",
+        field2Label: "Guest Capacity",
+        field2Placeholder: "e.g., 250 Chairs / Guests",
+        field3Label: "Setup / Class",
+        field3Placeholder: "e.g., Included / Premium",
+        field1Key: "power",
+        field2Key: "fuel",
+        field3Key: "drive"
+      };
+    case "agriculture":
+    default:
+      return {
+        field1Label: "Power",
+        field1Placeholder: "e.g., 50 HP / 15 HP",
+        field2Label: "Fuel Type",
+        field2Placeholder: "e.g., Diesel / Petrol",
+        field3Label: "Drive System",
+        field3Placeholder: "e.g., 4 WD / Manual",
+        field1Key: "power",
+        field2Key: "fuel",
+        field3Key: "drive"
+      };
+  }
+};
+
 export default function App() {
   // Application Roles
   const [userRole, setUserRole] = useState<"customer" | "owner" | "labor" | "admin">(() => {
     if (typeof window !== "undefined") {
       try {
+        const savedRole = localStorage.getItem("oorsevai_active_role");
+        if (savedRole && ["customer", "owner", "labor", "admin"].includes(savedRole)) {
+          return savedRole as "customer" | "owner" | "labor" | "admin";
+        }
         const roles = localStorage.getItem("oorsevai_user_roles");
         const parsed: ("customer" | "owner" | "labor" | "admin")[] = roles ? JSON.parse(roles) : [];
         if (parsed.includes("admin")) return "admin";
@@ -282,7 +341,28 @@ export default function App() {
   };
   
   // Navigation State
-  const [activeTab, setActiveTab] = useState<"home" | "bookings" | "chat" | "dashboard">("home");
+  const [activeTab, setActiveTab] = useState<"home" | "bookings" | "chat" | "dashboard">(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const savedTab = localStorage.getItem("oorsevai_active_tab");
+        if (savedTab && ["home", "bookings", "chat", "dashboard"].includes(savedTab)) {
+          return savedTab as "home" | "bookings" | "chat" | "dashboard";
+        }
+        const roles = localStorage.getItem("oorsevai_user_roles");
+        const parsed: ("customer" | "owner" | "labor" | "admin")[] = roles ? JSON.parse(roles) : [];
+        let resolvedRole: "customer" | "owner" | "labor" | "admin" = "customer";
+        if (parsed.includes("admin")) resolvedRole = "admin";
+        else if (parsed.includes("customer")) resolvedRole = "customer";
+        else if (parsed.length > 0) resolvedRole = parsed[0];
+        
+        if (resolvedRole === "customer") return "home";
+        return "dashboard";
+      } catch (e) {
+        return "home";
+      }
+    }
+    return "home";
+  });
   const [activeView, setActiveView] = useState<
     "home" | "browse" | "equipmentDetails" | "laborDetails" | "selectDate" | "bookingSummary"
   >("home");
@@ -340,6 +420,22 @@ export default function App() {
       document.documentElement.classList.remove("dark");
     }
   }, [darkMode]);
+
+  // Persist current active role and active tab, and ensure non-customer roles are routed to dashboard
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("oorsevai_active_role", userRole);
+    }
+    if (userRole !== "customer" && activeTab !== "dashboard") {
+      setActiveTab("dashboard");
+    }
+  }, [userRole]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("oorsevai_active_tab", activeTab);
+    }
+  }, [activeTab]);
 
   // On load, if there's no saved admin location, try to detect and replace the default "Coimbatore"
   useEffect(() => {
@@ -2488,24 +2584,32 @@ export default function App() {
                   {/* Specifications grid */}
                   <div className="bg-white rounded-2xl p-4 border border-[#E8E6E1] space-y-3 shadow-xs">
                     <h3 className="font-bold text-xs text-[#2D2D2A] uppercase tracking-wider">Specifications & Capacity</h3>
-                    <div className="grid grid-cols-4 gap-2 text-center">
-                      <div className="bg-[#FAF7F2] p-2 rounded-xl border border-[#E8E6E1]">
-                        <span className="text-[9px] text-[#8A867E] block font-semibold">Power</span>
-                        <span className="text-xs font-black text-[#2D2D2A]">{selectedEquipment.specs.power || "N/A"}</span>
-                      </div>
-                      <div className="bg-[#FAF7F2] p-2 rounded-xl border border-[#E8E6E1]">
-                        <span className="text-[9px] text-[#8A867E] block font-semibold">Fuel Type</span>
-                        <span className="text-xs font-black text-[#2D2D2A]">{selectedEquipment.specs.fuel || "N/A"}</span>
-                      </div>
-                      <div className="bg-[#FAF7F2] p-2 rounded-xl border border-[#E8E6E1]">
-                        <span className="text-[9px] text-[#8A867E] block font-semibold">Drive System</span>
-                        <span className="text-xs font-black text-[#2D2D2A]">{selectedEquipment.specs.drive || "N/A"}</span>
-                      </div>
-                      <div className="bg-[#FAF7F2] p-2 rounded-xl border border-[#E8E6E1]">
-                        <span className="text-[9px] text-[#8A867E] block font-semibold">Year</span>
-                        <span className="text-xs font-black text-[#2D2D2A]">{selectedEquipment.specs.year || "2020"}</span>
-                      </div>
-                    </div>
+                    {(() => {
+                      const specConfig = getCategorySpecsConfig(selectedEquipment.category);
+                      const val1 = selectedEquipment.specs[specConfig.field1Key] || selectedEquipment.specs.power || selectedEquipment.specs.size || "N/A";
+                      const val2 = selectedEquipment.specs[specConfig.field2Key] || selectedEquipment.specs.fuel || selectedEquipment.specs.capacity || "N/A";
+                      const val3 = selectedEquipment.specs[specConfig.field3Key] || selectedEquipment.specs.drive || selectedEquipment.specs.weight || selectedEquipment.specs.setup || "N/A";
+                      return (
+                        <div className="grid grid-cols-4 gap-2 text-center">
+                          <div className="bg-[#FAF7F2] p-2 rounded-xl border border-[#E8E6E1] flex flex-col justify-between min-h-[55px]">
+                            <span className="text-[9px] text-[#8A867E] block font-semibold leading-tight">{specConfig.field1Label}</span>
+                            <span className="text-[11px] font-black text-[#2D2D2A] mt-auto">{val1}</span>
+                          </div>
+                          <div className="bg-[#FAF7F2] p-2 rounded-xl border border-[#E8E6E1] flex flex-col justify-between min-h-[55px]">
+                            <span className="text-[9px] text-[#8A867E] block font-semibold leading-tight">{specConfig.field2Label}</span>
+                            <span className="text-[11px] font-black text-[#2D2D2A] mt-auto">{val2}</span>
+                          </div>
+                          <div className="bg-[#FAF7F2] p-2 rounded-xl border border-[#E8E6E1] flex flex-col justify-between min-h-[55px]">
+                            <span className="text-[9px] text-[#8A867E] block font-semibold leading-tight">{specConfig.field3Label}</span>
+                            <span className="text-[11px] font-black text-[#2D2D2A] mt-auto">{val3}</span>
+                          </div>
+                          <div className="bg-[#FAF7F2] p-2 rounded-xl border border-[#E8E6E1] flex flex-col justify-between min-h-[55px]">
+                            <span className="text-[9px] text-[#8A867E] block font-semibold leading-tight">Year</span>
+                            <span className="text-[11px] font-black text-[#2D2D2A] mt-auto">{selectedEquipment.specs.year || "2020"}</span>
+                          </div>
+                        </div>
+                      );
+                    })()}
 
                     <div className="flex items-center space-x-2 pt-2 border-t border-[#E8E6E1]">
                       <div className="w-2 h-2 rounded-full bg-[#3E5C31]"></div>
@@ -3620,7 +3724,27 @@ export default function App() {
                       <label className="block text-[9px] font-bold text-[#8A867E] uppercase mb-0.5">Category</label>
                       <select 
                         value={newEqCategory}
-                        onChange={(e: any) => setNewEqCategory(e.target.value)}
+                        onChange={(e: any) => {
+                          const cat = e.target.value;
+                          setNewEqCategory(cat);
+                          if (cat === "agriculture") {
+                            setNewEqPower("50 HP");
+                            setNewEqFuel("Diesel");
+                            setNewEqDrive("4 WD");
+                          } else if (cat === "construction") {
+                            setNewEqPower("76 HP");
+                            setNewEqFuel("Diesel");
+                            setNewEqDrive("Crawler");
+                          } else if (cat === "tools") {
+                            setNewEqPower("1500W");
+                            setNewEqFuel("Electric");
+                            setNewEqDrive("6 kg");
+                          } else if (cat === "function") {
+                            setNewEqPower("40x60 ft");
+                            setNewEqFuel("250 Guests");
+                            setNewEqDrive("Waterproof");
+                          }
+                        }}
                         className="w-full bg-[#FAF7F2] text-[#2D2D2A] p-2 rounded-lg border border-[#E8E6E1]"
                       >
                         <option value="agriculture">Agriculture</option>
@@ -3720,32 +3844,48 @@ export default function App() {
                     </div>
                   </div>
 
-                  <div>
-                    <label className="block text-[9px] font-bold text-[#8A867E] uppercase mb-0.5">Specifications (Power, Fuel, Drive)</label>
-                    <div className="grid grid-cols-3 gap-1.5">
-                      <input 
-                        type="text" 
-                        value={newEqPower}
-                        onChange={(e) => setNewEqPower(e.target.value)}
-                        placeholder="50 HP / 1500W" 
-                        className="bg-[#FAF7F2] p-1.5 rounded text-center border border-[#E8E6E1]" 
-                      />
-                      <input 
-                        type="text" 
-                        value={newEqFuel}
-                        onChange={(e) => setNewEqFuel(e.target.value)}
-                        placeholder="Diesel / Petrol" 
-                        className="bg-[#FAF7F2] p-1.5 rounded text-center border border-[#E8E6E1]" 
-                      />
-                      <input 
-                        type="text" 
-                        value={newEqDrive}
-                        onChange={(e) => setNewEqDrive(e.target.value)}
-                        placeholder="4 WD / Manual" 
-                        className="bg-[#FAF7F2] p-1.5 rounded text-center border border-[#E8E6E1]" 
-                      />
-                    </div>
-                  </div>
+                  {(() => {
+                    const formConfig = getCategorySpecsConfig(newEqCategory);
+                    return (
+                      <div>
+                        <label className="block text-[9px] font-bold text-[#8A867E] uppercase mb-1">
+                          Specifications ({formConfig.field1Label}, {formConfig.field2Label}, {formConfig.field3Label})
+                        </label>
+                        <div className="grid grid-cols-3 gap-1.5">
+                          <div>
+                            <span className="text-[8px] text-[#8A867E] font-bold uppercase block text-center mb-0.5">{formConfig.field1Label}</span>
+                            <input 
+                              type="text" 
+                              value={newEqPower}
+                              onChange={(e) => setNewEqPower(e.target.value)}
+                              placeholder={formConfig.field1Placeholder} 
+                              className="w-full bg-[#FAF7F2] p-1.5 rounded text-center border border-[#E8E6E1] text-[10px]" 
+                            />
+                          </div>
+                          <div>
+                            <span className="text-[8px] text-[#8A867E] font-bold uppercase block text-center mb-0.5">{formConfig.field2Label}</span>
+                            <input 
+                              type="text" 
+                              value={newEqFuel}
+                              onChange={(e) => setNewEqFuel(e.target.value)}
+                              placeholder={formConfig.field2Placeholder} 
+                              className="w-full bg-[#FAF7F2] p-1.5 rounded text-center border border-[#E8E6E1] text-[10px]" 
+                            />
+                          </div>
+                          <div>
+                            <span className="text-[8px] text-[#8A867E] font-bold uppercase block text-center mb-0.5">{formConfig.field3Label}</span>
+                            <input 
+                              type="text" 
+                              value={newEqDrive}
+                              onChange={(e) => setNewEqDrive(e.target.value)}
+                              placeholder={formConfig.field3Placeholder} 
+                              className="w-full bg-[#FAF7F2] p-1.5 rounded text-center border border-[#E8E6E1] text-[10px]" 
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
 
                   <div>
                     <label className="block text-[9px] font-bold text-[#8A867E] uppercase mb-0.5">About Machinery</label>

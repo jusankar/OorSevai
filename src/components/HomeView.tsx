@@ -689,22 +689,28 @@ export default function HomeView({
                     cat.id === 'construction' ? 'bg-[#D97706]' : 
                     cat.id === 'tools' ? 'bg-[#2D2D2A] dark:bg-slate-400' : 
                     cat.id === 'function' ? 'bg-purple-600' : 
-                    'bg-amber-600'
+                    'bg-[#0EA5E9]'
                   }`} />
                 </div>
 
                 {/* Content Section */}
-                <div className="p-2.5 flex-1 flex flex-col justify-center">
-                  <h4 className="text-[11px] font-black text-[#2D2D2A] dark:text-white leading-tight group-hover:text-[#3E5C31] dark:group-hover:text-emerald-400 transition-colors uppercase tracking-tight">
-                    {cat.title}
-                  </h4>
-                  <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium mt-1.5 flex items-center flex-wrap gap-x-1 gap-y-0.5">
-                    <span className="truncate">{cat.sub}</span>
-                    <span className="text-slate-300 dark:text-slate-700">•</span>
-                    <span className="font-bold text-[#3E5C31] dark:text-emerald-400 inline-flex items-center gap-0.5 group-hover:translate-x-0.5 transition-transform duration-300">
-                      {language === "ta" ? "ஆராய்" : "Explore"} <ArrowRight className="h-2.5 w-2.5" />
+                <div className="p-2.5 flex-1 flex flex-col justify-between">
+                  <div>
+                    <h4 className="text-[11px] font-black text-[#2D2D2A] dark:text-white leading-tight uppercase tracking-tight group-hover:text-[#3E5C31] dark:group-hover:text-emerald-400 transition-colors">
+                      {cat.title}
+                    </h4>
+                    <p className="text-[10px] text-[#8A867E] dark:text-slate-400 font-medium mt-0.5">
+                      {cat.sub}
+                    </p>
+                  </div>
+
+                  {/* "Explore ->" action aligned beautifully on its own new line */}
+                  <div className="mt-1.5 pt-1.5 border-t border-slate-100 dark:border-slate-800/60 flex items-center justify-end">
+                    <span className="font-extrabold text-[10px] text-[#3E5C31] dark:text-emerald-400 inline-flex items-center gap-0.5 group-hover:translate-x-1 transition-transform duration-300 shrink-0">
+                      {language === "ta" ? "ஆராய்" : "Explore"} 
+                      <ArrowRight className="h-3 w-3" />
                     </span>
-                  </p>
+                  </div>
                 </div>
               </button>
             );
@@ -995,30 +1001,30 @@ export default function HomeView({
       </div>
 
       {/* Trust & Verification badging */}
-      <div id="trust-banner" className="mx-4 embossed-card rounded-2xl p-3 grid grid-cols-4 gap-1 text-center">
-        <div className="flex flex-col items-center">
+      <div id="trust-banner" className="mx-4 embossed-card rounded-2xl p-2.5 grid grid-cols-4 gap-1 sm:gap-2 text-center">
+        <div className="flex flex-col items-center justify-start">
           <div className="bg-[#3E5C31]/10 dark:bg-emerald-500/10 text-[#3E5C31] dark:text-emerald-400 p-1.5 rounded-lg mb-1">
             <Shield className="h-3.5 w-3.5" />
           </div>
-          <span className="text-[9px] font-bold text-[#2D2D2A] dark:text-slate-200">{t("verified_owners")}</span>
+          <span className="text-[8.5px] sm:text-[9.5px] font-black leading-[1.1] tracking-tighter text-[#2D2D2A] dark:text-slate-200 uppercase break-words w-full">{t("verified_owners")}</span>
         </div>
-        <div className="flex flex-col items-center">
+        <div className="flex flex-col items-center justify-start">
           <div className="bg-[#D97706]/10 dark:bg-amber-500/10 text-[#D97706] dark:text-amber-400 p-1.5 rounded-lg mb-1">
             <ThumbsUp className="h-3.5 w-3.5" />
           </div>
-          <span className="text-[9px] font-bold text-[#2D2D2A] dark:text-slate-200">{t("quality_assured")}</span>
+          <span className="text-[8.5px] sm:text-[9.5px] font-black leading-[1.1] tracking-tighter text-[#2D2D2A] dark:text-slate-200 uppercase break-words w-full">{t("quality_assured")}</span>
         </div>
-        <div className="flex flex-col items-center">
+        <div className="flex flex-col items-center justify-start">
           <div className="bg-amber-50 dark:bg-amber-500/10 text-[#D97706] dark:text-amber-400 p-1.5 rounded-lg mb-1">
             <BadgePercent className="h-3.5 w-3.5" />
           </div>
-          <span className="text-[9px] font-bold text-[#2D2D2A] dark:text-slate-200">{t("best_prices")}</span>
+          <span className="text-[8.5px] sm:text-[9.5px] font-black leading-[1.1] tracking-tighter text-[#2D2D2A] dark:text-slate-200 uppercase break-words w-full">{t("best_prices")}</span>
         </div>
-        <div className="flex flex-col items-center">
+        <div className="flex flex-col items-center justify-start">
           <div className="bg-purple-50 dark:bg-purple-500/10 text-purple-600 dark:text-purple-400 p-1.5 rounded-lg mb-1">
             <Sparkles className="h-3.5 w-3.5" />
           </div>
-          <span className="text-[9px] font-bold text-[#2D2D2A] dark:text-slate-200">{t("secure_escrow")}</span>
+          <span className="text-[8.5px] sm:text-[9.5px] font-black leading-[1.1] tracking-tighter text-[#2D2D2A] dark:text-slate-200 uppercase break-words w-full">{t("secure_escrow")}</span>
         </div>
       </div>
 
