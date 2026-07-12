@@ -811,6 +811,129 @@ export default function App() {
     }
   };
 
+  const isNavigatingFromPopstate = React.useRef(false);
+  const isHandlingExitConfirmation = React.useRef(false);
+
+  // Monitor custom exit dialog status
+  useEffect(() => {
+    if (!customDialog.isOpen) {
+      isHandlingExitConfirmation.current = false;
+    }
+  }, [customDialog.isOpen]);
+
+  // Push browser history state on view / tab / detail state changes
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    if (isNavigatingFromPopstate.current) {
+      isNavigatingFromPopstate.current = false;
+      return;
+    }
+
+    const currentState = window.history.state;
+    const isSame = currentState &&
+      currentState.tab === activeTab &&
+      currentState.view === activeView &&
+      currentState.selectedEquipmentId === (selectedEquipment?.id || null) &&
+      currentState.selectedLaborerId === (selectedLaborer?.id || null);
+
+    if (isSame) return;
+
+    const oorsevaiId = currentState?.oorsevaiId || "oorsevai";
+
+    window.history.pushState({
+      oorsevaiId,
+      tab: activeTab,
+      view: activeView,
+      selectedEquipmentId: selectedEquipment?.id || null,
+      selectedLaborerId: selectedLaborer?.id || null
+    }, "");
+  }, [activeTab, activeView, selectedEquipment, selectedLaborer]);
+
+  // Initialize and listen to popstate events
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const oorsevaiId = "oorsevai_" + Date.now();
+
+    // Setup initial app root entry
+    const currentState = window.history.state;
+    if (!currentState || !currentState.oorsevaiId) {
+      window.history.replaceState({ isAppRoot: true, oorsevaiId }, "");
+      window.history.pushState({
+        oorsevaiId,
+        tab: activeTab,
+        view: activeView,
+        selectedEquipmentId: selectedEquipment?.id || null,
+        selectedLaborerId: selectedLaborer?.id || null
+      }, "");
+    }
+
+    const handlePopState = (event: PopStateEvent) => {
+      const state = event.state;
+      if (!state) return;
+
+      if (state.isAppRoot) {
+        if (isHandlingExitConfirmation.current) {
+          // Double click back button to exit app completely
+          isHandlingExitConfirmation.current = false;
+          window.history.go(-2);
+          return;
+        }
+
+        isHandlingExitConfirmation.current = true;
+        isNavigatingFromPopstate.current = true;
+
+        showConfirm(
+          language === "ta" ? "வெளியேறு" : "Exit App",
+          language === "ta"
+            ? "நீங்கள் Oor Sevai பயன்பாட்டிலிருந்து வெளியேற விரும்புகிறீர்களா?"
+            : "Do you want to exit the Oor Sevai app?",
+          () => {
+            isHandlingExitConfirmation.current = false;
+            window.history.go(-2);
+          }
+        );
+
+        // Keep user on the home screen state while dialog is open
+        window.history.pushState({
+          oorsevaiId: state.oorsevaiId,
+          tab: "home",
+          view: "home",
+          selectedEquipmentId: null,
+          selectedLaborerId: null
+        }, "");
+        return;
+      }
+
+      // Cancel exit dialog if navigating to any other history state
+      isHandlingExitConfirmation.current = false;
+
+      isNavigatingFromPopstate.current = true;
+      if (state.tab) setActiveTab(state.tab);
+      if (state.view) setActiveView(state.view);
+
+      if (state.selectedEquipmentId) {
+        const eq = equipmentList.find(e => e.id === state.selectedEquipmentId);
+        if (eq) setSelectedEquipment(eq);
+      } else {
+        setSelectedEquipment(null);
+      }
+
+      if (state.selectedLaborerId) {
+        const lb = laborersList.find(l => l.id === state.selectedLaborerId);
+        if (lb) setSelectedLaborer(lb);
+      } else {
+        setSelectedLaborer(null);
+      }
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+    };
+  }, [equipmentList, laborersList, language]);
+
   // Chat/AI State
   const [chatInput, setChatInput] = useState("");
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
