@@ -3,11 +3,29 @@ import { motion, AnimatePresence } from "motion/react";
 import { 
   Sprout, HardHat, Wrench, Tent, Users, MapPin, Search, Bell, Shield, 
   ThumbsUp, BadgePercent, Sparkles, ArrowRight, ArrowLeft, Star, 
-  Calendar, CheckCircle, Info, CreditCard, ChevronRight, MessageSquare, 
+  CheckCircle, Info, CreditCard, ChevronRight, MessageSquare, 
   User, Check, X, ShieldAlert, Plus, BarChart3, TrendingUp, AlertTriangle, 
   CheckCircle2, Loader2, Send, HelpCircle, PhoneCall, Truck, Clock,
   Mic, MicOff
 } from "lucide-react";
+
+const Calendar = ({ className = "h-4 w-4" }: { className?: string }) => (
+  <svg 
+    xmlns="http://www.w3.org/2000/svg" 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    stroke="currentColor" 
+    strokeWidth="2" 
+    strokeLinecap="round" 
+    strokeLinejoin="round" 
+    className={className}
+  >
+    <rect width="18" height="18" x="3" y="4" rx="2" ry="2" />
+    <line x1="16" x2="16" y1="2" y2="6" />
+    <line x1="8" x2="8" y1="2" y2="6" />
+    <line x1="3" x2="21" y1="10" y2="10" />
+  </svg>
+);
 import { Equipment, Laborer, Booking, ChatMessage, Dispute, AppNotification } from "./types";
 import { DEFAULT_EQUIPMENT, DEFAULT_LABORERS, CATEGORIES_METADATA } from "./data";
 import { getTranslation, Language } from "./translate";
@@ -124,8 +142,8 @@ export default function App() {
         }
         const roles = localStorage.getItem("oorsevai_user_roles");
         const parsed: ("customer" | "owner" | "labor" | "admin")[] = roles ? JSON.parse(roles) : [];
-        if (parsed.includes("admin")) return "admin";
         if (parsed.includes("customer")) return "customer";
+        if (parsed.includes("admin")) return "admin";
         if (parsed.length > 0) return parsed[0];
       } catch (e) {
         return "customer";
@@ -833,6 +851,8 @@ export default function App() {
     const isSame = currentState &&
       currentState.tab === activeTab &&
       currentState.view === activeView &&
+      currentState.userRole === userRole &&
+      currentState.browseCategory === browseCategory &&
       currentState.selectedEquipmentId === (selectedEquipment?.id || null) &&
       currentState.selectedLaborerId === (selectedLaborer?.id || null);
 
@@ -844,10 +864,12 @@ export default function App() {
       oorsevaiId,
       tab: activeTab,
       view: activeView,
+      userRole,
+      browseCategory,
       selectedEquipmentId: selectedEquipment?.id || null,
       selectedLaborerId: selectedLaborer?.id || null
     }, "");
-  }, [activeTab, activeView, selectedEquipment, selectedLaborer]);
+  }, [activeTab, activeView, userRole, browseCategory, selectedEquipment, selectedLaborer]);
 
   // Initialize and listen to popstate events
   useEffect(() => {
@@ -863,6 +885,8 @@ export default function App() {
         oorsevaiId,
         tab: activeTab,
         view: activeView,
+        userRole,
+        browseCategory,
         selectedEquipmentId: selectedEquipment?.id || null,
         selectedLaborerId: selectedLaborer?.id || null
       }, "");
@@ -900,6 +924,8 @@ export default function App() {
           oorsevaiId: state.oorsevaiId,
           tab: "home",
           view: "home",
+          userRole: "customer",
+          browseCategory: "all",
           selectedEquipmentId: null,
           selectedLaborerId: null
         }, "");
@@ -915,6 +941,8 @@ export default function App() {
 
       if (state.tab) setActiveTab(state.tab);
       if (state.view) setActiveView(state.view);
+      if (state.userRole) setUserRole(state.userRole);
+      if (state.browseCategory) setBrowseCategory(state.browseCategory);
 
       if (state.selectedEquipmentId) {
         const eq = equipmentList.find(e => e.id === state.selectedEquipmentId);
@@ -939,7 +967,7 @@ export default function App() {
     return () => {
       window.removeEventListener("popstate", handlePopState);
     };
-  }, [equipmentList, laborersList, language]);
+  }, [equipmentList, laborersList, language, activeTab, activeView, userRole, browseCategory]);
 
   // Chat/AI State
   const [chatInput, setChatInput] = useState("");
@@ -2020,7 +2048,7 @@ export default function App() {
     }
 
     const finalRoles: ("customer" | "owner" | "labor" | "admin")[] = [...regRoles];
-    if (adminCodeInput.trim() === "1234" || adminCodeInput.trim() === "admin123") {
+    if (adminCodeInput.trim() === "2507" || adminCodeInput.trim() === "admin123") {
       finalRoles.push("admin");
     }
 
@@ -2355,7 +2383,7 @@ export default function App() {
                       />
                       {adminCodeInput.trim() && (
                         <p className="text-[10px] font-bold">
-                          {adminCodeInput.trim() === "1234" || adminCodeInput.trim() === "admin123" ? (
+                          {adminCodeInput.trim() === "2507" || adminCodeInput.trim() === "admin123" ? (
                             <span className="text-[#3E5C31] dark:text-emerald-400">{t("reg_admin_success")}</span>
                           ) : (
                             <span className="text-rose-500">{t("reg_admin_error")}</span>
@@ -3158,22 +3186,22 @@ export default function App() {
               {activeTab === "bookings" && (
                 <div id="my-bookings-section" className="p-4 space-y-4">
                   <div className="flex justify-between items-center">
-                    <h2 className="text-lg font-black text-[#2D2D2A]">My Rental Bookings</h2>
-                    <span className="text-xs bg-[#3E5C31]/10 text-[#3E5C31] px-2.5 py-0.5 rounded-full font-bold">
+                    <h2 className="text-sm font-black text-[#2D2D2A] dark:text-slate-100">My Rental Bookings</h2>
+                    <span className="text-[10px] bg-[#3E5C31]/10 text-[#3E5C31] dark:text-emerald-400 px-2.5 py-0.5 rounded-full font-bold">
                       {resolvedBookings.filter(b => userRole === "admin" ? true : b.customerId === (userMobile || "9999999999")).length} Total
                     </span>
                   </div>
 
                   {/* Horizontal Segment tabs */}
-                  <div className="flex bg-[#F3F1ED] p-1 rounded-xl">
+                  <div className="flex bg-[#F3F1ED] dark:bg-slate-800/40 p-1 rounded-xl">
                     {(["upcoming", "ongoing", "completed", "cancelled"] as const).map((tab) => (
                       <button
                         key={tab}
                         onClick={() => setBookingTab(tab)}
-                        className={`flex-1 text-[10px] font-extrabold py-2 rounded-lg capitalize transition ${
+                        className={`flex-1 text-[10px] font-extrabold py-2 rounded-lg capitalize transition cursor-pointer ${
                           bookingTab === tab 
-                            ? "bg-white text-[#2D2D2A] shadow-xs" 
-                            : "text-[#8A867E] hover:text-[#2D2D2A]"
+                            ? "bg-white dark:bg-[#2D2D2A] text-[#2D2D2A] dark:text-slate-100 shadow-xs" 
+                            : "text-[#8A867E] hover:text-[#2D2D2A] dark:hover:text-slate-300"
                         }`}
                       >
                         {tab}
@@ -3184,10 +3212,10 @@ export default function App() {
                   {/* Bookings List */}
                   <div className="space-y-3">
                     {filteredBookings.length === 0 ? (
-                      <div className="bg-white p-8 rounded-2xl border border-[#E8E6E1] text-center space-y-2">
+                      <div className="bg-white dark:bg-[#1A2320] p-8 rounded-2xl border border-[#E8E6E1] dark:border-slate-800 text-center space-y-2">
                         <span className="text-3xl">📅</span>
-                        <h4 className="font-bold text-xs text-[#2D2D2A]">No {bookingTab} bookings found</h4>
-                        <p className="text-[10px] text-[#8A867E]">Rent machinery or hire laborers to see your active schedules.</p>
+                        <h4 className="font-bold text-xs text-[#2D2D2A] dark:text-slate-100">No {bookingTab} bookings found</h4>
+                        <p className="text-[10px] text-[#8A867E] dark:text-slate-400">Rent machinery or hire laborers to see your active schedules.</p>
                       </div>
                     ) : (
                       filteredBookings.map((b) => {
@@ -3198,36 +3226,36 @@ export default function App() {
                             id={`customer-booking-${b.id}`}
                             className={`p-3.5 rounded-2xl border shadow-xs space-y-3 transition-all duration-500 ${
                               isHighlighted 
-                                ? "bg-white border-[#3E5C31] ring-4 ring-[#3E5C31]/25 scale-[1.01] shadow-md" 
-                                : "bg-white border-[#E8E6E1]"
+                                ? "bg-white dark:bg-[#1A2320] border-[#3E5C31] dark:border-emerald-500 ring-4 ring-[#3E5C31]/25 dark:ring-emerald-500/25 scale-[1.01] shadow-md" 
+                                : "bg-white dark:bg-[#1A2320] border-[#E8E6E1] dark:border-slate-800"
                             }`}
                           >
                           <div className="flex justify-between items-start">
                             <div>
                               <span className="text-[9px] font-bold text-[#8A867E]">Booking ID: {b.id}</span>
-                              <h3 className="font-black text-xs text-[#2D2D2A] mt-0.5">{b.itemName}</h3>
+                              <h3 className="font-black text-xs text-[#2D2D2A] dark:text-slate-100 mt-0.5">{b.itemName}</h3>
                             </div>
                             <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-md ${
-                              b.status === 'upcoming' ? 'bg-amber-100 text-amber-800' :
-                              b.status === 'ongoing' ? 'bg-blue-100 text-blue-800' :
-                              b.status === 'completed' ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
+                              b.status === 'upcoming' ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/45 dark:text-amber-400' :
+                              b.status === 'ongoing' ? 'bg-blue-100 text-blue-800 dark:bg-blue-950/45 dark:text-blue-400' :
+                              b.status === 'completed' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/45 dark:text-emerald-400' : 'bg-rose-100 text-rose-800 dark:bg-rose-950/45 dark:text-rose-400'
                             }`}>
                               {b.status}
                             </span>
                           </div>
 
-                          <div className="flex items-center space-x-3 bg-[#FAF7F2] p-2.5 rounded-xl border border-[#E8E6E1] text-xs">
+                          <div className="flex items-center space-x-3 bg-[#FAF7F2] dark:bg-[#222C28]/40 p-2.5 rounded-xl border border-[#E8E6E1] dark:border-slate-800 text-xs">
                             <div className="w-10 h-10 rounded-lg overflow-hidden bg-slate-100 shrink-0">
                               <img src={b.itemImage} alt={b.itemName} className="w-full h-full object-cover" />
                             </div>
                             <div className="flex-1 text-[10px] space-y-0.5">
-                              <p className="text-[#2D2D2A] font-bold">📍 {b.location}</p>
-                              <p className="text-[#8A867E]">Dates: {b.startDate} to {b.endDate} ({b.durationDays} day)</p>
+                              <p className="text-[#2D2D2A] dark:text-slate-100 font-bold">📍 {b.location}</p>
+                              <p className="text-[#8A867E] dark:text-slate-400">Dates: {b.startDate} to {b.endDate} ({b.durationDays} day)</p>
                             </div>
                           </div>
 
                           <div className="flex justify-between items-center pt-1">
-                            <span className="text-xs font-black text-[#2D2D2A]">Paid: <span className="text-[#3E5C31]">₹{b.totalAmount}</span></span>
+                            <span className="text-xs font-black text-[#2D2D2A] dark:text-slate-200">Paid: <span className="text-[#3E5C31] dark:text-emerald-400">₹{b.totalAmount}</span></span>
                             
                             <div className="flex space-x-1">
                               {b.status === "completed" && (
@@ -3308,7 +3336,7 @@ export default function App() {
                                       }
                                     );
                                   }}
-                                  className="bg-emerald-600 text-white text-[9px] font-extrabold px-3 py-1.5 rounded-lg hover:bg-emerald-700 transition-all"
+                                  className="bg-[#3E5C31] text-white text-[9px] font-extrabold px-3 py-1.5 rounded-lg hover:bg-[#3E5C31]/95 transition-all"
                                 >
                                   Complete Booking ✓
                                 </button>
@@ -4893,26 +4921,7 @@ export default function App() {
                 )}
               </div>
 
-              {/* Jobs Board */}
-              <div className="space-y-3">
-                <h3 className="font-extrabold text-sm text-[#2D2D2A]">Local Jobs Available (Nearby)</h3>
-                <div className="bg-white p-4 rounded-2xl border border-[#E8E6E1] shadow-xs space-y-2 text-xs">
-                  <div className="flex justify-between">
-                    <span className="bg-[#FAF7F2] text-[#2D2D2A] px-2 py-0.5 rounded font-extrabold">🚨 Urgent Hiring</span>
-                    <span className="font-bold text-[#3E5C31]">₹900/day</span>
-                  </div>
-                  <h4 className="font-black text-xs text-[#2D2D2A]">Mason Needed for House Plastering</h4>
-                  <p className="text-[10px] text-[#8A867E]">Location: Peedampalli, Coimbatore. 4 km away. Duration: 3 Days.</p>
-                  <button 
-                    onClick={() => {
-                      alert("You have applied for this job! The homeowner will review your profile and call you.");
-                    }}
-                    className="w-full mt-2 bg-[#3E5C31] text-white py-1.5 rounded-lg font-bold"
-                  >
-                    Apply Now
-                  </button>
-                </div>
-              </div>
+
             </div>
           )}
 
@@ -5808,7 +5817,7 @@ export default function App() {
                         className="flex-1 bg-slate-50 dark:bg-[#1A2320] border border-[#E8E6E1] dark:border-slate-800 rounded-lg px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-[#3E5C31] dark:text-slate-100"
                         onChange={(e) => {
                           const val = e.target.value.trim();
-                          if (val === "1234" || val === "admin123") {
+                          if (val === "2507" || val === "admin123") {
                             if (!registeredRoles.includes("admin")) {
                               const next = [...registeredRoles, "admin"];
                               setRegisteredRoles(next);

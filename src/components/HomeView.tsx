@@ -16,7 +16,7 @@ const getWeatherDetails = (code: number, rainSum: number = 0) => {
       label: "Sunny & Clear",
       icon: Sun,
       advice: "Perfect for seed sowing, pesticide spraying, and harvesting. Keep crops well-irrigated to prevent heat stress.",
-      bgColor: "bg-amber-50 border-amber-100",
+      bgColor: "bg-amber-50 dark:bg-amber-950/20 border-amber-100 dark:border-amber-900/40",
       iconColor: "text-amber-500",
       accentBg: "bg-amber-500/10",
     };
@@ -26,7 +26,7 @@ const getWeatherDetails = (code: number, rainSum: number = 0) => {
       label: "Partly Cloudy",
       icon: CloudSun,
       advice: "Favorable conditions for tilling, weeding, and transplanting young crops. Low evapotranspiration rate helps root settling.",
-      bgColor: "bg-slate-50 border-slate-200",
+      bgColor: "bg-slate-50 dark:bg-slate-900/20 border-slate-200 dark:border-slate-800/40",
       iconColor: "text-sky-500",
       accentBg: "bg-sky-500/10",
     };
@@ -36,7 +36,7 @@ const getWeatherDetails = (code: number, rainSum: number = 0) => {
       label: "Foggy / Misty",
       icon: Cloud,
       advice: "High air moisture. Check for early pest or fungal attacks. Hold off on early morning sensitive crop harvests.",
-      bgColor: "bg-zinc-50 border-zinc-200",
+      bgColor: "bg-zinc-50 dark:bg-zinc-900/20 border-zinc-200 dark:border-zinc-800/40",
       iconColor: "text-[#8A867E]",
       accentBg: "bg-zinc-500/10",
     };
@@ -46,7 +46,7 @@ const getWeatherDetails = (code: number, rainSum: number = 0) => {
       label: "Light Drizzle",
       icon: Droplets,
       advice: "Gentle drizzle. Excellent for soil moisture replenishment and fertilizer application. Ideal time for planting saplings.",
-      bgColor: "bg-teal-50 border-teal-200",
+      bgColor: "bg-teal-50 dark:bg-teal-950/20 border-teal-200 dark:border-teal-900/40",
       iconColor: "text-teal-500",
       accentBg: "bg-teal-500/10",
     };
@@ -59,7 +59,7 @@ const getWeatherDetails = (code: number, rainSum: number = 0) => {
       advice: isHeavy 
         ? "Heavy rain warning! Clear farm drainage pathways to prevent waterlogging. Postpone sowing or pesticide spray."
         : "Moderate rain. Great for natural rainfed crops. Postpone spraying chemicals and dry-harvest operations.",
-      bgColor: "bg-blue-50 border-blue-200",
+      bgColor: "bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-900/40",
       iconColor: "text-blue-500",
       accentBg: "bg-blue-500/10",
     };
@@ -69,7 +69,7 @@ const getWeatherDetails = (code: number, rainSum: number = 0) => {
       label: "Thunderstorms",
       icon: CloudLightning,
       advice: "Severe storm warning! Secure lightweight farm machinery. Seek safe indoor shelter for workers and livestock.",
-      bgColor: "bg-red-50 border-red-200",
+      bgColor: "bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-900/40",
       iconColor: "text-red-500",
       accentBg: "bg-red-500/10",
     };
@@ -78,7 +78,7 @@ const getWeatherDetails = (code: number, rainSum: number = 0) => {
     label: "Mild Weather",
     icon: CloudSun,
     advice: "Stable weather conditions. Continue general agricultural activities, weeding, and routine crop irrigation.",
-    bgColor: "bg-emerald-50 border-emerald-200",
+    bgColor: "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900/40",
     iconColor: "text-emerald-500",
     accentBg: "bg-[#3E5C31]/10",
   };
@@ -924,8 +924,8 @@ export default function HomeView({
                         onClick={() => setSelectedWeatherDayIndex(idx)}
                         className={`p-2 rounded-2xl border text-center transition-all flex flex-col items-center justify-between space-y-1 cursor-pointer relative ${
                           isSelected 
-                            ? "bg-[#3E5C31]/5 border-[#3E5C31] ring-1 ring-[#3E5C31]/30 shadow-xs" 
-                            : "bg-[#FAF7F2] border-[#E8E6E1] hover:bg-[#F3F1ED]"
+                            ? "bg-[#3E5C31]/10 dark:bg-[#3E5C31]/20 border-[#3E5C31] dark:border-emerald-500/60 ring-1 ring-[#3E5C31]/30 shadow-xs" 
+                            : "bg-[#FAF7F2] dark:bg-[#1A2320] border-[#E8E6E1] dark:border-slate-800 hover:bg-[#F3F1ED] dark:hover:bg-[#222C28]"
                         }`}
                       >
                         {idx === 0 && (
@@ -934,18 +934,18 @@ export default function HomeView({
                           </span>
                         )}
                         
-                        <span className="text-[9px] font-bold text-[#8A867E] mt-1">{day.date}</span>
+                        <span className="text-[9px] font-bold text-[#8A867E] dark:text-slate-400 mt-1">{day.date}</span>
                         
                         <div className={`p-1.5 rounded-xl ${details.accentBg} ${details.iconColor} flex items-center justify-center`}>
                           <DayIcon className="h-4 w-4" />
                         </div>
 
                         <div className="space-y-0.5">
-                          <div className="text-[10px] font-black text-[#2D2D2A] flex items-center justify-center">
+                          <div className="text-[10px] font-black text-[#2D2D2A] dark:text-slate-100 flex items-center justify-center">
                             <Thermometer className="h-2.5 w-2.5 text-red-500 mr-0.5" />
                             <span>{day.tempMax}°C</span>
                           </div>
-                          <div className="text-[8px] font-bold text-sky-600">
+                          <div className="text-[8px] font-bold text-sky-600 dark:text-sky-400">
                             {day.rain > 0 ? `💧 ${day.rain.toFixed(1)}mm` : t("no_rain")}
                           </div>
                         </div>
