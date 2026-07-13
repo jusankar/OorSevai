@@ -427,6 +427,106 @@ export default function App() {
     return false;
   });
 
+  // Dynamic nearby places state for Admin Dashboard
+  const [nearbyTags, setNearbyTags] = useState<string[]>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("admin_nearby_tags");
+      if (saved) {
+        try {
+          return JSON.parse(saved);
+        } catch (_) {}
+      }
+    }
+    return ["Singanallur", "Thudiyalur", "Sulur", "Kinathukadavu", "Mettupalayam"];
+  });
+  const [isFetchingNearbyTags, setIsFetchingNearbyTags] = useState<boolean>(false);
+
+  // Debounced effect to fetch actual nearby places when adminLocation is updated
+  useEffect(() => {
+    let active = true;
+    const timer = setTimeout(async () => {
+      if (!adminLocation.trim()) return;
+      
+      setIsFetchingNearbyTags(true);
+      try {
+        // Step 1: Geocode adminLocation to get lat and lon
+        const geoRes = await fetch(
+          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(adminLocation)}&format=json&limit=1`,
+          { headers: { "User-Agent": "OorSevaiApplet/1.0" } }
+        );
+        if (!active) return;
+        
+        if (geoRes.ok) {
+          const geoData = await geoRes.json();
+          if (geoData && geoData.length > 0) {
+            const lat = parseFloat(geoData[0].lat);
+            const lon = parseFloat(geoData[0].lon);
+            
+            // Step 2: Fetch nearby villages, towns, or suburbs within a bounding box
+            const box = 0.25;
+            const viewbox = `${lon - box},${lat + box},${lon + box},${lat - box}`;
+            
+            // Query for villages
+            const placesRes = await fetch(
+              `https://nominatim.openstreetmap.org/search?format=json&viewbox=${viewbox}&bounded=1&q=village&limit=12`,
+              { headers: { "User-Agent": "OorSevaiApplet/1.0" } }
+            );
+            if (!active) return;
+            
+            let places: string[] = [];
+            if (placesRes.ok) {
+              const placesData = await placesRes.json();
+              places = placesData
+                .map((item: any) => item.name || (item.display_name ? item.display_name.split(",")[0] : ""))
+                .filter((name: string) => name && name.trim().length > 0);
+            }
+            
+            // If fewer than 5 villages, add suburbs/towns
+            if (places.length < 5) {
+              const extraRes = await fetch(
+                `https://nominatim.openstreetmap.org/search?format=json&viewbox=${viewbox}&bounded=1&q=suburb&limit=12`,
+                { headers: { "User-Agent": "OorSevaiApplet/1.0" } }
+              );
+              if (!active) return;
+              if (extraRes.ok) {
+                const extraData = await extraRes.json();
+                const extraNames = extraData
+                  .map((item: any) => item.name || (item.display_name ? item.display_name.split(",")[0] : ""))
+                  .filter((name: string) => name && name.trim().length > 0);
+                places = [...places, ...extraNames];
+              }
+            }
+
+            // Remove duplicates and matching names
+            const cleanAdmin = adminLocation.toLowerCase();
+            const uniquePlaces = Array.from(new Set(places))
+              .filter(name => {
+                const cleanName = name.toLowerCase();
+                return !cleanName.includes(cleanAdmin) && !cleanAdmin.includes(cleanName);
+              })
+              .slice(0, 5);
+            
+            if (active && uniquePlaces.length > 0) {
+              setNearbyTags(uniquePlaces);
+              localStorage.setItem("admin_nearby_tags", JSON.stringify(uniquePlaces));
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Error fetching nearby places:", err);
+      } finally {
+        if (active) {
+          setIsFetchingNearbyTags(false);
+        }
+      }
+    }, 1200);
+
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [adminLocation]);
+
   useEffect(() => {
     if (darkMode) {
       document.documentElement.classList.add("dark");
@@ -5002,25 +5102,42 @@ export default function App() {
                         <span>{isDetectingLocation ? "Detecting..." : "Detect Location"}</span>
                       </button>
                     </div>
-                    {/* Common village suggestions for demo */}
-                    <div className="flex flex-wrap gap-1.5 pt-1">
-                      {["Coimbatore, Tamil Nadu", "Pollachi, Coimbatore", "Sulur, Coimbatore", "Peedampalli, Tamil Nadu"].map((loc) => (
-                        <button
-                          key={loc}
-                          type="button"
-                          onClick={() => {
-                            setAdminLocation(loc);
-                            localStorage.setItem("admin_location", loc);
-                          }}
-                          className={`text-[9px] px-2 py-1 rounded-lg border font-bold transition-all ${
-                            adminLocation === loc
-                              ? "bg-[#3E5C31] text-white border-[#3E5C31]"
-                              : "bg-[#FAF7F2] text-[#5C5952] border-[#E8E6E1] hover:bg-[#F3F1ED]"
-                          }`}
-                        >
-                          {loc.split(",")[0]}
-                        </button>
-                      ))}
+                    {/* Dynamic nearby places suggestion tags */}
+                    <div className="space-y-1.5 pt-1">
+                      <div className="flex justify-between items-center">
+                        <span className="text-[9px] font-bold text-[#8A867E] dark:text-slate-400 uppercase tracking-wider">
+                          Nearby Places of {adminLocation ? adminLocation.split(",")[0] : "Detected Location"}
+                        </span>
+                        {isFetchingNearbyTags && (
+                          <span className="text-[9px] text-[#3E5C31] dark:text-emerald-400 animate-pulse font-bold">
+                            Searching...
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {nearbyTags.map((loc) => (
+                          <button
+                            key={loc}
+                            type="button"
+                            onClick={() => {
+                              setAdminLocation(loc);
+                              localStorage.setItem("admin_location", loc);
+                            }}
+                            className={`text-[9px] px-2.5 py-1 rounded-lg border font-bold transition-all duration-200 cursor-pointer ${
+                              adminLocation === loc
+                                ? "bg-[#3E5C31] text-white border-[#3E5C31] shadow-xs"
+                                : "bg-[#FAF7F2] dark:bg-slate-800/80 text-[#5C5952] dark:text-slate-200 border-[#E8E6E1] dark:border-slate-700 hover:bg-[#F3F1ED] dark:hover:bg-slate-700"
+                            }`}
+                          >
+                            {loc}
+                          </button>
+                        ))}
+                        {nearbyTags.length === 0 && !isFetchingNearbyTags && (
+                          <span className="text-[9px] text-amber-600 dark:text-amber-400 font-medium">
+                            No nearby places detected. Try typing above to refresh.
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
 

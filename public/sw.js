@@ -1,4 +1,4 @@
-const CACHE_NAME = 'oorsevai-pwa-v1';
+const CACHE_NAME = 'oorsevai-pwa-v2';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -35,7 +35,7 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Fetch Event - Network-first for API, Cache-first for static assets
+// Fetch Event - Network-first for API & navigation, Cache-first for static assets
 self.addEventListener('fetch', (event) => {
   const requestUrl = new URL(event.request.url);
 
@@ -66,7 +66,36 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Static Assets and HTML - Cache-first with network fallback
+  // Handle navigation and HTML page requests - Network-first
+  const isNavOrHtml = event.request.mode === 'navigate' || 
+                      requestUrl.pathname === '/' || 
+                      requestUrl.pathname === '/index.html';
+
+  if (isNavOrHtml) {
+    event.respondWith(
+      fetch(event.request)
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const responseToCache = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(event.request, responseToCache);
+            });
+          }
+          return networkResponse;
+        })
+        .catch(() => {
+          return caches.match(event.request).then((cachedResponse) => {
+            if (cachedResponse) {
+              return cachedResponse;
+            }
+            return caches.match('/');
+          });
+        })
+    );
+    return;
+  }
+
+  // Static Assets (Images, JS/CSS bundles) - Cache-first with network fallback
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       if (cachedResponse) {
