@@ -362,10 +362,6 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<"home" | "bookings" | "chat" | "dashboard">(() => {
     if (typeof window !== "undefined") {
       try {
-        const savedTab = localStorage.getItem("oorsevai_active_tab");
-        if (savedTab && ["home", "bookings", "chat", "dashboard"].includes(savedTab)) {
-          return savedTab as "home" | "bookings" | "chat" | "dashboard";
-        }
         const roles = localStorage.getItem("oorsevai_user_roles");
         const parsed: ("customer" | "owner" | "labor" | "admin")[] = roles ? JSON.parse(roles) : [];
         let resolvedRole: "customer" | "owner" | "labor" | "admin" = "customer";
