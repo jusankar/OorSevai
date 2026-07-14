@@ -35,47 +35,7 @@ import BrowseView from "./components/BrowseView";
 import GeofenceMap from "./components/GeofenceMap";
 import NotificationCenter from "./components/NotificationCenter";
 import { LaborerCalendar } from "./components/LaborerCalendar";
-
-const getDistanceBetween = (locA: string, locB: string): number => {
-  const clean = (s: string) => s.toLowerCase().replace(/,?\s*tamil\s*nadu/gi, "").trim();
-  const a = clean(locA);
-  const b = clean(locB);
-  if (a === b || a.includes(b) || b.includes(a)) return 2.5;
-
-  const matrix: Record<string, Record<string, number>> = {
-    "coimbatore": { "pollachi": 40, "sulur": 18, "mettupalayam": 35, "peedampalli": 12, "rs puram": 3, "peelamedu": 6, "thudiyalur": 9 },
-    "pollachi": { "coimbatore": 40, "sulur": 45, "mettupalayam": 75, "peedampalli": 38, "rs puram": 42, "peelamedu": 44, "thudiyalur": 48 },
-    "sulur": { "coimbatore": 18, "pollachi": 45, "mettupalayam": 48, "peedampalli": 5, "rs puram": 21, "peelamedu": 12, "thudiyalur": 26 },
-    "mettupalayam": { "coimbatore": 35, "pollachi": 75, "sulur": 48, "peedampalli": 42, "rs puram": 33, "peelamedu": 36, "thudiyalur": 28 },
-    "peedampalli": { "coimbatore": 12, "pollachi": 38, "sulur": 5, "mettupalayam": 42, "rs puram": 15, "peelamedu": 8, "thudiyalur": 20 }
-  };
-
-  const findKey = (str: string) => {
-    for (const key of Object.keys(matrix)) {
-      if (str.includes(key)) return key;
-    }
-    return null;
-  };
-
-  const keyA = findKey(a);
-  const keyB = findKey(b);
-
-  if (keyA && keyB) {
-    if (keyA === keyB) return 2.0;
-    return matrix[keyA][keyB] || 15.0;
-  }
-
-
-  let hash = 0;
-  for (let i = 0; i < a.length; i++) {
-    hash = (hash << 5) - hash + a.charCodeAt(i);
-  }
-  for (let i = 0; i < b.length; i++) {
-    hash = (hash << 5) - hash + b.charCodeAt(i);
-  }
-  const rawDist = Math.abs(hash % 30);
-  return rawDist < 5 ? rawDist + 2 : rawDist;
-};
+import { getDistanceBetween } from "./utils/geo";
 
 const getCategorySpecsConfig = (category: string) => {
   switch (category) {
@@ -441,7 +401,7 @@ export default function App() {
   });
   const [isFetchingNearbyTags, setIsFetchingNearbyTags] = useState<boolean>(false);
 
-  // Debounced effect to fetch actual nearby places when adminLocation is updated
+  // Debounced effect to fetch actual nearby places when adminLocation or adminDistance is updated
   useEffect(() => {
     let active = true;
     const timer = setTimeout(async () => {
@@ -462,8 +422,9 @@ export default function App() {
             const lat = parseFloat(geoData[0].lat);
             const lon = parseFloat(geoData[0].lon);
             
-            // Step 2: Fetch nearby villages, towns, or suburbs within a bounding box
-            const box = 0.25;
+            // Step 2: Fetch nearby villages, towns, or suburbs within a bounding box scaled to adminDistance
+            // 1 degree latitude is approx 111km. We use a factor of 1.4 to capture the entire radius.
+            const box = Math.max(0.06, (adminDistance / 111.0) * 1.4);
             const viewbox = `${lon - box},${lat + box},${lon + box},${lat - box}`;
             
             // Query for villages
@@ -497,18 +458,28 @@ export default function App() {
               }
             }
 
-            // Remove duplicates and matching names
+            // Merge Nominatim results with our rich local list of regions
+            const localRegions = ["Singanallur", "Thudiyalur", "Sulur", "Kinathukadavu", "Mettupalayam", "RS Puram", "Peelamedu", "Pollachi", "Peedampalli", "Gandhipuram", "Coimbatore Bypass"];
+            const combinedList = Array.from(new Set([...places, ...localRegions]));
+
             const cleanAdmin = adminLocation.toLowerCase();
-            const uniquePlaces = Array.from(new Set(places))
+            const uniquePlaces = combinedList
               .filter(name => {
                 const cleanName = name.toLowerCase();
-                return !cleanName.includes(cleanAdmin) && !cleanAdmin.includes(cleanName);
+                if (cleanName.includes(cleanAdmin) || cleanAdmin.includes(cleanName)) return false;
+                
+                // Keep only places strictly within the selected Service Radius
+                const dist = getDistanceBetween(name, adminLocation);
+                return dist <= adminDistance;
               })
-              .slice(0, 5);
+              // Sort by distance so closest places appear first
+              .sort((a, b) => getDistanceBetween(a, adminLocation) - getDistanceBetween(b, adminLocation));
+
+            const finalPlaces = uniquePlaces.slice(0, 6);
             
-            if (active && uniquePlaces.length > 0) {
-              setNearbyTags(uniquePlaces);
-              localStorage.setItem("admin_nearby_tags", JSON.stringify(uniquePlaces));
+            if (active && finalPlaces.length > 0) {
+              setNearbyTags(finalPlaces);
+              localStorage.setItem("admin_nearby_tags", JSON.stringify(finalPlaces));
             }
           }
         }
@@ -525,7 +496,7 @@ export default function App() {
       active = false;
       clearTimeout(timer);
     };
-  }, [adminLocation]);
+  }, [adminLocation, adminDistance]);
 
   useEffect(() => {
     if (darkMode) {
@@ -5202,6 +5173,20 @@ export default function App() {
                         <span className="text-[#3E5C31] font-black">{filteredLaborersList.length} / {resolvedLaborersList.length}</span>
                       </div>
                     </div>
+                  </div>
+
+                  {/* Interactive Geofence Map in Admin Panel */}
+                  <div className="pt-2">
+                    <GeofenceMap
+                      mode="admin"
+                      adminLocation={adminLocation}
+                      adminDistance={adminDistance}
+                      nearbyPlaces={nearbyTags}
+                      onAdminLocationChange={(newLoc) => {
+                        setAdminLocation(newLoc);
+                        localStorage.setItem("admin_location", newLoc);
+                      }}
+                    />
                   </div>
                 </div>
 

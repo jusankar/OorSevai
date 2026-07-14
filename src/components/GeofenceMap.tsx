@@ -1,51 +1,35 @@
 import React, { useState, useEffect, useRef } from "react";
 import { motion } from "motion/react";
-import { MapPin, Sliders, Plus, Trash2, Info, Navigation, CheckCircle2, DollarSign } from "lucide-react";
+import { 
+  MapPin, 
+  Sliders, 
+  Plus, 
+  Trash2, 
+  Info, 
+  Navigation, 
+  CheckCircle2, 
+  Lock, 
+  Unlock, 
+  HelpCircle,
+  Maximize2
+} from "lucide-react";
 import { Equipment, DeliveryZone } from "../types";
-
-// Region neighborhoods coordinate mapping
-export const LOCAL_NEIGHBORHOODS = [
-  { name: "Coimbatore Central", x: 200, y: 150, desc: "City hub & main markets" },
-  { name: "RS Puram", x: 160, y: 160, desc: "Commercial & residential zone" },
-  { name: "Peelamedu", x: 240, y: 140, desc: "Colleges & IT Parks region" },
-  { name: "Singanallur", x: 270, y: 170, desc: "Industrial & residential hub" },
-  { name: "Thudiyalur", x: 175, y: 100, desc: "North agricultural gateway" },
-  { name: "Sulur", x: 310, y: 200, desc: "Eastern bypass farming hub" },
-  { name: "Kinathukadavu", x: 180, y: 240, desc: "Southern coconut belt" },
-  { name: "Mettupalayam", x: 150, y: 50, desc: "North mountain foot farmlands" },
-  { name: "Pollachi", x: 165, y: 310, desc: "Junction to southern green estates" }
-];
-
-// Helper to calculate coordinates from location string
-export const getCoordinates = (locationStr: string): { x: number; y: number } => {
-  const norm = locationStr.toLowerCase();
-  if (norm.includes("pollachi")) return { x: 165, y: 310 };
-  if (norm.includes("bypass")) return { x: 250, y: 185 };
-  if (norm.includes("sulur")) return { x: 310, y: 200 };
-  if (norm.includes("thudiyalur")) return { x: 175, y: 100 };
-  if (norm.includes("mettupalayam")) return { x: 150, y: 50 };
-  if (norm.includes("kinathukadavu")) return { x: 180, y: 240 };
-  if (norm.includes("singanallur")) return { x: 270, y: 170 };
-  if (norm.includes("peelamedu")) return { x: 240, y: 140 };
-  if (norm.includes("rs puram")) return { x: 160, y: 160 };
-  return { x: 200, y: 150 }; // Default to Coimbatore Central
-};
-
-// Helper to measure pixel distance and convert to km
-// Scale: 4 pixels = 1 km
-export const getDistanceInKm = (p1: { x: number; y: number }, p2: { x: number; y: number }): number => {
-  const pixels = Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
-  return Number((pixels * 0.25).toFixed(1));
-};
+import { getDistanceBetween, getCoordsForPlace, getSuburbsForCenter } from "../utils/geo";
+import L from "leaflet";
 
 // Helper to match distance to delivery fee zone
-export const getDeliveryFeeForDistance = (equipment: Equipment, distanceKm: number): { fee: number; zoneName: string; outside: boolean } => {
+export const getDeliveryFeeForDistance = (
+  equipment: Equipment, 
+  distanceKm: number, 
+  customZones?: DeliveryZone[]
+): { fee: number; zoneName: string; outside: boolean } => {
   const defaultZones: DeliveryZone[] = [
     { id: "z1-default", name: "Standard Radius", radiusKm: 15, deliveryFee: 600, color: "rgba(59, 130, 246, 0.15)" }
   ];
-  const zones = equipment.deliveryZones && equipment.deliveryZones.length > 0 ? equipment.deliveryZones : defaultZones;
+  const zones = customZones && customZones.length > 0 
+    ? customZones 
+    : (equipment.deliveryZones && equipment.deliveryZones.length > 0 ? equipment.deliveryZones : defaultZones);
   
-  // Sort zones by radius ascending
   const sortedZones = [...zones].sort((a, b) => a.radiusKm - b.radiusKm);
   for (const zone of sortedZones) {
     if (distanceKm <= zone.radiusKm) {
@@ -53,8 +37,7 @@ export const getDeliveryFeeForDistance = (equipment: Equipment, distanceKm: numb
     }
   }
   
-  // Outside standard zones calculate custom incremental fare
-  const maxZone = sortedZones[sortedZones.length - 1];
+  const maxZone = sortedZones[sortedZones.length - 1] || defaultZones[0];
   const extraKm = Math.ceil(distanceKm - maxZone.radiusKm);
   const extraFee = extraKm * 40; // ₹40 per extra km
   return {
@@ -65,11 +48,15 @@ export const getDeliveryFeeForDistance = (equipment: Equipment, distanceKm: numb
 };
 
 interface GeofenceMapProps {
-  mode: "owner" | "customer";
-  equipment: Equipment;
+  mode: "owner" | "customer" | "admin";
+  equipment?: Equipment;
   customerLocationName?: string;
   onCustomerLocationChange?: (locationName: string, fee: number) => void;
   onUpdateZones?: (zones: DeliveryZone[]) => void;
+  adminLocation?: string;
+  adminDistance?: number;
+  nearbyPlaces?: string[];
+  onAdminLocationChange?: (locationName: string) => void;
 }
 
 export default function GeofenceMap({
@@ -77,29 +64,39 @@ export default function GeofenceMap({
   equipment,
   customerLocationName = "Coimbatore Central",
   onCustomerLocationChange,
-  onUpdateZones
+  onUpdateZones,
+  adminLocation = "Coimbatore, Tamil Nadu",
+  adminDistance = 15,
+  nearbyPlaces = [],
+  onAdminLocationChange
 }: GeofenceMapProps) {
-  // Coordinates setup
-  const eqCoords = getCoordinates(equipment.location);
-  const mapRef = useRef<HTMLDivElement>(null);
-  
-  // Local state for zones
+  const mapContainerRef = useRef<HTMLDivElement>(null);
+  const mapInstanceRef = useRef<L.Map | null>(null);
+  const layersGroupRef = useRef<L.LayerGroup | null>(null);
+
+  // Center node setup
+  const centerName = mode === "admin" 
+    ? adminLocation 
+    : (equipment?.location || "Coimbatore, Tamil Nadu");
+
+  const displayCenterShortName = centerName.split(",")[0];
+
+  // Concentric delivery zones (for owner/customer modes)
   const [zones, setZones] = useState<DeliveryZone[]>(() => {
-    return equipment.deliveryZones && equipment.deliveryZones.length > 0
+    return equipment?.deliveryZones && equipment.deliveryZones.length > 0
       ? equipment.deliveryZones
       : [
           { id: "z1", name: "Immediate Neighborhood", radiusKm: 5, deliveryFee: 250, color: "rgba(16, 185, 129, 0.15)" },
-          { id: "z2", name: "Coimbatore Mid-Ring", radiusKm: 15, deliveryFee: 600, color: "rgba(245, 158, 11, 0.15)" },
-          { id: "z3", name: "Extended Rural Belt", radiusKm: 35, deliveryFee: 1400, color: "rgba(239, 68, 68, 0.12)" }
+          { id: "z2", name: "Mid-Ring Delivery", radiusKm: 15, deliveryFee: 600, color: "rgba(245, 158, 11, 0.15)" },
+          { id: "z3", name: "Extended Outpost Belt", radiusKm: 35, deliveryFee: 1400, color: "rgba(239, 68, 68, 0.12)" }
         ];
   });
 
   // Selected Location for Customer mode
-  const [selectedLoc, setSelectedLoc] = useState<{ x: number; y: number }>(() => {
-    return getCoordinates(customerLocationName);
-  });
-  
   const [selectedLocName, setSelectedLocName] = useState(customerLocationName);
+  const [selectedLocDistance, setSelectedLocDistance] = useState(() => {
+    return getDistanceBetween(centerName, customerLocationName);
+  });
 
   // Editor states for owner mode
   const [selectedZoneId, setSelectedZoneId] = useState<string | null>(zones[0]?.id || null);
@@ -107,7 +104,157 @@ export default function GeofenceMap({
   const [newZoneRadius, setNewZoneRadius] = useState(10);
   const [newZoneFee, setNewZoneFee] = useState(400);
 
-  // Notify parent on initialization or zone updates
+  // Device pinpointing state
+  const [devicePin, setDevicePin] = useState<{
+    lat: number;
+    lon: number;
+    distance: number;
+    name: string;
+  } | null>(null);
+
+  const [isGeocoding, setIsGeocoding] = useState(false);
+
+  // Determine surrounding suburbs/villages based on active center
+  const surroundingPlaces = getSuburbsForCenter(centerName).map((place) => {
+    const distance = getDistanceBetween(centerName, place);
+    return {
+      name: place,
+      distance,
+      isActive: mode === "admin" ? distance <= adminDistance : true
+    };
+  });
+
+  // Reverse geocoding helper from OSM Nominatim API
+  const reverseGeocode = async (lat: number, lon: number): Promise<string> => {
+    setIsGeocoding(true);
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&accept-language=en`
+      );
+      if (res.ok) {
+        const data = await res.json();
+        const addr = data.address || {};
+        const parts: string[] = [];
+        
+        // Find specific local area names
+        const local = addr.suburb || addr.neighbourhood || addr.village || addr.town || addr.city_district;
+        if (local) {
+          parts.push(local);
+        } else if (addr.city) {
+          parts.push(addr.city);
+        }
+        
+        if (addr.state) {
+          parts.push(addr.state);
+        }
+
+        if (parts.length > 0) {
+          setIsGeocoding(false);
+          return parts.join(", ");
+        }
+        
+        setIsGeocoding(false);
+        return data.display_name?.split(",").slice(0, 2).join(",") || `Near ${lat.toFixed(4)}, ${lon.toFixed(4)}`;
+      }
+    } catch (err) {
+      console.error("Reverse geocoding failed, generating coordinate label:", err);
+    }
+    setIsGeocoding(false);
+    return `Near ${lat.toFixed(4)}°N, ${lon.toFixed(4)}°E`;
+  };
+
+  // Ensure Leaflet CSS is loaded dynamically
+  useEffect(() => {
+    const cssId = "leaflet-css-cdn";
+    if (!document.getElementById(cssId)) {
+      const link = document.createElement("link");
+      link.id = cssId;
+      link.rel = "stylesheet";
+      link.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
+      document.head.appendChild(link);
+    }
+  }, []);
+
+  // Initialize and clean up Leaflet Map instance
+  useEffect(() => {
+    if (!mapContainerRef.current) return;
+
+    const centerCoords = getCoordsForPlace(centerName);
+
+    // Create Map
+    const map = L.map(mapContainerRef.current, {
+      center: [centerCoords.lat, centerCoords.lon],
+      zoom: 11,
+      zoomControl: true,
+      scrollWheelZoom: false,
+      attributionControl: false
+    });
+
+    // Add Free OpenStreetMap Tile Layer
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19
+    }).addTo(map);
+
+    // Create LayerGroup for dynamic markers/geofences
+    const layersGroup = L.layerGroup().addTo(map);
+
+    mapInstanceRef.current = map;
+    layersGroupRef.current = layersGroup;
+
+    // Handle clicks anywhere on the physical map
+    const handleMapClick = async (e: L.LeafletMouseEvent) => {
+      const { lat, lng } = e.latlng;
+      const clickedLocationString = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+      const dist = getDistanceBetween(centerName, clickedLocationString);
+
+      if (mode === "customer" && equipment) {
+        setSelectedLocName("Searching...");
+        setSelectedLocDistance(dist);
+        
+        const realPlaceName = await reverseGeocode(lat, lng);
+        setSelectedLocName(realPlaceName);
+
+        if (onCustomerLocationChange) {
+          const feeDetails = getDeliveryFeeForDistance(equipment, dist, zones);
+          onCustomerLocationChange(realPlaceName, feeDetails.fee);
+        }
+      } else if (mode === "admin" && onAdminLocationChange) {
+        const realPlaceName = await reverseGeocode(lat, lng);
+        onAdminLocationChange(realPlaceName);
+      }
+    };
+
+    map.on("click", handleMapClick);
+
+    // Attempt browser Geolocation pinpoint
+    if (typeof window !== "undefined" && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude: latD, longitude: lonD } = position.coords;
+          const dist = getDistanceBetween(centerName, `${latD.toFixed(4)}, ${lonD.toFixed(4)}`);
+          setDevicePin({
+            lat: latD,
+            lon: lonD,
+            distance: dist,
+            name: "Your Device"
+          });
+        },
+        (error) => {
+          console.log("Device pinpointing disabled or timed out:", error);
+        },
+        { timeout: 6000 }
+      );
+    }
+
+    return () => {
+      map.off("click", handleMapClick);
+      map.remove();
+      mapInstanceRef.current = null;
+      layersGroupRef.current = null;
+    };
+  }, [centerName, mode]);
+
+  // Sync state to parent updates
   useEffect(() => {
     if (mode === "owner" && onUpdateZones) {
       onUpdateZones(zones);
@@ -117,64 +264,188 @@ export default function GeofenceMap({
   // Keep customer selection in sync with parent prop changes
   useEffect(() => {
     if (mode === "customer" && customerLocationName) {
-      const coords = getCoordinates(customerLocationName);
-      setSelectedLoc(coords);
       setSelectedLocName(customerLocationName);
+      const dist = getDistanceBetween(centerName, customerLocationName);
+      setSelectedLocDistance(dist);
       
-      const distance = getDistanceInKm(coords, eqCoords);
-      const feeDetails = getDeliveryFeeForDistance({ ...equipment, deliveryZones: zones }, distance);
-      if (onCustomerLocationChange) {
+      if (equipment && onCustomerLocationChange) {
+        const feeDetails = getDeliveryFeeForDistance(equipment, dist, zones);
         onCustomerLocationChange(customerLocationName, feeDetails.fee);
       }
     }
-  }, [customerLocationName]);
+  }, [customerLocationName, centerName, equipment]);
 
-  const activeDistance = getDistanceInKm(selectedLoc, eqCoords);
-  const activeFeeResult = getDeliveryFeeForDistance({ ...equipment, deliveryZones: zones }, activeDistance);
+  // Draw and update markers, circles & interactive overlays on Leaflet Map
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    const layersGroup = layersGroupRef.current;
+    if (!map || !layersGroup) return;
 
-  // Map clicks handler
-  const handleMapClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!mapRef.current) return;
+    // Clear all previously drawn layers inside the dynamic layergroup
+    layersGroup.clearLayers();
+
+    const centerCoords = getCoordsForPlace(centerName);
     
-    const rect = mapRef.current.getBoundingClientRect();
-    const clickX = e.clientX - rect.left;
-    const clickY = e.clientY - rect.top;
-    
-    // Convert to 400x350 scaled space
-    const x = Math.round((clickX / rect.width) * 400);
-    const y = Math.round((clickY / rect.height) * 350);
+    // Pan smoothly to selected Hub coordinates
+    map.setView([centerCoords.lat, centerCoords.lon], map.getZoom(), { animate: true });
 
-    if (mode === "customer") {
-      // Find nearest neighborhood to display human name, or custom coordinate
-      let closestNeigh = LOCAL_NEIGHBORHOODS[0];
-      let minDist = Math.sqrt(Math.pow(x - closestNeigh.x, 2) + Math.pow(y - closestNeigh.y, 2));
-      
-      LOCAL_NEIGHBORHOODS.forEach(neigh => {
-        const d = Math.sqrt(Math.pow(x - neigh.x, 2) + Math.pow(y - neigh.y, 2));
-        if (d < minDist) {
-          minDist = d;
-          closestNeigh = neigh;
-        }
+    // 1. Draw CENTRAL MASTER HUB MARKER
+    const hubIconHtml = `
+      <div class="flex flex-col items-center justify-center">
+        <div class="w-8 h-8 bg-[#3E5C31] text-white rounded-full flex items-center justify-center font-bold text-sm shadow-lg border-2 border-white animate-pulse">
+          ${mode === "admin" ? "💼" : "🚜"}
+        </div>
+        <div class="bg-[#3E5C31] text-white text-[8px] font-black px-1.5 py-0.5 rounded shadow mt-0.5 whitespace-nowrap uppercase tracking-wide border border-white/20">
+          ${mode === "admin" ? "ADMIN" : "HUB"}
+        </div>
+      </div>
+    `;
+    const hubMarkerIcon = L.divIcon({
+      html: hubIconHtml,
+      className: "custom-div-icon",
+      iconSize: [60, 44],
+      iconAnchor: [30, 22]
+    });
+
+    const hubMarker = L.marker([centerCoords.lat, centerCoords.lon], { icon: hubMarkerIcon }).addTo(layersGroup);
+    hubMarker.bindPopup(`<b>${displayCenterShortName} Hub Center</b>`);
+
+    // 2. Draw GEOMAPPING LIMIT CIRCLES
+    if (mode === "admin") {
+      // Solid boundary overlay in Admin Mode
+      L.circle([centerCoords.lat, centerCoords.lon], {
+        color: "#3E5C31",
+        fillColor: "#10B981",
+        fillOpacity: 0.08,
+        radius: adminDistance * 1000,
+        weight: 1.5,
+        dashArray: "5, 5"
+      }).addTo(layersGroup);
+    } else {
+      // Concentric circles for owner/customer delivery zones
+      zones.forEach((zone) => {
+        const isSelectedZone = selectedZoneId === zone.id && mode === "owner";
+        L.circle([centerCoords.lat, centerCoords.lon], {
+          color: isSelectedZone ? "#3B82F6" : "rgba(138, 134, 126, 0.6)",
+          fillColor: isSelectedZone ? "#3B82F6" : (zone.color || "#000000"),
+          fillOpacity: isSelectedZone ? 0.12 : 0.03,
+          radius: zone.radiusKm * 1000,
+          weight: isSelectedZone ? 2.5 : 1.2,
+          dashArray: isSelectedZone ? "None" : "4, 4"
+        }).addTo(layersGroup);
+      });
+    }
+
+    // 3. Draw SURROUNDING VILLAGES/LANDMARKS MARKERS
+    surroundingPlaces.forEach((place) => {
+      const placeCoords = getCoordsForPlace(place.name, centerCoords);
+      const isSelected = mode === "customer" && selectedLocName === place.name;
+      const isUnlocked = mode === "admin" ? place.distance <= adminDistance : true;
+
+      const suburbIconHtml = `
+        <div class="flex flex-col items-center justify-center group cursor-pointer">
+          <div class="w-3.5 h-3.5 rounded-full flex items-center justify-center border-2 shadow-xs transition-all ${
+            isSelected
+              ? "bg-amber-500 border-white scale-125 shadow-md"
+              : (mode === "admin"
+                ? (isUnlocked ? "bg-emerald-500 border-white" : "bg-slate-300 border-slate-200")
+                : "bg-white border-slate-400 group-hover:border-emerald-600")
+          }"></div>
+          <span class="text-[8px] font-bold px-1 py-0.2 rounded mt-0.5 whitespace-nowrap shadow-xs border select-none ${
+            isSelected
+              ? "bg-amber-50 text-amber-700 border-amber-200 font-extrabold"
+              : (mode === "admin"
+                ? (isUnlocked ? "bg-emerald-50 text-emerald-700 border-emerald-100" : "bg-slate-100 text-slate-400 border-slate-200")
+                : "bg-white/95 text-slate-700 border-slate-200 group-hover:text-emerald-700")
+          }">
+            ${place.name.split(",")[0]}
+          </span>
+        </div>
+      `;
+
+      const suburbIcon = L.divIcon({
+        html: suburbIconHtml,
+        className: "custom-div-icon",
+        iconSize: [80, 30],
+        iconAnchor: [40, 7]
       });
 
-      const chosenName = minDist < 35 ? closestNeigh.name : `Custom Location (${getDistanceInKm({ x, y }, eqCoords)} km)`;
-      setSelectedLoc({ x, y });
-      setSelectedLocName(chosenName);
+      const subMarker = L.marker([placeCoords.lat, placeCoords.lon], { icon: suburbIcon }).addTo(layersGroup);
       
-      const distance = getDistanceInKm({ x, y }, eqCoords);
-      const feeDetails = getDeliveryFeeForDistance({ ...equipment, deliveryZones: zones }, distance);
-      if (onCustomerLocationChange) {
-        onCustomerLocationChange(chosenName, feeDetails.fee);
-      }
-    }
-  };
+      subMarker.on("click", (e) => {
+        L.DomEvent.stopPropagation(e);
+        if (mode === "admin" && onAdminLocationChange) {
+          onAdminLocationChange(place.name);
+        } else if (mode === "customer" && equipment) {
+          setSelectedLocName(place.name);
+          setSelectedLocDistance(place.distance);
+          if (onCustomerLocationChange) {
+            const feeDetails = getDeliveryFeeForDistance(equipment, place.distance, zones);
+            onCustomerLocationChange(place.name, feeDetails.fee);
+          }
+        }
+      });
+    });
 
-  // Add new delivery zone
+    // 4. Draw SELECTED CUSTOMER FARM SITE pin
+    if (mode === "customer" && selectedLocName) {
+      const clientCoords = getCoordsForPlace(selectedLocName, centerCoords);
+      const customerIconHtml = `
+        <div class="flex flex-col items-center justify-center animate-bounce">
+          <div class="relative">
+            <span class="absolute -inset-2 bg-amber-500/40 rounded-full animate-pulse"></span>
+            <span class="text-xl">📍</span>
+          </div>
+          <span class="text-[8px] font-black uppercase text-white bg-amber-500 px-1 py-0.2 rounded shadow-xs whitespace-nowrap mt-0.5">
+            YOUR FARM
+          </span>
+        </div>
+      `;
+
+      const customerMarkerIcon = L.divIcon({
+        html: customerIconHtml,
+        className: "custom-div-icon",
+        iconSize: [60, 44],
+        iconAnchor: [30, 36]
+      });
+
+      const customerMarker = L.marker([clientCoords.lat, clientCoords.lon], { icon: customerMarkerIcon }).addTo(layersGroup);
+      customerMarker.bindPopup(`<b>Farm Destination:</b><br/>${selectedLocName}<br/>Distance: ${selectedLocDistance} KM`);
+    }
+
+    // 5. Draw LIVE DEVICE GEOLOCATION pin
+    if (devicePin) {
+      const deviceIconHtml = `
+        <div class="flex flex-col items-center justify-center">
+          <div class="relative">
+            <span class="absolute -inset-2 bg-blue-500/35 rounded-full animate-ping"></span>
+            <div class="w-5 h-5 bg-blue-600 rounded-full flex items-center justify-center text-[10px] shadow border border-white">
+              📱
+            </div>
+          </div>
+          <span class="text-[7px] font-bold text-white bg-blue-600 px-1 py-0.1 rounded shadow-xs whitespace-nowrap mt-0.5">
+            MY DEVICE (${devicePin.distance} KM)
+          </span>
+        </div>
+      `;
+
+      const deviceMarkerIcon = L.divIcon({
+        html: deviceIconHtml,
+        className: "custom-div-icon",
+        iconSize: [60, 40],
+        iconAnchor: [30, 20]
+      });
+
+      L.marker([devicePin.lat, devicePin.lon], { icon: deviceMarkerIcon }).addTo(layersGroup);
+    }
+
+  }, [centerName, zones, adminDistance, mode, selectedLocName, devicePin, selectedZoneId]);
+
+  // Handle adding new delivery zone
   const handleAddZone = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newZoneName) return;
 
-    // Pick a semi-random color
     const colors = [
       "rgba(139, 92, 246, 0.15)", // purple
       "rgba(59, 130, 246, 0.15)", // blue
@@ -220,188 +491,137 @@ export default function GeofenceMap({
   };
 
   const selectedZone = zones.find(z => z.id === selectedZoneId);
+  const activeFeeResult = equipment ? getDeliveryFeeForDistance(equipment, selectedLocDistance, zones) : { fee: 0, zoneName: "", outside: false };
 
   return (
-    <div id="geofencing-module" className="bg-white rounded-2xl border border-[#E8E6E1] overflow-hidden shadow-xs space-y-4">
-      {/* Title Header */}
-      <div className="bg-[#3E5C31]/5 px-4 py-3 border-b border-[#E8E6E1] flex justify-between items-center">
+    <div id="geofencing-module" className="bg-white dark:bg-slate-900 rounded-3xl border border-[#E8E6E1] dark:border-slate-800 overflow-hidden shadow-xs space-y-4">
+      
+      {/* Dynamic Header */}
+      <div className="bg-[#3E5C31]/5 dark:bg-emerald-500/10 px-4 py-3.5 border-b border-[#E8E6E1] dark:border-slate-800 flex justify-between items-center">
         <div className="flex items-center space-x-2">
-          <Navigation className="h-4 w-4 text-[#3E5C31] animate-pulse" />
-          <h3 className="font-black text-xs text-[#2D2D2A] uppercase tracking-wider">
-            {mode === "owner" ? "Hyperlocal Geo-Fencing Editor" : "Delivery Zone Geo-Fence Map"}
+          <Navigation className="h-4 w-4 text-[#3E5C31] dark:text-emerald-400 animate-pulse" />
+          <h3 className="font-extrabold text-xs text-[#2D2D2A] dark:text-slate-100 uppercase tracking-wider font-sans">
+            {mode === "admin" 
+              ? "Service Coverage Live GIS" 
+              : (mode === "owner" ? "Hyperlocal Geofence Zone Editor" : "Interactive Delivery Geofence Map")}
           </h3>
         </div>
-        <span className="text-[9px] bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full font-bold">
-          Coimbatore Region
+        <span className="text-[10px] bg-[#3E5C31] dark:bg-emerald-600 text-white px-2.5 py-0.5 rounded-full font-extrabold shadow-xs">
+          📍 {displayCenterShortName} Region
         </span>
       </div>
 
-      {/* Primary Grid Layout */}
       <div className="p-3 space-y-3">
-        {/* Interactive Vector Canvas Map */}
+        {/* Real Interactive Leaflet Map Container */}
         <div className="relative">
           <div 
-            ref={mapRef}
-            onClick={handleMapClick}
-            className={`w-full h-[280px] bg-[#FAF8F5] rounded-xl border border-[#E8E6E1] overflow-hidden relative ${
-              mode === "customer" ? "cursor-crosshair" : "cursor-default"
-            }`}
-          >
-            {/* Map Decorative Grid Mesh Lines */}
-            <div className="absolute inset-0 grid grid-cols-8 grid-rows-8 opacity-25 pointer-events-none">
-              {Array.from({ length: 64 }).map((_, idx) => (
-                <div key={idx} className="border-t border-l border-[#8A867E]/20"></div>
-              ))}
+            ref={mapContainerRef}
+            className="w-full h-[320px] bg-[#FAF8F5] dark:bg-slate-950 rounded-2xl border border-[#E8E6E1] dark:border-slate-800 overflow-hidden relative z-0"
+          />
+
+          {isGeocoding && (
+            <div className="absolute top-2 right-2 bg-white/90 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 px-2.5 py-1 rounded-lg text-[9px] font-bold text-slate-700 dark:text-slate-300 shadow-sm flex items-center gap-1 z-10 animate-pulse">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping"></span>
+              Resolving address...
             </div>
-
-            {/* Simulated Road Lines to look like a high-end vector GIS software */}
-            <svg className="absolute inset-0 w-full h-full opacity-35 pointer-events-none">
-              {/* NH-544 bypass line */}
-              <path d="M 0,200 Q 150,180 250,185 T 400,220" fill="none" stroke="#D1CFC9" strokeWidth="4" />
-              {/* Mettupalayam Highway */}
-              <path d="M 200,150 L 150,50" fill="none" stroke="#D1CFC9" strokeWidth="2.5" />
-              {/* Pollachi Highway */}
-              <path d="M 200,150 L 165,310" fill="none" stroke="#D1CFC9" strokeWidth="2.5" />
-              {/* Eastern bypass */}
-              <path d="M 200,150 L 310,200" fill="none" stroke="#D1CFC9" strokeWidth="2" strokeDasharray="3 3" />
-            </svg>
-
-            {/* Neighborhood landmark node text backdrops */}
-            {LOCAL_NEIGHBORHOODS.map((neigh) => (
-              <button
-                key={neigh.name}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (mode === "customer") {
-                    setSelectedLoc({ x: neigh.x, y: neigh.y });
-                    setSelectedLocName(neigh.name);
-                    const distance = getDistanceInKm({ x: neigh.x, y: neigh.y }, eqCoords);
-                    const feeDetails = getDeliveryFeeForDistance({ ...equipment, deliveryZones: zones }, distance);
-                    if (onCustomerLocationChange) {
-                      onCustomerLocationChange(neigh.name, feeDetails.fee);
-                    }
-                  }
-                }}
-                className={`absolute pointer-events-auto flex flex-col items-center group`}
-                style={{ left: `${(neigh.x / 400) * 100}%`, top: `${(neigh.y / 350) * 100}%` }}
-              >
-                <div className="w-1.5 h-1.5 rounded-full bg-[#8A867E] group-hover:bg-[#3E5C31] group-hover:scale-125 transition-all"></div>
-                <span className="text-[8px] font-bold text-[#8A867E]/80 group-hover:text-[#3E5C31] bg-[#FAF8F5]/90 px-1 py-0.5 rounded shadow-[0_1px_2px_rgba(0,0,0,0.05)] select-none mt-0.5 whitespace-nowrap">
-                  {neigh.name.replace(", Coimbatore", "")}
-                </span>
-              </button>
-            ))}
-
-            {/* concentric delivery zones visualization */}
-            {zones.map((zone) => {
-              // Convert km to pixel radius: 1 km = 4 pixels
-              // Radius in percent = (radiusKm * 4) / 400 * 100
-              const radiusPixels = zone.radiusKm * 4;
-              return (
-                <div
-                  key={zone.id}
-                  className="absolute rounded-full border border-dashed transition-all duration-300 pointer-events-none"
-                  style={{
-                    left: `${(eqCoords.x - radiusPixels) / 400 * 100}%`,
-                    top: `${(eqCoords.y - radiusPixels) / 350 * 100}%`,
-                    width: `${(radiusPixels * 2) / 400 * 100}%`,
-                    height: `${(radiusPixels * 2) / 350 * 100}%`,
-                    backgroundColor: selectedZoneId === zone.id && mode === "owner" ? "rgba(59, 130, 246, 0.08)" : zone.color || "rgba(0,0,0,0.03)",
-                    borderColor: selectedZoneId === zone.id && mode === "owner" ? "#3B82F6" : "rgba(138, 134, 126, 0.4)",
-                    borderWidth: selectedZoneId === zone.id && mode === "owner" ? "2px" : "1px"
-                  }}
-                >
-                  {/* Zone radius text pointer */}
-                  <span className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 bg-white px-1.5 py-0.2 rounded-md text-[7px] font-bold border border-[#E8E6E1] text-[#5C5952] shadow-xs">
-                    {zone.name} ({zone.radiusKm} km) • ₹{zone.deliveryFee}
-                  </span>
-                </div>
-              );
-            })}
-
-            {/* Equipment location node */}
-            <div 
-              className="absolute -translate-x-1/2 -translate-y-1/2 z-20 pointer-events-none flex flex-col items-center"
-              style={{ left: `${(eqCoords.x / 400) * 100}%`, top: `${(eqCoords.y / 350) * 100}%` }}
-            >
-              <div className="relative">
-                <span className="absolute -inset-2 bg-emerald-500/30 rounded-full animate-ping"></span>
-                <div className="w-6 h-6 bg-[#3E5C31] text-white rounded-full flex items-center justify-center font-bold text-xs shadow-md border border-white">
-                  🚜
-                </div>
-              </div>
-              <span className="text-[8px] font-black uppercase text-white bg-[#3E5C31] px-1.5 py-0.5 rounded shadow-sm mt-1 whitespace-nowrap">
-                {equipment.ownerName}'s Hub
-              </span>
-            </div>
-
-            {/* Customer Location marker node */}
-            {mode === "customer" && (
-              <div 
-                className="absolute -translate-x-1/2 -translate-y-1/2 z-30 transition-all duration-300 pointer-events-none flex flex-col items-center"
-                style={{ left: `${(selectedLoc.x / 400) * 100}%`, top: `${(selectedLoc.y / 350) * 100}%` }}
-              >
-                <div className="relative">
-                  <span className="absolute -inset-1.5 bg-amber-500/40 rounded-full animate-pulse"></span>
-                  <MapPin className="h-6 w-6 text-amber-500 drop-shadow-md" fill="#FFF" />
-                </div>
-                <span className="text-[7px] font-black uppercase text-white bg-amber-500 px-1 py-0.5 rounded shadow-xs mt-0.5 whitespace-nowrap">
-                  Delivery Destination
-                </span>
-              </div>
-            )}
-          </div>
-          
-          {mode === "customer" && (
-            <p className="text-[9px] text-[#8A867E] text-center italic mt-1.5">
-              💡 Drag your finger or click anywhere on the map grid to pin your exact farm site location.
-            </p>
           )}
+
+          <p className="text-[9.5px] text-[#8A867E] dark:text-slate-400 text-center italic mt-2 flex items-center justify-center gap-1">
+            <Info className="h-3 w-3 inline shrink-0" />
+            {mode === "admin" 
+              ? "💡 Click anywhere on the map to set a custom Admin center, or click on a village node."
+              : (mode === "customer" 
+                ? "💡 Click anywhere on the map to place your Farm site, or click on a village node."
+                : "💡 Drag slider controls below to resize rings and automatically adjust pricing.")
+            }
+          </p>
         </div>
 
-        {/* ==================================== CUSTOMER VIEW METRICS ==================================== */}
-        {mode === "customer" && (
-          <div className="bg-[#FAF7F2] p-3 rounded-xl border border-[#E8E6E1] space-y-2.5">
-            <div className="flex justify-between items-start text-xs border-b border-[#E8E6E1] pb-2">
+        {/* ==================================== CUSTOMER METRIC INSIGHTS ==================================== */}
+        {mode === "customer" && equipment && (
+          <div className="bg-[#FAF7F2] dark:bg-slate-800/50 p-3.5 rounded-2xl border border-[#E8E6E1] dark:border-slate-800 space-y-2.5">
+            <div className="flex justify-between items-start text-xs border-b border-[#E8E6E1] dark:border-slate-800 pb-2">
               <div>
-                <span className="text-[9px] font-bold text-[#8A867E] uppercase block">Selected Location</span>
-                <span className="font-black text-[#2D2D2A] text-xs flex items-center">
-                  <MapPin className="h-3 w-3 text-amber-500 mr-1 shrink-0" />
+                <span className="text-[9px] font-bold text-[#8A867E] dark:text-slate-400 uppercase block">Delivery Site</span>
+                <span className="font-extrabold text-[#2D2D2A] dark:text-slate-200 text-xs flex items-center mt-0.5">
+                  <MapPin className="h-3.5 w-3.5 text-amber-500 mr-1 shrink-0" />
                   {selectedLocName}
                 </span>
               </div>
               <div className="text-right">
-                <span className="text-[9px] font-bold text-[#8A867E] uppercase block">Air Distance</span>
-                <span className="font-extrabold text-[#2D2D2A] text-xs">{activeDistance} km from owner</span>
+                <span className="text-[9px] font-bold text-[#8A867E] dark:text-slate-400 uppercase block">Distance to site</span>
+                <span className="font-extrabold text-[#2D2D2A] dark:text-slate-200 text-xs">{selectedLocDistance} KM</span>
               </div>
             </div>
 
-            <div className="flex justify-between items-center bg-white p-2.5 rounded-lg border border-[#E8E6E1]">
+            <div className="flex justify-between items-center bg-white dark:bg-slate-900 p-3 rounded-xl border border-[#E8E6E1] dark:border-slate-800 shadow-2xs">
               <div className="space-y-0.5">
-                <span className="text-[8px] font-bold uppercase tracking-wider text-emerald-600 block">
-                  🛡️ Hyperlocal Geofenced Zone Match
+                <span className="text-[8.5px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400 block">
+                  🛡️ Hyperlocal Delivery Shield Matches
                 </span>
-                <span className="font-bold text-xs text-[#2D2D2A]">{activeFeeResult.zoneName}</span>
+                <span className="font-extrabold text-xs text-[#2D2D2A] dark:text-slate-200">{activeFeeResult.zoneName}</span>
                 {activeFeeResult.outside && (
-                  <p className="text-[8px] text-[#8A867E] leading-tight">
-                    *Site is outside standard limits. An incremental out-of-zone surcharge of ₹40/km is included.
+                  <p className="text-[8px] text-[#8A867E] dark:text-slate-400 leading-tight mt-0.5">
+                    *Exceeds basic limits. Out-of-geofence extended surcharge of ₹40/KM has been added.
                   </p>
                 )}
               </div>
-              <div className="text-right">
-                <span className="text-lg font-black text-[#3E5C31]">₹{activeFeeResult.fee}</span>
-                <span className="text-[8px] text-[#8A867E] block font-bold leading-none">delivery fee</span>
+              <div className="text-right shrink-0 pl-2">
+                <span className="text-lg font-black text-[#3E5C31] dark:text-emerald-400 block">₹{activeFeeResult.fee}</span>
+                <span className="text-[8px] text-[#8A867E] dark:text-slate-400 block font-bold leading-none uppercase">delivery rate</span>
               </div>
             </div>
           </div>
         )}
 
-        {/* ==================================== OWNER EDITOR CONTROLS ==================================== */}
+        {/* ==================================== ADMIN MAP INSIGHTS ==================================== */}
+        {mode === "admin" && (
+          <div className="bg-[#FAF7F2] dark:bg-slate-800/50 p-3.5 rounded-2xl border border-[#E8E6E1] dark:border-slate-800 space-y-2.5">
+            <div className="flex justify-between items-center text-xs">
+              <div>
+                <span className="text-[9px] font-black text-[#8A867E] dark:text-slate-400 uppercase block">Active Boundary</span>
+                <span className="text-xs font-black text-[#3E5C31] dark:text-emerald-400 mt-0.5">
+                  {adminDistance} KM Radius from {displayCenterShortName}
+                </span>
+              </div>
+              <div className="bg-[#3E5C31]/10 dark:bg-emerald-500/20 text-[#3E5C31] dark:text-emerald-400 px-2.5 py-1 rounded-xl text-[9px] font-black uppercase">
+                {surroundingPlaces.filter(p => p.isActive).length} / {surroundingPlaces.length} Unlocked
+              </div>
+            </div>
+
+            {/* List of mapped places and lock statuses */}
+            <div className="grid grid-cols-2 gap-1.5 pt-1">
+              {surroundingPlaces.map(place => (
+                <div 
+                  key={place.name}
+                  className={`p-2 rounded-xl border flex items-center justify-between text-[9px] font-bold ${
+                    place.isActive
+                      ? "bg-white dark:bg-slate-900 text-[#3E5C31] dark:text-emerald-300 border-[#E8E6E1] dark:border-slate-800"
+                      : "bg-[#FAF7F2]/40 dark:bg-slate-950/40 text-slate-400 border-dashed border-[#E8E6E1] dark:border-slate-800/80"
+                  }`}
+                >
+                  <span className="truncate max-w-[100px]">{place.name} ({place.distance} KM)</span>
+                  {place.isActive ? (
+                    <span className="text-[8px] text-emerald-600 dark:text-emerald-400 font-extrabold flex items-center gap-0.5 bg-emerald-50 dark:bg-emerald-950/50 px-1.5 py-0.2 rounded">
+                      <Unlock className="h-2 w-2" /> Unlocked
+                    </span>
+                  ) : (
+                    <span className="text-[8px] text-[#8A867E] font-bold flex items-center gap-0.5 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.2 rounded">
+                      <Lock className="h-2 w-2" /> Geofenced
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ==================================== OWNER ZONE EDIT CONTROLS ==================================== */}
         {mode === "owner" && (
           <div className="space-y-3 pt-1">
-            {/* Zone list selectors */}
+            {/* Zone tags selector list */}
             <div className="space-y-1.5">
-              <label className="text-[9px] font-bold text-[#8A867E] uppercase tracking-wider block">
+              <label className="text-[9px] font-bold text-[#8A867E] dark:text-slate-400 uppercase tracking-wider block">
                 Manage Delivery Geofence Rings
               </label>
               <div className="flex flex-wrap gap-1.5">
@@ -414,20 +634,20 @@ export default function GeofenceMap({
                       setNewZoneRadius(zone.radiusKm);
                       setNewZoneFee(zone.deliveryFee);
                     }}
-                    className={`text-[10px] px-2.5 py-1.5 rounded-lg font-bold border transition flex items-center space-x-1 cursor-pointer ${
+                    className={`text-[10px] px-2.5 py-1.5 rounded-xl font-bold border transition-all duration-200 flex items-center space-x-1 cursor-pointer ${
                       selectedZoneId === zone.id
-                        ? "bg-[#3B82F6] text-white border-[#3B82F6]"
-                        : "bg-[#FAF7F2] text-[#2D2D2A] border-[#E8E6E1] hover:bg-slate-100"
+                        ? "bg-[#3B82F6] text-white border-[#3B82F6] shadow-sm"
+                        : "bg-[#FAF7F2] dark:bg-slate-800 text-[#2D2D2A] dark:text-slate-200 border-[#E8E6E1] dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700"
                     }`}
                   >
-                    <span>{zone.name} ({zone.radiusKm} km)</span>
-                    <span className="font-extrabold text-opacity-90 pl-1">₹{zone.deliveryFee}</span>
+                    <span>{zone.name} ({zone.radiusKm} KM)</span>
+                    <span className="font-extrabold text-opacity-95 pl-1 text-[9.5px]">₹{zone.deliveryFee}</span>
                     <span 
                       onClick={(e) => {
                         e.stopPropagation();
                         handleDeleteZone(zone.id);
                       }}
-                      className="ml-1.5 p-0.5 hover:bg-black/10 rounded-full"
+                      className="ml-1.5 p-0.5 hover:bg-black/10 dark:hover:bg-white/10 rounded-full animate-pulse"
                     >
                       <Trash2 className="h-2.5 w-2.5" />
                     </span>
@@ -438,19 +658,21 @@ export default function GeofenceMap({
 
             {/* Active zone adjustments sliders */}
             {selectedZone && (
-              <div className="bg-slate-50 border border-[#E8E6E1] rounded-xl p-3.5 space-y-3">
-                <div className="flex justify-between items-center pb-2 border-b border-dashed border-[#E8E6E1]">
-                  <span className="text-[10px] font-black text-slate-700 flex items-center gap-1">
-                    <Sliders className="h-3 w-3" /> Adjusting: {selectedZone.name}
+              <div className="bg-slate-50 dark:bg-slate-800/40 border border-[#E8E6E1] dark:border-slate-800 rounded-2xl p-3.5 space-y-3">
+                <div className="flex justify-between items-center pb-2 border-b border-dashed border-[#E8E6E1] dark:border-slate-800">
+                  <span className="text-[10.5px] font-black text-slate-700 dark:text-slate-300 flex items-center gap-1 uppercase tracking-wider">
+                    <Sliders className="h-3 w-3 text-blue-500 animate-pulse" /> Adjusting: {selectedZone.name}
                   </span>
-                  <span className="text-[9px] text-[#8A867E] font-medium">Zone Center: {equipment.location}</span>
+                  <span className="text-[9px] text-[#8A867E] dark:text-slate-400 font-bold bg-[#FAF7F2] dark:bg-slate-800 px-2 py-0.5 rounded-lg">
+                    Hub: {displayCenterShortName}
+                  </span>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3.5">
                   <div className="space-y-1">
                     <div className="flex justify-between text-[10px] font-bold">
-                      <span className="text-[#8A867E]">Radius Bound</span>
-                      <span className="text-blue-600 font-extrabold">{selectedZone.radiusKm} km</span>
+                      <span className="text-[#8A867E] dark:text-slate-400">Radius Boundary</span>
+                      <span className="text-blue-600 dark:text-blue-400 font-extrabold">{selectedZone.radiusKm} KM</span>
                     </div>
                     <input
                       type="range"
@@ -462,14 +684,14 @@ export default function GeofenceMap({
                         setNewZoneRadius(val);
                         handleUpdateCurrentZone("radiusKm", val);
                       }}
-                      className="w-full accent-blue-600 h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer"
+                      className="w-full accent-blue-600 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer"
                     />
                   </div>
 
                   <div className="space-y-1">
                     <div className="flex justify-between text-[10px] font-bold">
-                      <span className="text-[#8A867E]">Delivery Fare</span>
-                      <span className="text-emerald-600 font-extrabold">₹{newZoneFee}</span>
+                      <span className="text-[#8A867E] dark:text-slate-400">Delivery Fare</span>
+                      <span className="text-emerald-600 dark:text-emerald-400 font-extrabold">₹{newZoneFee}</span>
                     </div>
                     <input
                       type="range"
@@ -482,18 +704,18 @@ export default function GeofenceMap({
                         setNewZoneFee(val);
                         handleUpdateCurrentZone("deliveryFee", val);
                       }}
-                      className="w-full accent-emerald-600 h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer"
+                      className="w-full accent-emerald-600 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer"
                     />
                   </div>
                 </div>
               </div>
             )}
 
-            {/* Add new zone quick form */}
-            <form onSubmit={handleAddZone} className="border-t border-[#E8E6E1] pt-3.5 space-y-2.5">
+            {/* Create Custom Ring Form */}
+            <form onSubmit={handleAddZone} className="border-t border-[#E8E6E1] dark:border-slate-800 pt-3.5 space-y-2.5">
               <div className="flex items-center space-x-1.5">
-                <Plus className="h-3.5 w-3.5 text-[#3E5C31]" />
-                <span className="text-[10px] font-extrabold text-[#2D2D2A] uppercase tracking-wider">
+                <Plus className="h-3.5 w-3.5 text-[#3E5C31] dark:text-emerald-400" />
+                <span className="text-[10px] font-extrabold text-[#2D2D2A] dark:text-slate-200 uppercase tracking-wider">
                   Create Custom Geofence Ring
                 </span>
               </div>
@@ -503,10 +725,10 @@ export default function GeofenceMap({
                   <input
                     type="text"
                     required
-                    placeholder="Zone Name (e.g. Village, Outer)"
+                    placeholder="Zone Name (e.g. Outer Belt)"
                     value={newZoneName}
                     onChange={(e) => setNewZoneName(e.target.value)}
-                    className="w-full bg-[#FAF7F2] text-[#2D2D2A] p-2 rounded-lg border border-[#E8E6E1] text-[10px]"
+                    className="w-full bg-[#FAF7F2] dark:bg-slate-850 text-[#2D2D2A] dark:text-slate-100 p-2 rounded-xl border border-[#E8E6E1] dark:border-slate-800 text-[10px] font-medium outline-none"
                   />
                 </div>
                 <div>
@@ -517,7 +739,7 @@ export default function GeofenceMap({
                     placeholder="Radius (km)"
                     value={newZoneRadius}
                     onChange={(e) => setNewZoneRadius(Number(e.target.value))}
-                    className="w-full bg-[#FAF7F2] text-[#2D2D2A] p-2 rounded-lg border border-[#E8E6E1] text-[10px]"
+                    className="w-full bg-[#FAF7F2] dark:bg-slate-850 text-[#2D2D2A] dark:text-slate-100 p-2 rounded-xl border border-[#E8E6E1] dark:border-slate-800 text-[10px] font-medium outline-none"
                   />
                 </div>
                 <div>
@@ -528,14 +750,14 @@ export default function GeofenceMap({
                     placeholder="Fee (₹)"
                     value={newZoneFee}
                     onChange={(e) => setNewZoneFee(Number(e.target.value))}
-                    className="w-full bg-[#FAF7F2] text-[#2D2D2A] p-2 rounded-lg border border-[#E8E6E1] text-[10px]"
+                    className="w-full bg-[#FAF7F2] dark:bg-slate-850 text-[#2D2D2A] dark:text-slate-100 p-2 rounded-xl border border-[#E8E6E1] dark:border-slate-800 text-[10px] font-medium outline-none"
                   />
                 </div>
               </div>
 
               <button
                 type="submit"
-                className="w-full bg-[#3E5C31]/10 text-[#3E5C31] hover:bg-[#3E5C31]/15 font-black text-[10px] py-2 rounded-lg transition uppercase tracking-wider cursor-pointer"
+                className="w-full bg-[#3E5C31]/10 text-[#3E5C31] dark:bg-emerald-500/10 dark:text-emerald-400 hover:bg-[#3E5C31]/15 font-black text-[10px] py-2.5 rounded-xl transition-all uppercase tracking-wider cursor-pointer"
               >
                 Add Geo-fence Ring
               </button>

@@ -4,46 +4,7 @@ import { Search, MapPin, SlidersHorizontal, ArrowLeft, Star, ArrowUpDown, X, Che
 import { Equipment, Laborer, Booking } from "../types";
 import { CATEGORIES_METADATA } from "../data";
 import { getTranslation, Language } from "../translate";
-
-const getDistanceBetween = (locA: string, locB: string): number => {
-  const clean = (s: string) => s.toLowerCase().replace(/,?\s*tamil\s*nadu/gi, "").trim();
-  const a = clean(locA);
-  const b = clean(locB);
-  if (a === b || a.includes(b) || b.includes(a)) return 2.5;
-
-  const matrix: Record<string, Record<string, number>> = {
-    "coimbatore": { "pollachi": 40, "sulur": 18, "mettupalayam": 35, "peedampalli": 12, "rs puram": 3, "peelamedu": 6, "thudiyalur": 9 },
-    "pollachi": { "coimbatore": 40, "sulur": 45, "mettupalayam": 75, "peedampalli": 38, "rs puram": 42, "peelamedu": 44, "thudiyalur": 48 },
-    "sulur": { "coimbatore": 18, "pollachi": 45, "mettupalayam": 48, "peedampalli": 5, "rs puram": 21, "peelamedu": 12, "thudiyalur": 26 },
-    "mettupalayam": { "coimbatore": 35, "pollachi": 75, "sulur": 48, "peedampalli": 42, "rs puram": 33, "peelamedu": 36, "thudiyalur": 28 },
-    "peedampalli": { "coimbatore": 12, "pollachi": 38, "sulur": 5, "mettupalayam": 42, "rs puram": 15, "peelamedu": 8, "thudiyalur": 20 }
-  };
-
-  const findKey = (str: string) => {
-    for (const key of Object.keys(matrix)) {
-      if (str.includes(key)) return key;
-    }
-    return null;
-  };
-
-  const keyA = findKey(a);
-  const keyB = findKey(b);
-
-  if (keyA && keyB) {
-    if (keyA === keyB) return 2.0;
-    return matrix[keyA][keyB] || 15.0;
-  }
-
-  let hash = 0;
-  for (let i = 0; i < a.length; i++) {
-    hash = (hash << 5) - hash + a.charCodeAt(i);
-  }
-  for (let i = 0; i < b.length; i++) {
-    hash = (hash << 5) - hash + b.charCodeAt(i);
-  }
-  const rawDist = Math.abs(hash % 30);
-  return rawDist < 5 ? rawDist + 2 : rawDist;
-};
+import { getDistanceBetween } from "../utils/geo";
 
 interface BrowseViewProps {
   initialCategory: string;
