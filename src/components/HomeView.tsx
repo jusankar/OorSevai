@@ -104,7 +104,7 @@ export default function HomeView({
   onStartSearch,
   onChangeRole,
   onNavigate,
-  adminLocation = "Coimbatore, Tamil Nadu",
+  adminLocation = "Thirumanancheri, Tamil Nadu",
   adminDistance = 15,
   language = "en",
   userName
@@ -205,7 +205,7 @@ export default function HomeView({
   const [selectedWeatherDayIndex, setSelectedWeatherDayIndex] = useState(0);
   const [weatherExpanded, setWeatherExpanded] = useState(false);
   const [weatherLocation, setWeatherLocation] = useState({
-    name: adminLocation || "Coimbatore, Tamil Nadu",
+    name: adminLocation || "Thirumanancheri, Tamil Nadu",
     latitude: 11.0168,
     longitude: 76.9558,
   });
@@ -306,8 +306,8 @@ export default function HomeView({
       },
       (error) => {
         console.error("Geolocation error:", error);
-        setWeatherError("Location access denied or unavailable. Using default Coimbatore forecast.");
-        fetchWeather(11.0168, 76.9558, "Coimbatore, TN (Default)");
+        setWeatherError("Location access denied or unavailable. Using default Thirumanancheri forecast.");
+        fetchWeather(11.1444, 79.5744, "Thirumanancheri, TN (Default)");
       },
       { enableHighAccuracy: true, timeout: 5000 }
     );
@@ -321,7 +321,7 @@ export default function HomeView({
       setWeatherLocation(prev => ({ ...prev, name: adminLocation }));
 
       // If we have an active registered location, let's geocode it to show exact crop weather!
-      if (adminLocation && adminLocation !== "Coimbatore, Tamil Nadu") {
+      if (adminLocation && adminLocation !== "Thirumanancheri, Tamil Nadu") {
         try {
           const searchRes = await fetch(
             `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(adminLocation)}&format=json&limit=1`
@@ -338,8 +338,8 @@ export default function HomeView({
         } catch (e) {
           console.error("Failed to geocode registered location, falling back:", e);
         }
-      } else if (adminLocation === "Coimbatore, Tamil Nadu") {
-        await fetchWeather(11.0168, 76.9558, adminLocation);
+      } else if (adminLocation === "Thirumanancheri, Tamil Nadu") {
+        await fetchWeather(11.1444, 79.5744, adminLocation);
         return;
       }
 
@@ -401,12 +401,12 @@ export default function HomeView({
           },
           (error) => {
             console.error("Browser Geolocation failed on init:", error);
-            fetchWeather(11.0168, 76.9558, adminLocation || "Coimbatore, Tamil Nadu");
+            fetchWeather(11.1444, 79.5744, adminLocation || "Thirumanancheri, Tamil Nadu");
           },
           { enableHighAccuracy: true, timeout: 3000 }
         );
       } else {
-        fetchWeather(11.0168, 76.9558, adminLocation || "Coimbatore, Tamil Nadu");
+        fetchWeather(11.1444, 79.5744, adminLocation || "Thirumanancheri, Tamil Nadu");
       }
     };
 

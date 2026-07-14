@@ -1,22 +1,35 @@
 // Shared Geolocation database and distance engine for OorSevai App
 
 export const LOCAL_COORDINATES: Record<string, { lat: number; lon: number }> = {
-  // Coimbatore central
-  "coimbatore central": { lat: 11.0168, lon: 76.9558 },
-  "coimbatore, tamil nadu": { lat: 11.0168, lon: 76.9558 },
-  "coimbatore": { lat: 11.0168, lon: 76.9558 },
-  "pollachi": { lat: 10.6588, lon: 77.0094 },
-  "sulur": { lat: 11.0269, lon: 77.1264 },
-  "mettupalayam": { lat: 11.3008, lon: 76.9404 },
-  "peedampalli": { lat: 11.0189, lon: 77.1002 },
-  "rs puram": { lat: 11.0105, lon: 76.9482 },
-  "peelamedu": { lat: 11.0284, lon: 77.0266 },
-  "thudiyalur": { lat: 11.0772, lon: 76.9388 },
-  "singanallur": { lat: 11.0022, lon: 77.0242 },
-  "coimbatore bypass": { lat: 10.9700, lon: 77.0300 },
-  "gandhipuram": { lat: 11.0182, lon: 76.9682 },
-  "kinathukadavu": { lat: 10.8167, lon: 77.0167 },
-  "saravanampatti": { lat: 11.0783, lon: 76.9986 },
+  // Thirumanancheri Temple and surroundings
+  "thirumanancheri": { lat: 11.1444, lon: 79.5744 },
+  "thirumanancheri temple": { lat: 11.1444, lon: 79.5744 },
+  "tiruvelvikudi": { lat: 11.1350, lon: 79.5630 },
+  "komal": { lat: 11.1118, lon: 79.5445 },
+  "kanjanur": { lat: 11.0664, lon: 79.4936 },
+  "kathiramangalam": { lat: 11.1075, lon: 79.5167 },
+  "elanthoppu": { lat: 11.1215, lon: 79.6120 },
+  "malliyam": { lat: 11.1010, lon: 79.6015 },
+  "therizhandur": { lat: 11.0561, lon: 79.5815 },
+  "kozhiyur": { lat: 11.1550, lon: 79.5450 },
+  "karuppur": { lat: 11.1590, lon: 79.5250 },
+  "palaiyur": { lat: 11.1320, lon: 79.6310 },
+  "kodangudi": { lat: 11.1280, lon: 79.4980 },
+  "thirukodikaval": { lat: 11.0864, lon: 79.4925 },
+  "suryanar koil": { lat: 11.0289, lon: 79.4856 },
+  "tiruppanandal": { lat: 11.1128, lon: 79.4533 },
+  "senganur": { lat: 11.1333, lon: 79.4450 },
+  "mayiladuthurai": { lat: 11.1018, lon: 79.6522 },
+  "kuthalam": { lat: 11.0744, lon: 79.5544 },
+  "kurumanakudi": { lat: 11.1661, lon: 79.5936 },
+  "pandanallur": { lat: 11.1928, lon: 79.4891 },
+  "aduthurai": { lat: 10.9997, lon: 79.4819 },
+  "thiruvidaimarudur": { lat: 10.9984, lon: 79.4678 },
+  "sembanarkoil": { lat: 11.0853, lon: 79.7431 },
+  "vaitheeswaran koil": { lat: 11.2023, lon: 79.7214 },
+  "sirkazhi": { lat: 11.2386, lon: 79.7347 },
+  "thirukadaiyur": { lat: 11.0771, lon: 79.8078 },
+  "kumbakonam": { lat: 10.9602, lon: 79.3844 },
 
   // Chennai and suburbs
   "chennai": { lat: 13.0827, lon: 80.2707 },
@@ -95,9 +108,13 @@ export const LOCAL_COORDINATES: Record<string, { lat: number; lon: number }> = {
 };
 
 export const REGIONAL_SUBURBS: Record<string, string[]> = {
-  "coimbatore": [
-    "Singanallur", "Thudiyalur", "Sulur", "Kinathukadavu", "Mettupalayam", 
-    "RS Puram", "Peelamedu", "Pollachi", "Peedampalli", "Gandhipuram", "Saravanampatti"
+  "thirumanancheri": [
+    "Mayiladuthurai", "Kuthalam", "Kurumanakudi", "Pandanallur", "Aduthurai", 
+    "Thiruvidaimarudur", "Sembanarkoil", "Vaitheeswaran Koil", "Sirkazhi", "Kumbakonam"
+  ],
+  "thirumanancheri temple": [
+    "Mayiladuthurai", "Kuthalam", "Kurumanakudi", "Pandanallur", "Aduthurai", 
+    "Thiruvidaimarudur", "Sembanarkoil", "Vaitheeswaran Koil", "Sirkazhi", "Kumbakonam"
   ],
   "chennai": [
     "Adyar", "Velachery", "T Nagar", "Guindy", "Tambaram", "Ambattur", 
@@ -167,8 +184,8 @@ export const getCoordsForPlace = (placeName: string, relativeTo?: { lat: number;
   const angle = (Math.abs(hash) % 360) * (Math.PI / 180);
   const radiusDegrees = 0.03 + (Math.abs(hash % 60) / 1000); // Dynamic localized offset (approx 3 to 9 km)
   
-  const baseLat = relativeTo ? relativeTo.lat : 11.0168; // default to Coimbatore Central
-  const baseLon = relativeTo ? relativeTo.lon : 76.9558;
+  const baseLat = relativeTo ? relativeTo.lat : 11.1444; // default to Thirumanancheri Temple
+  const baseLon = relativeTo ? relativeTo.lon : 79.5744;
 
   return {
     lat: baseLat + Math.sin(angle) * radiusDegrees,
@@ -210,46 +227,59 @@ export const getDistanceBetween = (locA: string, locB: string): number => {
  * Selects or generates rich surrounding suburbs dynamically around any center location
  */
 export const getSuburbsForCenter = (centerName: string): string[] => {
-  const clean = centerName.toLowerCase();
-  
-  // 1. Direct string match check
-  for (const [city, suburbs] of Object.entries(REGIONAL_SUBURBS)) {
-    if (clean.includes(city)) {
-      return suburbs;
-    }
-  }
-  
-  // 2. Proximity check using coordinates
+  const clean = centerName.toLowerCase().trim();
   const centerCoords = getCoordsForPlace(centerName);
-  let closestCity = "coimbatore";
-  let minDistance = 99999;
-  
-  const cityCoords: Record<string, { lat: number; lon: number }> = {
-    "coimbatore": { lat: 11.0168, lon: 76.9558 },
-    "chennai": { lat: 13.0827, lon: 80.2707 },
-    "madurai": { lat: 9.9252, lon: 78.1198 },
-    "salem": { lat: 11.6643, lon: 78.1460 },
-    "trichy": { lat: 10.7905, lon: 78.7047 },
-    "tiruppur": { lat: 11.1085, lon: 77.3411 },
-    "erode": { lat: 11.3410, lon: 77.7172 }
-  };
-  
-  for (const [city, coords] of Object.entries(cityCoords)) {
-    const dLat = coords.lat - centerCoords.lat;
-    const dLon = coords.lon - centerCoords.lon;
-    const dist = Math.sqrt(dLat * dLat + dLon * dLon) * 111.0; // simple distance
-    if (dist < minDistance) {
-      minDistance = dist;
-      closestCity = city;
+
+  const list: { name: string; distance: number }[] = [];
+
+  // 1. Calculate physical Haversine distance to all pre-registered coordinates in the app
+  for (const [key, coords] of Object.entries(LOCAL_COORDINATES)) {
+    // Skip the central place itself (exact match or partial match) to avoid listing center in the suburbs
+    if (clean === key || clean.startsWith(key + ",") || key.startsWith(clean) || key === "thirumanancheri temple" && clean === "thirumanancheri") {
+      continue;
     }
+
+    const R = 6371; // Earth Radius in KM
+    const dLat = ((coords.lat - centerCoords.lat) * Math.PI) / 180;
+    const dLon = ((coords.lon - centerCoords.lon) * Math.PI) / 180;
+    const lat1 = (centerCoords.lat * Math.PI) / 180;
+    const lat2 = (coords.lat * Math.PI) / 180;
+
+    const x = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+              Math.sin(dLon / 2) * Math.sin(dLon / 2) * Math.cos(lat1) * Math.cos(lat2);
+    const c = 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
+    const distance = R * c;
+
+    list.push({ name: key, distance });
   }
-  
-  // If we are close to a key city (within 100km), load that city's suburbs
-  if (minDistance < 100) {
-    return REGIONAL_SUBURBS[closestCity];
+
+  // Sort by physical proximity (closest first)
+  list.sort((a, b) => a.distance - b.distance);
+
+  // Helper to format names beautifully (capitalize each word)
+  const formatName = (str: string) => {
+    return str
+      .split(" ")
+      .map(word => {
+        return word.charAt(0).toUpperCase() + word.slice(1);
+      })
+      .join(" ");
+  };
+
+  // Keep places that are within 35 km (covers local taluk and adjacent major centers)
+  const nearby = list.filter(item => item.distance <= 35);
+
+  if (nearby.length >= 4) {
+    // Return up to 15 nearby places
+    return nearby.slice(0, 15).map(item => formatName(item.name));
   }
-  
-  // 3. Fallback: Generate real looking custom local coordinates named sectors relative to custom position
+
+  // Fallback: If less than 4 places found within 35 km, return the top 12 closest overall
+  if (list.length > 0) {
+    return list.slice(0, 12).map(item => formatName(item.name));
+  }
+
+  // Ultimate fallback
   return [
     "North Hub", "East Sector", "West Sector", "South Hub", 
     "Central Zone", "Avenue Block", "Highroad Junction", "Industrial Ring"

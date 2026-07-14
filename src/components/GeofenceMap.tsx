@@ -62,10 +62,10 @@ interface GeofenceMapProps {
 export default function GeofenceMap({
   mode,
   equipment,
-  customerLocationName = "Coimbatore Central",
+  customerLocationName = "Thirumanancheri Temple",
   onCustomerLocationChange,
   onUpdateZones,
-  adminLocation = "Coimbatore, Tamil Nadu",
+  adminLocation = "Thirumanancheri, Tamil Nadu",
   adminDistance = 15,
   nearbyPlaces = [],
   onAdminLocationChange
@@ -77,7 +77,7 @@ export default function GeofenceMap({
   // Center node setup
   const centerName = mode === "admin" 
     ? adminLocation 
-    : (equipment?.location || "Coimbatore, Tamil Nadu");
+    : (equipment?.location || "Thirumanancheri, Tamil Nadu");
 
   const displayCenterShortName = centerName.split(",")[0];
 
@@ -184,7 +184,7 @@ export default function GeofenceMap({
     // Create Map
     const map = L.map(mapContainerRef.current, {
       center: [centerCoords.lat, centerCoords.lon],
-      zoom: 11,
+      zoom: 12,
       zoomControl: true,
       scrollWheelZoom: false,
       attributionControl: false

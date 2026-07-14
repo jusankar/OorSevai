@@ -149,7 +149,7 @@ export default function NotificationCenter({
 
       {/* Footer info helper */}
       <div className="bg-[#FAF7F2] px-4 py-2 text-center text-[9px] text-[#8A867E] font-medium border-t border-[#E8E6E1] shrink-0">
-        💡 Alerts simulate SMS & Push updates sent to Coimbatore farmers.
+        💡 Alerts simulate SMS & Push updates sent to Thirumanancheri farmers.
       </div>
     </motion.div>
   );

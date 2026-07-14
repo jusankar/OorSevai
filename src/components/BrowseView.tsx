@@ -29,7 +29,7 @@ export default function BrowseView({
   onBack,
   onSelectEquipment,
   onSelectLaborer,
-  adminLocation = "Coimbatore, Tamil Nadu",
+  adminLocation = "Thirumanancheri, Tamil Nadu",
   adminDistance = 15,
   language = "en"
 }: BrowseViewProps) {
@@ -100,14 +100,14 @@ export default function BrowseView({
   const mappedEquipment = useMemo(() => {
     return allEquipment.map(eq => ({
       ...eq,
-      distance: getDistanceBetween(eq.location || "Coimbatore, Tamil Nadu", adminLocation)
+      distance: getDistanceBetween(eq.location || "Thirumanancheri, Tamil Nadu", adminLocation)
     }));
   }, [allEquipment, adminLocation]);
 
   const mappedLaborers = useMemo(() => {
     return allLaborers.map(lb => ({
       ...lb,
-      distance: getDistanceBetween(lb.location || "Coimbatore, Tamil Nadu", adminLocation)
+      distance: getDistanceBetween(lb.location || "Thirumanancheri, Tamil Nadu", adminLocation)
     }));
   }, [allLaborers, adminLocation]);
 

@@ -245,7 +245,7 @@ export const TRANSLATIONS = {
     reg_error_mobile: "Please enter a valid 10-digit mobile number",
     reg_error_roles: "Please select at least one role",
     reg_location_label: "Your Location (City/Village)",
-    reg_location_placeholder: "e.g. Coimbatore, Tamil Nadu",
+    reg_location_placeholder: "e.g. Thirumanancheri, Tamil Nadu",
     reg_location_detect: "Detect Location",
     reg_error_location: "Please specify or detect your location",
     settings_roles_title: "Registered Roles",

@@ -136,9 +136,9 @@ export default function App() {
 
   const [userLocation, setUserLocation] = useState<string>(() => {
     if (typeof window !== "undefined") {
-      return localStorage.getItem("oorsevai_user_location") || "Coimbatore, Tamil Nadu";
+      return localStorage.getItem("oorsevai_user_location") || "Thirumanancheri, Tamil Nadu";
     }
-    return "Coimbatore, Tamil Nadu";
+    return "Thirumanancheri, Tamil Nadu";
   });
 
   const [registeredRoles, setRegisteredRoles] = useState<("customer" | "owner" | "labor" | "admin")[]>(() => {
@@ -348,9 +348,9 @@ export default function App() {
   // Admin Service Location and Radius Geofence (surrounding distance KM)
   const [adminLocation, setAdminLocation] = useState<string>(() => {
     if (typeof window !== "undefined") {
-      return localStorage.getItem("oorsevai_user_location") || localStorage.getItem("admin_location") || "Coimbatore, Tamil Nadu";
+      return localStorage.getItem("oorsevai_user_location") || localStorage.getItem("admin_location") || "Thirumanancheri, Tamil Nadu";
     }
-    return "Coimbatore, Tamil Nadu";
+    return "Thirumanancheri, Tamil Nadu";
   });
   const [adminDistance, setAdminDistance] = useState<number>(() => {
     if (typeof window !== "undefined") {
@@ -397,7 +397,7 @@ export default function App() {
         } catch (_) {}
       }
     }
-    return ["Singanallur", "Thudiyalur", "Sulur", "Kinathukadavu", "Mettupalayam"];
+    return ["Mayiladuthurai", "Kuthalam", "Kurumanakudi", "Pandanallur", "Aduthurai"];
   });
   const [isFetchingNearbyTags, setIsFetchingNearbyTags] = useState<boolean>(false);
 
@@ -459,7 +459,7 @@ export default function App() {
             }
 
             // Merge Nominatim results with our rich local list of regions
-            const localRegions = ["Singanallur", "Thudiyalur", "Sulur", "Kinathukadavu", "Mettupalayam", "RS Puram", "Peelamedu", "Pollachi", "Peedampalli", "Gandhipuram", "Coimbatore Bypass"];
+            const localRegions = ["Mayiladuthurai", "Kuthalam", "Kurumanakudi", "Pandanallur", "Aduthurai", "Thiruvidaimarudur", "Sembanarkoil", "Vaitheeswaran Koil", "Pandanallur", "Aduthurai", "Mayiladuthurai"];
             const combinedList = Array.from(new Set([...places, ...localRegions]));
 
             const cleanAdmin = adminLocation.toLowerCase();
@@ -522,14 +522,14 @@ export default function App() {
     }
   }, [activeTab]);
 
-  // On load, if there's no saved admin location, try to detect and replace the default "Coimbatore"
+  // On load, if there's no saved admin location, try to detect and replace the default "Thirumanancheri"
   useEffect(() => {
     if (typeof window !== "undefined") {
       const savedAdminLoc = localStorage.getItem("admin_location");
       const savedUserLoc = localStorage.getItem("oorsevai_user_location");
       
       if (savedUserLoc || savedAdminLoc) {
-        const initialLoc = savedUserLoc || savedAdminLoc || "Coimbatore, Tamil Nadu";
+        const initialLoc = savedUserLoc || savedAdminLoc || "Thirumanancheri, Tamil Nadu";
         setAdminLocation(initialLoc);
         localStorage.setItem("admin_location", initialLoc);
       } else if (navigator.geolocation) {
@@ -669,7 +669,7 @@ export default function App() {
         : (item.ownerId === "owner-1" || item.ownerId === "8963556856");
       if (isMyEquipment) return false;
 
-      const computedDistance = getDistanceBetween(item.location || "Coimbatore, Tamil Nadu", adminLocation);
+      const computedDistance = getDistanceBetween(item.location || "Thirumanancheri, Tamil Nadu", adminLocation);
       return computedDistance <= adminDistance;
     });
   }, [resolvedEquipmentList, adminDistance, adminLocation, userMobile]);
@@ -682,7 +682,7 @@ export default function App() {
         : (item.id === "lb-4" || item.name === "Raju Krishnan");
       if (isMyProfile) return false;
 
-      const computedDistance = getDistanceBetween(item.location || "Coimbatore, Tamil Nadu", adminLocation);
+      const computedDistance = getDistanceBetween(item.location || "Thirumanancheri, Tamil Nadu", adminLocation);
       return computedDistance <= adminDistance;
     });
   }, [resolvedLaborersList, adminDistance, adminLocation, userMobile]);
@@ -765,9 +765,9 @@ export default function App() {
   const [deliveryMethod, setDeliveryMethod] = useState<"delivery" | "pickup">("delivery");
   const [customLocation, setCustomLocation] = useState<string>(() => {
     if (typeof window !== "undefined") {
-      return localStorage.getItem("oorsevai_user_location") || "Coimbatore, Tamil Nadu";
+      return localStorage.getItem("oorsevai_user_location") || "Thirumanancheri, Tamil Nadu";
     }
-    return "Coimbatore, Tamil Nadu";
+    return "Thirumanancheri, Tamil Nadu";
   });
   const [deliveryFee, setDeliveryFee] = useState<number>(600);
   const [editingGeofenceId, setEditingGeofenceId] = useState<string | null>(null);
@@ -806,8 +806,8 @@ export default function App() {
         }
         if (userLocation) {
           message = message
-            .replace(/Coimbatore,\s*Tamil\s*Nadu/gi, userLocation)
-            .replace(/Coimbatore/gi, userLocation);
+            .replace(/Thirumanancheri,\s*Tamil\s*Nadu/gi, userLocation)
+            .replace(/Thirumanancheri/gi, userLocation);
         }
         return { ...n, message };
       });
@@ -825,8 +825,8 @@ export default function App() {
     }
     if (userLocation) {
       message = message
-        .replace(/Coimbatore,\s*Tamil\s*Nadu/gi, userLocation)
-        .replace(/Coimbatore/gi, userLocation);
+        .replace(/Thirumanancheri,\s*Tamil\s*Nadu/gi, userLocation)
+        .replace(/Thirumanancheri/gi, userLocation);
     }
     return { ...activeBannerNotification, message };
   }, [activeBannerNotification, userName, userLocation]);
@@ -834,7 +834,7 @@ export default function App() {
   // Dynamically resolve booking locations to the user's current/registered location
   const resolvedBookings = useMemo(() => {
     return bookings.map(b => {
-      if (b.location === "Coimbatore, Tamil Nadu" && b.customerId === userMobile) {
+      if (b.location === "Thirumanancheri, Tamil Nadu" && b.customerId === userMobile) {
         return { ...b, location: userLocation };
       }
       return b;
@@ -1123,9 +1123,9 @@ export default function App() {
   const [predictCondition, setPredictCondition] = useState("Excellent");
   const [predictLocation, setPredictLocation] = useState(() => {
     if (typeof window !== "undefined") {
-      return localStorage.getItem("oorsevai_user_location") || "Coimbatore, Tamil Nadu";
+      return localStorage.getItem("oorsevai_user_location") || "Thirumanancheri, Tamil Nadu";
     }
-    return "Coimbatore, Tamil Nadu";
+    return "Thirumanancheri, Tamil Nadu";
   });
   const [predictionResult, setPredictionResult] = useState<any | null>(null);
   const [isPredicting, setIsPredicting] = useState(false);
@@ -1297,7 +1297,7 @@ export default function App() {
         predictedPrice: 1950,
         priceRange: "₹1,750 - ₹2,200 per day",
         marketDemand: "High",
-        reasoning: "Based on local data in Coimbatore, high agricultural demand for well-maintained machinery drives premium pricing for mid-aged tools.",
+        reasoning: "Based on local data in Thirumanancheri, high agricultural demand for well-maintained machinery drives premium pricing for mid-aged tools.",
         seasonalTips: "Prices can be raised by 15% during Kharif sowing season in June/July."
       });
     } finally {
@@ -1428,12 +1428,12 @@ export default function App() {
         operatorIncluded: newEqOperator,
       },
       about: newEqAbout || "Newly listed heavy equipment for short and long-term hiring.",
-      location: "Coimbatore, Tamil Nadu",
+      location: "Thirumanancheri, Tamil Nadu",
       verified: false,
       status: "active",
       deliveryZones: [
         { id: `z1-${Date.now()}`, name: "Immediate Neighborhood", radiusKm: 5, deliveryFee: 250, color: "rgba(16, 185, 129, 0.15)" },
-        { id: `z2-${Date.now()}`, name: "Coimbatore Mid-Ring", radiusKm: 15, deliveryFee: 600, color: "rgba(245, 158, 11, 0.15)" },
+        { id: `z2-${Date.now()}`, name: "Thirumanancheri Mid-Ring", radiusKm: 15, deliveryFee: 600, color: "rgba(245, 158, 11, 0.15)" },
         { id: `z3-${Date.now()}`, name: "Extended Rural Belt", radiusKm: 35, deliveryFee: 1400, color: "rgba(239, 68, 68, 0.12)" }
       ]
     };
@@ -1493,7 +1493,7 @@ export default function App() {
       pricePerDay: parseFloat(newLaborPrice),
       rating: 5.0,
       reviewsCount: 0,
-      location: "Coimbatore, Tamil Nadu",
+      location: "Thirumanancheri, Tamil Nadu",
       distance: 1.0,
       availability: "available",
       experience: newLaborExperience,
@@ -2929,7 +2929,7 @@ export default function App() {
                   <div className="space-y-2">
                     <h4 className="font-bold text-sm text-[#2D2D2A]">Services Offered</h4>
                     <ul className="text-xs text-[#8A867E] space-y-1.5 list-disc pl-4">
-                      <li>Professional skill-oriented labor tasks within Coimbatore district.</li>
+                      <li>Professional skill-oriented labor tasks within Thirumanancheri district.</li>
                       <li>Standard 8-hour workday with meal breaks provided locally.</li>
                       <li>High quality craftsmanship, punctuality, and verified safety record.</li>
                     </ul>
@@ -3104,7 +3104,7 @@ export default function App() {
                             ⚡ Quick Select Regional Farming Hubs
                           </label>
                           <div className="flex flex-wrap gap-1.5">
-                            {["Coimbatore Central", "RS Puram", "Peelamedu", "Sulur", "Thudiyalur", "Pollachi", "Mettupalayam"].map((loc) => (
+                            {["Thirumanancheri Temple", "Thiruvidaimarudur", "Sembanarkoil", "Kurumanakudi", "Kuthalam", "Vaitheeswaran Koil", "Aduthurai"].map((loc) => (
                               <button
                                 key={loc}
                                 type="button"
@@ -3504,7 +3504,7 @@ export default function App() {
                   <div className="flex space-x-1.5 overflow-x-auto pb-2 scrollbar-none shrink-0">
                     {[
                       "Recommend tools for 1.5 acre paddy field?",
-                      "Will it rain tomorrow in Coimbatore?",
+                      "Will it rain tomorrow in Thirumanancheri?",
                       "Predict daily rent of a 55HP Tractor",
                       "How to repair power weeder start recoil?"
                     ].map((promptText, idx) => (
@@ -4315,7 +4315,7 @@ export default function App() {
                     <div>
                       <h3 className="font-black text-sm text-[#2D2D2A]">Equipment Submitted!</h3>
                       <p className="text-[10px] text-[#8A867E] mt-1 leading-relaxed">
-                        Your equipment has been submitted to Admin for verification. It will be live on Coimbatore search map in under 2 hours.
+                        Your equipment has been submitted to Admin for verification. It will be live on Thirumanancheri search map in under 2 hours.
                       </p>
                     </div>
                     <button 
@@ -5238,7 +5238,7 @@ export default function App() {
                             alert(`Geofencing coverage reset to your detected location: ${detectedName} (15 KM).`);
                           },
                           (err) => {
-                            const userLoc = localStorage.getItem("oorsevai_user_location") || "Coimbatore, Tamil Nadu";
+                            const userLoc = localStorage.getItem("oorsevai_user_location") || "Thirumanancheri, Tamil Nadu";
                             setAdminLocation(userLoc);
                             setAdminDistance(15);
                             localStorage.setItem("admin_location", userLoc);
@@ -5248,7 +5248,7 @@ export default function App() {
                           }
                         );
                       } else {
-                        const userLoc = localStorage.getItem("oorsevai_user_location") || "Coimbatore, Tamil Nadu";
+                        const userLoc = localStorage.getItem("oorsevai_user_location") || "Thirumanancheri, Tamil Nadu";
                         setAdminLocation(userLoc);
                         setAdminDistance(15);
                         localStorage.setItem("admin_location", userLoc);

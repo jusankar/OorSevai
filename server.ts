@@ -248,7 +248,7 @@ Your capabilities:
 3. Recommend specific equipment or tools for farm sizes (e.g., small farms under 2 acres need mini tractors, large ones need 50+ HP tractors) or building tasks.
 4. Answer operational questions and troubleshooting on common machinery.
 
-Keep answers professional, helpful, very concise, and highly encouraging. Use Indian terminology or local agricultural context (like Coimbatore, Tamil Nadu, Punjab, cropping seasons, Rabi, Kharif, etc.) to feel genuine and relevant. Keep answers within 3 paragraphs.
+Keep answers professional, helpful, very concise, and highly encouraging. Use Indian terminology or local agricultural context (like Thirumanancheri, Tamil Nadu, Punjab, cropping seasons, Rabi, Kharif, etc.) to feel genuine and relevant. Keep answers within 3 paragraphs.
 `;
 
       let response;
@@ -295,7 +295,7 @@ Predict the optimal daily rental price in INR (₹) for:
 - Brand: ${brand || "Standard quality"}
 - Year of Manufacture: ${year || "2022"}
 - Current Condition: ${condition || "Good"}
-- Location: ${location || "Coimbatore, Tamil Nadu"}
+- Location: ${location || "Thirumanancheri, Tamil Nadu"}
 
 Analyze the market demand in India, potential maintenance costs, and seasonal fluctuations.
 Provide the response in the requested structured JSON.
