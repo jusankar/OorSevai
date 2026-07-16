@@ -7,6 +7,8 @@ export const users = pgTable("users", {
   email: text("email").notNull(),
   phone: text("phone"),
   location: text("location"),
+  latitude: doublePrecision("latitude"),
+  longitude: doublePrecision("longitude"),
   roles: text("roles"), // Comma-separated roles (e.g. "customer,owner,labor,admin")
   currentRole: text("current_role"),
   createdAt: timestamp("created_at").defaultNow(),
@@ -28,6 +30,8 @@ export const equipment = pgTable("equipment", {
   specs: json("specs").notNull(), // specs dictionary
   about: text("about").notNull(),
   location: text("location").notNull(),
+  latitude: doublePrecision("latitude"),
+  longitude: doublePrecision("longitude"),
   verified: boolean("verified").default(false),
   status: text("status").default("active"), // "active" | "inactive"
   usageHours: integer("usage_hours").default(0),
@@ -48,6 +52,8 @@ export const laborers = pgTable("laborers", {
   rating: doublePrecision("rating").default(4.5),
   reviewsCount: integer("reviews_count").default(0),
   location: text("location").notNull(),
+  latitude: doublePrecision("latitude"),
+  longitude: doublePrecision("longitude"),
   distance: doublePrecision("distance").default(1.0),
   availability: text("availability").default("available"), // "available" | "unavailable"
   experience: text("experience").notNull(),

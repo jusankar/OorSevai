@@ -28,6 +28,8 @@ export interface Equipment {
   };
   about: string;
   location: string;
+  latitude?: number | null;
+  longitude?: number | null;
   verified: boolean;
   status: "active" | "inactive";
   deliveryZones?: DeliveryZone[]; // Owner customized delivery geofence rings
@@ -46,6 +48,8 @@ export interface Laborer {
   rating: number;
   reviewsCount: number;
   location: string;
+  latitude?: number | null;
+  longitude?: number | null;
   distance: number;
   availability: "available" | "unavailable";
   experience: string; // e.g. "5 Years"

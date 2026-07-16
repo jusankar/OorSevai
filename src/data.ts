@@ -29,9 +29,9 @@ export const DEFAULT_EQUIPMENT: Equipment[] = [
     serviceDueIntervalHours: 50,
     serviceDue: false,
     deliveryZones: [
-      { id: "z1-eq1", name: "Thirumanancheri Core", radiusKm: 5, deliveryFee: 300, color: "rgba(16, 185, 129, 0.15)" },
-      { id: "z2-eq1", name: "Outer Suburbs (Kurumanakudi/Kuthalam)", radiusKm: 15, deliveryFee: 750, color: "rgba(245, 158, 11, 0.15)" },
-      { id: "z3-eq1", name: "Extended Rural (Vaitheeswaran Koil/Aduthurai)", radiusKm: 35, deliveryFee: 1600, color: "rgba(239, 68, 68, 0.12)" }
+      { id: "z1-eq1", name: "Thirumanancheri Core", radiusKm: 3, deliveryFee: 300, color: "rgba(16, 185, 129, 0.15)" },
+      { id: "z2-eq1", name: "Outer Suburbs (Kurumanakudi/Kuthalam)", radiusKm: 6, deliveryFee: 750, color: "rgba(245, 158, 11, 0.15)" },
+      { id: "z3-eq1", name: "Extended Rural (Vaitheeswaran Koil/Aduthurai)", radiusKm: 10, deliveryFee: 1600, color: "rgba(239, 68, 68, 0.12)" }
     ]
   },
   {
@@ -90,9 +90,9 @@ export const DEFAULT_EQUIPMENT: Equipment[] = [
     serviceDueIntervalHours: 100,
     serviceDue: false,
     deliveryZones: [
-      { id: "z1-eq3", name: "Bypass Local Radius", radiusKm: 8, deliveryFee: 400, color: "rgba(16, 185, 129, 0.15)" },
-      { id: "z2-eq3", name: "Thirumanancheri Ring", radiusKm: 20, deliveryFee: 900, color: "rgba(245, 158, 11, 0.15)" },
-      { id: "z3-eq3", name: "Vaitheeswaran Koil Core Belt", radiusKm: 40, deliveryFee: 1800, color: "rgba(239, 68, 68, 0.12)" }
+      { id: "z1-eq3", name: "Bypass Local Radius", radiusKm: 3, deliveryFee: 400, color: "rgba(16, 185, 129, 0.15)" },
+      { id: "z2-eq3", name: "Thirumanancheri Ring", radiusKm: 6, deliveryFee: 900, color: "rgba(245, 158, 11, 0.15)" },
+      { id: "z3-eq3", name: "Vaitheeswaran Koil Core Belt", radiusKm: 10, deliveryFee: 1800, color: "rgba(239, 68, 68, 0.12)" }
     ]
   },
   {

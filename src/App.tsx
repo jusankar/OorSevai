@@ -35,7 +35,7 @@ import BrowseView from "./components/BrowseView";
 import GeofenceMap from "./components/GeofenceMap";
 import NotificationCenter from "./components/NotificationCenter";
 import { LaborerCalendar } from "./components/LaborerCalendar";
-import { getDistanceBetween } from "./utils/geo";
+import { getDistanceBetween, getDistanceBetweenCoords } from "./utils/geo";
 
 const getCategorySpecsConfig = (category: string) => {
   switch (category) {
@@ -139,6 +139,22 @@ export default function App() {
       return localStorage.getItem("oorsevai_user_location") || "Thirumanancheri, Tamil Nadu";
     }
     return "Thirumanancheri, Tamil Nadu";
+  });
+
+  const [userLatitude, setUserLatitude] = useState<number>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("oorsevai_user_latitude");
+      return saved ? parseFloat(saved) : 11.1444;
+    }
+    return 11.1444;
+  });
+
+  const [userLongitude, setUserLongitude] = useState<number>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("oorsevai_user_longitude");
+      return saved ? parseFloat(saved) : 79.5744;
+    }
+    return 79.5744;
   });
 
   const [registeredRoles, setRegisteredRoles] = useState<("customer" | "owner" | "labor" | "admin")[]>(() => {
@@ -355,10 +371,10 @@ export default function App() {
   const [adminDistance, setAdminDistance] = useState<number>(() => {
     if (typeof window !== "undefined") {
       const saved = localStorage.getItem("admin_distance");
-      const val = saved ? parseInt(saved, 10) : 15; // default 15 KM
-      return val > 25 ? 25 : val; // Apply a maximum service radius of 25 km
+      const val = saved ? parseInt(saved, 10) : 10; // default 10 KM
+      return val > 10 ? 10 : val; // Apply a maximum service radius of 10 km
     }
-    return 15;
+    return 10;
   });
 
   // Language & Settings states with persistence
@@ -386,117 +402,6 @@ export default function App() {
     }
     return false;
   });
-
-  // Dynamic nearby places state for Admin Dashboard
-  const [nearbyTags, setNearbyTags] = useState<string[]>(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("admin_nearby_tags");
-      if (saved) {
-        try {
-          return JSON.parse(saved);
-        } catch (_) {}
-      }
-    }
-    return ["Mayiladuthurai", "Kuthalam", "Kurumanakudi", "Pandanallur", "Aduthurai"];
-  });
-  const [isFetchingNearbyTags, setIsFetchingNearbyTags] = useState<boolean>(false);
-
-  // Debounced effect to fetch actual nearby places when adminLocation or adminDistance is updated
-  useEffect(() => {
-    let active = true;
-    const timer = setTimeout(async () => {
-      if (!adminLocation.trim()) return;
-      
-      setIsFetchingNearbyTags(true);
-      try {
-        // Step 1: Geocode adminLocation to get lat and lon
-        const geoRes = await fetch(
-          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(adminLocation)}&format=json&limit=1`,
-          { headers: { "User-Agent": "OorSevaiApplet/1.0" } }
-        );
-        if (!active) return;
-        
-        if (geoRes.ok) {
-          const geoData = await geoRes.json();
-          if (geoData && geoData.length > 0) {
-            const lat = parseFloat(geoData[0].lat);
-            const lon = parseFloat(geoData[0].lon);
-            
-            // Step 2: Fetch nearby villages, towns, or suburbs within a bounding box scaled to adminDistance
-            // 1 degree latitude is approx 111km. We use a factor of 1.4 to capture the entire radius.
-            const box = Math.max(0.06, (adminDistance / 111.0) * 1.4);
-            const viewbox = `${lon - box},${lat + box},${lon + box},${lat - box}`;
-            
-            // Query for villages
-            const placesRes = await fetch(
-              `https://nominatim.openstreetmap.org/search?format=json&viewbox=${viewbox}&bounded=1&q=village&limit=12`,
-              { headers: { "User-Agent": "OorSevaiApplet/1.0" } }
-            );
-            if (!active) return;
-            
-            let places: string[] = [];
-            if (placesRes.ok) {
-              const placesData = await placesRes.json();
-              places = placesData
-                .map((item: any) => item.name || (item.display_name ? item.display_name.split(",")[0] : ""))
-                .filter((name: string) => name && name.trim().length > 0);
-            }
-            
-            // If fewer than 5 villages, add suburbs/towns
-            if (places.length < 5) {
-              const extraRes = await fetch(
-                `https://nominatim.openstreetmap.org/search?format=json&viewbox=${viewbox}&bounded=1&q=suburb&limit=12`,
-                { headers: { "User-Agent": "OorSevaiApplet/1.0" } }
-              );
-              if (!active) return;
-              if (extraRes.ok) {
-                const extraData = await extraRes.json();
-                const extraNames = extraData
-                  .map((item: any) => item.name || (item.display_name ? item.display_name.split(",")[0] : ""))
-                  .filter((name: string) => name && name.trim().length > 0);
-                places = [...places, ...extraNames];
-              }
-            }
-
-            // Merge Nominatim results with our rich local list of regions
-            const localRegions = ["Mayiladuthurai", "Kuthalam", "Kurumanakudi", "Pandanallur", "Aduthurai", "Thiruvidaimarudur", "Sembanarkoil", "Vaitheeswaran Koil", "Pandanallur", "Aduthurai", "Mayiladuthurai"];
-            const combinedList = Array.from(new Set([...places, ...localRegions]));
-
-            const cleanAdmin = adminLocation.toLowerCase();
-            const uniquePlaces = combinedList
-              .filter(name => {
-                const cleanName = name.toLowerCase();
-                if (cleanName.includes(cleanAdmin) || cleanAdmin.includes(cleanName)) return false;
-                
-                // Keep only places strictly within the selected Service Radius
-                const dist = getDistanceBetween(name, adminLocation);
-                return dist <= adminDistance;
-              })
-              // Sort by distance so closest places appear first
-              .sort((a, b) => getDistanceBetween(a, adminLocation) - getDistanceBetween(b, adminLocation));
-
-            const finalPlaces = uniquePlaces.slice(0, 6);
-            
-            if (active && finalPlaces.length > 0) {
-              setNearbyTags(finalPlaces);
-              localStorage.setItem("admin_nearby_tags", JSON.stringify(finalPlaces));
-            }
-          }
-        }
-      } catch (err) {
-        console.error("Error fetching nearby places:", err);
-      } finally {
-        if (active) {
-          setIsFetchingNearbyTags(false);
-        }
-      }
-    }, 1200);
-
-    return () => {
-      active = false;
-      clearTimeout(timer);
-    };
-  }, [adminLocation, adminDistance]);
 
   useEffect(() => {
     if (darkMode) {
@@ -634,31 +539,55 @@ export default function App() {
   // Dynamically resolve names of owner and labor to the logged-in user name
   const resolvedEquipmentList = useMemo(() => {
     return equipmentList.map(eq => {
-      if (eq.ownerId === "owner-1" || eq.ownerName === "Ravi Kumar" || eq.ownerName === "Udaya Kumar") {
-        return {
-          ...eq,
-          ownerName: userName || "Ravi Kumar"
-        };
-      }
-      return eq;
+      // Calculate dynamic coordinate distance from logged in user (or admin location fallback)
+      const computedDistance = getDistanceBetweenCoords(
+        eq.latitude,
+        eq.longitude,
+        userLatitude,
+        userLongitude,
+        eq.location,
+        userLocation || adminLocation
+      );
+
+      const resolvedName = (eq.ownerId === "owner-1" || eq.ownerName === "Ravi Kumar" || eq.ownerName === "Udaya Kumar")
+        ? (userName || "Ravi Kumar")
+        : eq.ownerName;
+
+      return {
+        ...eq,
+        ownerName: resolvedName,
+        distance: computedDistance
+      };
     });
-  }, [equipmentList, userName]);
+  }, [equipmentList, userName, userLatitude, userLongitude, userLocation, adminLocation]);
 
   const resolvedLaborersList = useMemo(() => {
     return laborersList.map(lb => {
+      // Calculate dynamic coordinate distance from logged in user (or admin location fallback)
+      const computedDistance = getDistanceBetweenCoords(
+        lb.latitude,
+        lb.longitude,
+        userLatitude,
+        userLongitude,
+        lb.location,
+        userLocation || adminLocation
+      );
+
       const isMyProfile = userMobile 
         ? lb.id.includes(userMobile) 
         : (lb.id === "lb-4" || lb.name === "Raju Krishnan");
-      if (isMyProfile) {
-        return {
-          ...lb,
-          name: lb.name || userName || "Raju Krishnan",
-          image: workerImage || lb.image
-        };
-      }
-      return lb;
+
+      const resolvedName = isMyProfile ? (lb.name || userName || "Raju Krishnan") : lb.name;
+      const resolvedImg = isMyProfile ? (workerImage || lb.image) : lb.image;
+
+      return {
+        ...lb,
+        name: resolvedName,
+        image: resolvedImg,
+        distance: computedDistance
+      };
     });
-  }, [laborersList, userName, workerImage, userMobile]);
+  }, [laborersList, userName, workerImage, userMobile, userLatitude, userLongitude, userLocation, adminLocation]);
 
   // Dynamically filter active equipment and laborers based on Admin configured location distance
   const filteredEquipmentList = useMemo(() => {
@@ -669,10 +598,9 @@ export default function App() {
         : (item.ownerId === "owner-1" || item.ownerId === "8963556856");
       if (isMyEquipment) return false;
 
-      const computedDistance = getDistanceBetween(item.location || "Thirumanancheri, Tamil Nadu", adminLocation);
-      return computedDistance <= adminDistance;
+      return item.distance <= adminDistance;
     });
-  }, [resolvedEquipmentList, adminDistance, adminLocation, userMobile]);
+  }, [resolvedEquipmentList, adminDistance, userMobile]);
 
   const filteredLaborersList = useMemo(() => {
     return resolvedLaborersList.filter(item => {
@@ -682,10 +610,9 @@ export default function App() {
         : (item.id === "lb-4" || item.name === "Raju Krishnan");
       if (isMyProfile) return false;
 
-      const computedDistance = getDistanceBetween(item.location || "Thirumanancheri, Tamil Nadu", adminLocation);
-      return computedDistance <= adminDistance;
+      return item.distance <= adminDistance;
     });
-  }, [resolvedLaborersList, adminDistance, adminLocation, userMobile]);
+  }, [resolvedLaborersList, adminDistance, userMobile]);
 
   // PWA (Progressive Web App) states
   const [isOnline, setIsOnline] = useState(typeof window !== "undefined" ? navigator.onLine : true);
@@ -1428,13 +1355,15 @@ export default function App() {
         operatorIncluded: newEqOperator,
       },
       about: newEqAbout || "Newly listed heavy equipment for short and long-term hiring.",
-      location: "Thirumanancheri, Tamil Nadu",
+      location: newEqLocation || "Thirumanancheri, Tamil Nadu",
+      latitude: newEqLat || null,
+      longitude: newEqLon || null,
       verified: false,
       status: "active",
       deliveryZones: [
-        { id: `z1-${Date.now()}`, name: "Immediate Neighborhood", radiusKm: 5, deliveryFee: 250, color: "rgba(16, 185, 129, 0.15)" },
-        { id: `z2-${Date.now()}`, name: "Thirumanancheri Mid-Ring", radiusKm: 15, deliveryFee: 600, color: "rgba(245, 158, 11, 0.15)" },
-        { id: `z3-${Date.now()}`, name: "Extended Rural Belt", radiusKm: 35, deliveryFee: 1400, color: "rgba(239, 68, 68, 0.12)" }
+        { id: `z1-${Date.now()}`, name: "Immediate Neighborhood", radiusKm: 3, deliveryFee: 150, color: "rgba(16, 185, 129, 0.15)" },
+        { id: `z2-${Date.now()}`, name: "Thirumanancheri Core", radiusKm: 6, deliveryFee: 300, color: "rgba(245, 158, 11, 0.15)" },
+        { id: `z3-${Date.now()}`, name: "Standard 10 KM Boundary", radiusKm: 10, deliveryFee: 500, color: "rgba(239, 68, 68, 0.12)" }
       ]
     };
 
@@ -1454,6 +1383,9 @@ export default function App() {
     setNewEqPrice("");
     setNewEqAbout("");
     setNewEqImage("");
+    setNewEqLocation("Thirumanancheri, Tamil Nadu");
+    setNewEqLat(undefined);
+    setNewEqLon(undefined);
   };
 
   // Register as Laborer Action
@@ -1493,7 +1425,9 @@ export default function App() {
       pricePerDay: parseFloat(newLaborPrice),
       rating: 5.0,
       reviewsCount: 0,
-      location: "Thirumanancheri, Tamil Nadu",
+      location: newLaborLocation || "Thirumanancheri, Tamil Nadu",
+      latitude: newLaborLat || null,
+      longitude: newLaborLon || null,
       distance: 1.0,
       availability: "available",
       experience: newLaborExperience,
@@ -1519,6 +1453,9 @@ export default function App() {
     setNewLaborPrice("");
     setNewLaborKycFileName("");
     setNewLaborImage("");
+    setNewLaborLocation("Thirumanancheri, Tamil Nadu");
+    setNewLaborLat(undefined);
+    setNewLaborLon(undefined);
     setLaborError("");
   };
 
@@ -1816,6 +1753,17 @@ export default function App() {
   const [regMobile, setRegMobile] = useState("");
   const [regRoles, setRegRoles] = useState<("customer" | "owner" | "labor")[]>(["customer"]);
   const [regLocation, setRegLocation] = useState("");
+  const [regLat, setRegLat] = useState<number | undefined>(undefined);
+  const [regLon, setRegLon] = useState<number | undefined>(undefined);
+
+  const [newEqLocation, setNewEqLocation] = useState("Thirumanancheri, Tamil Nadu");
+  const [newEqLat, setNewEqLat] = useState<number | undefined>(undefined);
+  const [newEqLon, setNewEqLon] = useState<number | undefined>(undefined);
+
+  const [newLaborLocation, setNewLaborLocation] = useState("Thirumanancheri, Tamil Nadu");
+  const [newLaborLat, setNewLaborLat] = useState<number | undefined>(undefined);
+  const [newLaborLon, setNewLaborLon] = useState<number | undefined>(undefined);
+
   const [isDetectingLocation, setIsDetectingLocation] = useState(false);
   const [adminCodeInput, setAdminCodeInput] = useState("");
   const [showAdminField, setShowAdminField] = useState(false);
@@ -1837,6 +1785,8 @@ export default function App() {
               // Auto-fill fields for them
               setRegName(data.name || "");
               setRegLocation(data.location || "");
+              if (data.latitude) setRegLat(parseFloat(data.latitude));
+              if (data.longitude) setRegLon(parseFloat(data.longitude));
               if (data.roles) {
                 try {
                   const parsedRoles = JSON.parse(data.roles);
@@ -2128,6 +2078,8 @@ export default function App() {
       email: `${cleanMobile}@oorsevai.com`,
       phone: cleanMobile,
       location: finalLocation,
+      latitude: regLat || null,
+      longitude: regLon || null,
       roles: JSON.stringify(finalRoles),
       currentRole: finalRoles.includes("customer") ? "customer" : finalRoles[0],
     };
@@ -2148,6 +2100,8 @@ export default function App() {
     localStorage.setItem("oorsevai_user_name", regName.trim());
     localStorage.setItem("oorsevai_user_mobile", cleanMobile);
     localStorage.setItem("oorsevai_user_location", finalLocation);
+    if (regLat) localStorage.setItem("oorsevai_user_latitude", regLat.toString());
+    if (regLon) localStorage.setItem("oorsevai_user_longitude", regLon.toString());
     localStorage.setItem("oorsevai_user_roles", JSON.stringify(finalRoles));
     localStorage.setItem("oorsevai_registered", "true");
     localStorage.setItem("admin_location", finalLocation);
@@ -2155,6 +2109,8 @@ export default function App() {
     setUserName(regName.trim());
     setUserMobile(cleanMobile);
     setUserLocation(finalLocation);
+    if (regLat) setUserLatitude(regLat);
+    if (regLon) setUserLongitude(regLon);
     setCustomLocation(finalLocation);
     setAdminLocation(finalLocation);
     setPredictLocation(finalLocation);
@@ -2305,7 +2261,7 @@ export default function App() {
                 {/* Location field with GPS Detection */}
                 <div>
                   <label className="block text-[11px] font-black uppercase text-slate-500 dark:text-slate-400 mb-1.5 tracking-wider">{t("reg_location_label")}</label>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 mb-2">
                     <input
                       type="text"
                       value={regLocation}
@@ -2316,14 +2272,26 @@ export default function App() {
                       placeholder={t("reg_location_placeholder")}
                       className="flex-1 bg-white dark:bg-[#1A2320] border border-[#E8E6E1] dark:border-slate-800 rounded-xl px-3.5 py-2.5 text-xs focus:ring-2 focus:ring-[#3E5C31] focus:border-[#3E5C31] dark:text-slate-100 outline-none transition-all"
                     />
-                    <button
-                      type="button"
-                      disabled={isDetectingLocation}
-                      onClick={handleDetectRegLocation}
-                      className="px-3 bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:text-slate-200 text-[#2D2D2A] rounded-xl text-[10px] font-black cursor-pointer transition-colors flex items-center gap-1 shrink-0"
-                    >
-                      <span>📍</span> {isDetectingLocation ? (language === "ta" ? "கண்டறிகிறது..." : "Detecting...") : t("reg_location_detect")}
-                    </button>
+                  </div>
+                  
+                  {/* Interactive Map to pinpoint exact coordinates */}
+                  <div className="mb-4">
+                    <p className="text-[10px] text-[#8A867E] dark:text-slate-400 mb-1.5">
+                      {language === "ta" 
+                        ? "வரைபடத்தில் உங்கள் இருப்பிடத்தை சரியாகத் தேர்வு செய்யவும்:" 
+                        : "Pinpoint your base location on the interactive map below:"}
+                    </p>
+                    <GeofenceMap
+                      mode="register"
+                      selectedLat={regLat}
+                      selectedLon={regLon}
+                      onLocationSelect={(lat, lon, addr) => {
+                        setRegLat(lat);
+                        setRegLon(lon);
+                        setRegLocation(addr);
+                        if (regError) setRegError("");
+                      }}
+                    />
                   </div>
                 </div>
 
@@ -4123,6 +4091,32 @@ export default function App() {
                     />
                   </div>
 
+                  {/* Machinery Base Location Map */}
+                  <div className="space-y-1.5">
+                    <label className="block text-[9px] font-bold text-[#8A867E] uppercase mb-0.5">Machinery Base Location</label>
+                    <input 
+                      type="text" 
+                      required
+                      value={newEqLocation}
+                      onChange={(e) => setNewEqLocation(e.target.value)}
+                      placeholder="e.g., Thirumanancheri, Tamil Nadu"
+                      className="w-full bg-[#FAF7F2] text-[#2D2D2A] p-2 rounded-lg border border-[#E8E6E1]"
+                    />
+                    <div className="mt-1">
+                      <p className="text-[9px] text-[#8A867E] mb-1">Pinpoint where the equipment is stationed:</p>
+                      <GeofenceMap
+                        mode="register"
+                        selectedLat={newEqLat}
+                        selectedLon={newEqLon}
+                        onLocationSelect={(lat, lon, addr) => {
+                          setNewEqLat(lat);
+                          setNewEqLon(lon);
+                          setNewEqLocation(addr);
+                        }}
+                      />
+                    </div>
+                  </div>
+
                   <div className="flex items-center space-x-2">
                     <input 
                       type="checkbox" 
@@ -4971,6 +4965,32 @@ export default function App() {
                         </div>
                       )}
                     </div>
+
+                    {/* Laborer Base Location Map */}
+                    <div className="space-y-1.5">
+                      <label className="block text-[9px] font-bold text-[#8A867E] uppercase mb-0.5">Base Working Location</label>
+                      <input 
+                        type="text" 
+                        required
+                        value={newLaborLocation}
+                        onChange={(e) => setNewLaborLocation(e.target.value)}
+                        placeholder="e.g., Thirumanancheri, Tamil Nadu"
+                        className="w-full bg-[#FAF7F2] text-[#2D2D2A] p-2 rounded-lg border border-[#E8E6E1]"
+                      />
+                      <div className="mt-1">
+                        <p className="text-[9px] text-[#8A867E] mb-1">Pinpoint your active working hub on the map:</p>
+                        <GeofenceMap
+                          mode="register"
+                          selectedLat={newLaborLat}
+                          selectedLon={newLaborLon}
+                          onLocationSelect={(lat, lon, addr) => {
+                            setNewLaborLat(lat);
+                            setNewLaborLon(lon);
+                            setNewLaborLocation(addr);
+                          }}
+                        />
+                      </div>
+                    </div>
                     
                     {laborError && (
                       <div className="bg-rose-50 border border-rose-200 text-rose-700 text-[10px] font-semibold p-2.5 rounded-xl leading-normal">
@@ -4980,7 +5000,7 @@ export default function App() {
 
                     <button
                       type="submit"
-                      className="w-full bg-[#3E5C31] hover:bg-[#3E5C31]/95 text-white font-black py-2 rounded-xl cursor-pointer"
+                      className="w-full bg-[#3E5C31] hover:bg-[#3E5C31]/95 text-white font-black py-2 rounded-xl cursor-pointer text-xs"
                     >
                       Submit Registration For Approval
                     </button>
@@ -5073,43 +5093,6 @@ export default function App() {
                         <span>{isDetectingLocation ? "Detecting..." : "Detect Location"}</span>
                       </button>
                     </div>
-                    {/* Dynamic nearby places suggestion tags */}
-                    <div className="space-y-1.5 pt-1">
-                      <div className="flex justify-between items-center">
-                        <span className="text-[9px] font-bold text-[#8A867E] dark:text-slate-400 uppercase tracking-wider">
-                          Nearby Places of {adminLocation ? adminLocation.split(",")[0] : "Detected Location"}
-                        </span>
-                        {isFetchingNearbyTags && (
-                          <span className="text-[9px] text-[#3E5C31] dark:text-emerald-400 animate-pulse font-bold">
-                            Searching...
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex flex-wrap gap-1.5">
-                        {nearbyTags.map((loc) => (
-                          <button
-                            key={loc}
-                            type="button"
-                            onClick={() => {
-                              setAdminLocation(loc);
-                              localStorage.setItem("admin_location", loc);
-                            }}
-                            className={`text-[9px] px-2.5 py-1 rounded-lg border font-bold transition-all duration-200 cursor-pointer ${
-                              adminLocation === loc
-                                ? "bg-[#3E5C31] text-white border-[#3E5C31] shadow-xs"
-                                : "bg-[#FAF7F2] dark:bg-slate-800/80 text-[#5C5952] dark:text-slate-200 border-[#E8E6E1] dark:border-slate-700 hover:bg-[#F3F1ED] dark:hover:bg-slate-700"
-                            }`}
-                          >
-                            {loc}
-                          </button>
-                        ))}
-                        {nearbyTags.length === 0 && !isFetchingNearbyTags && (
-                          <span className="text-[9px] text-amber-600 dark:text-amber-400 font-medium">
-                            No nearby places detected. Try typing above to refresh.
-                          </span>
-                        )}
-                      </div>
-                    </div>
                   </div>
 
                   {/* Distance Field (KM) */}
@@ -5126,10 +5109,10 @@ export default function App() {
                       <input
                         type="range"
                         min="1"
-                        max="25"
+                        max="10"
                         value={adminDistance}
                         onChange={(e) => {
-                          const val = Math.min(25, parseInt(e.target.value, 10) || 1);
+                          const val = Math.min(10, parseInt(e.target.value, 10) || 1);
                           setAdminDistance(val);
                           localStorage.setItem("admin_distance", val.toString());
                         }}
@@ -5138,13 +5121,13 @@ export default function App() {
                       <input
                         type="number"
                         min="1"
-                        max="25"
+                        max="10"
                         value={adminDistance}
                         onChange={(e) => {
                           let val = parseInt(e.target.value, 10) || 1;
-                          if (val > 25) {
-                            val = 25;
-                            alert("Maximum allowed service radius is 25 km under current regulations.");
+                          if (val > 10) {
+                            val = 10;
+                            alert("Maximum allowed service radius is 10 km under current regulations.");
                           }
                           setAdminDistance(val);
                           localStorage.setItem("admin_distance", val.toString());
@@ -5181,7 +5164,6 @@ export default function App() {
                       mode="admin"
                       adminLocation={adminLocation}
                       adminDistance={adminDistance}
-                      nearbyPlaces={nearbyTags}
                       onAdminLocationChange={(newLoc) => {
                         setAdminLocation(newLoc);
                         localStorage.setItem("admin_location", newLoc);

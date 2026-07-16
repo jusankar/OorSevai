@@ -22,6 +22,8 @@ export async function upsertUser(data: {
   email: string;
   phone?: string;
   location?: string;
+  latitude?: number;
+  longitude?: number;
   roles?: string;
   currentRole?: string;
 }) {
@@ -34,6 +36,8 @@ export async function upsertUser(data: {
         email: data.email,
         phone: data.phone || null,
         location: data.location || null,
+        latitude: data.latitude !== undefined ? parseFloat(data.latitude.toString()) : null,
+        longitude: data.longitude !== undefined ? parseFloat(data.longitude.toString()) : null,
         roles: data.roles || null,
         currentRole: data.currentRole || null,
       })
@@ -44,6 +48,8 @@ export async function upsertUser(data: {
           email: data.email,
           phone: data.phone || null,
           location: data.location || null,
+          latitude: data.latitude !== undefined ? parseFloat(data.latitude.toString()) : null,
+          longitude: data.longitude !== undefined ? parseFloat(data.longitude.toString()) : null,
           roles: data.roles || null,
           currentRole: data.currentRole || null,
         },
@@ -88,6 +94,8 @@ export async function addEquipmentItem(item: any) {
         specs: item.specs || {},
         about: item.about,
         location: item.location,
+        latitude: item.latitude !== undefined ? parseFloat(item.latitude.toString()) : null,
+        longitude: item.longitude !== undefined ? parseFloat(item.longitude.toString()) : null,
         verified: !!item.verified,
         status: item.status || "active",
         usageHours: item.usageHours ? parseInt(item.usageHours.toString()) : 0,
@@ -120,6 +128,8 @@ export async function updateEquipmentItem(id: string, item: any) {
         specs: item.specs,
         about: item.about,
         location: item.location,
+        latitude: item.latitude !== undefined ? parseFloat(item.latitude.toString()) : undefined,
+        longitude: item.longitude !== undefined ? parseFloat(item.longitude.toString()) : undefined,
         verified: item.verified !== undefined ? !!item.verified : undefined,
         status: item.status,
         usageHours: item.usageHours ? parseInt(item.usageHours.toString()) : undefined,
@@ -173,6 +183,8 @@ export async function addLaborerItem(item: any) {
         rating: item.rating ? parseFloat(item.rating.toString()) : 4.5,
         reviewsCount: item.reviewsCount ? parseInt(item.reviewsCount.toString()) : 0,
         location: item.location,
+        latitude: item.latitude !== undefined ? parseFloat(item.latitude.toString()) : null,
+        longitude: item.longitude !== undefined ? parseFloat(item.longitude.toString()) : null,
         distance: item.distance ? parseFloat(item.distance.toString()) : 1.0,
         availability: item.availability || "available",
         experience: item.experience,
@@ -201,6 +213,8 @@ export async function updateLaborerItem(id: string, item: any) {
         rating: item.rating ? parseFloat(item.rating.toString()) : undefined,
         reviewsCount: item.reviewsCount ? parseInt(item.reviewsCount.toString()) : undefined,
         location: item.location,
+        latitude: item.latitude !== undefined ? parseFloat(item.latitude.toString()) : undefined,
+        longitude: item.longitude !== undefined ? parseFloat(item.longitude.toString()) : undefined,
         distance: item.distance ? parseFloat(item.distance.toString()) : undefined,
         availability: item.availability,
         experience: item.experience,

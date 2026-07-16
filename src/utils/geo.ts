@@ -224,6 +224,41 @@ export const getDistanceBetween = (locA: string, locB: string): number => {
 };
 
 /**
+ * Calculates physical Haversine distance in KM between any two coordinate sets or locations
+ */
+export const getDistanceBetweenCoords = (
+  lat1: number | null | undefined,
+  lon1: number | null | undefined,
+  lat2: number | null | undefined,
+  lon2: number | null | undefined,
+  locFallbackA?: string,
+  locFallbackB?: string
+): number => {
+  if (
+    lat1 !== null && lat1 !== undefined && !isNaN(Number(lat1)) &&
+    lon1 !== null && lon1 !== undefined && !isNaN(Number(lon1)) &&
+    lat2 !== null && lat2 !== undefined && !isNaN(Number(lat2)) &&
+    lon2 !== null && lon2 !== undefined && !isNaN(Number(lon2))
+  ) {
+    const R = 6371; // Earth Radius in KM
+    const dLat = ((lat2 - lat1) * Math.PI) / 180;
+    const dLon = ((lon2 - lon1) * Math.PI) / 180;
+    const l1 = (lat1 * Math.PI) / 180;
+    const l2 = (lat2 * Math.PI) / 180;
+
+    const x = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+              Math.sin(dLon / 2) * Math.sin(dLon / 2) * Math.cos(l1) * Math.cos(l2);
+    const c = 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
+    const d = R * c;
+
+    return Number(Math.max(0.1, d).toFixed(1));
+  }
+
+  // Fallback to string based distance lookup
+  return getDistanceBetween(locFallbackA || "Thirumanancheri, Tamil Nadu", locFallbackB || "Thirumanancheri, Tamil Nadu");
+};
+
+/**
  * Selects or generates rich surrounding suburbs dynamically around any center location
  */
 export const getSuburbsForCenter = (centerName: string): string[] => {

@@ -351,7 +351,7 @@ Provide the response in the requested structured JSON.
   });
 
 async function startServer() {
-  const PORT = process.env.PORT || 3000;
+  const PORT = 3000;
   
   // Ensure database has seed data if empty
   try {
