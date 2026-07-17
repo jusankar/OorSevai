@@ -589,9 +589,9 @@ export default function App() {
     });
   }, [laborersList, userName, workerImage, userMobile, userLatitude, userLongitude, userLocation, adminLocation]);
 
-  // Dynamically filter active equipment and laborers based on Admin configured location distance
+  // Dynamically filter active equipment and laborers based on Admin configured location distance (latest first)
   const filteredEquipmentList = useMemo(() => {
-    return resolvedEquipmentList.filter(item => {
+    const list = resolvedEquipmentList.filter(item => {
       // Exclude current user's own equipment from listings
       const isMyEquipment = userMobile 
         ? (item.ownerId === userMobile || item.ownerId === "owner-1" || item.ownerId === "8963556856")
@@ -600,10 +600,11 @@ export default function App() {
 
       return item.distance <= adminDistance;
     });
+    return [...list].sort((a, b) => b.id.localeCompare(a.id, undefined, { numeric: true }));
   }, [resolvedEquipmentList, adminDistance, userMobile]);
 
   const filteredLaborersList = useMemo(() => {
-    return resolvedLaborersList.filter(item => {
+    const list = resolvedLaborersList.filter(item => {
       // Exclude current user's own laborer profile from listings
       const isMyProfile = userMobile 
         ? item.id.includes(userMobile) 
@@ -612,6 +613,7 @@ export default function App() {
 
       return item.distance <= adminDistance;
     });
+    return [...list].sort((a, b) => b.id.localeCompare(a.id, undefined, { numeric: true }));
   }, [resolvedLaborersList, adminDistance, userMobile]);
 
   // PWA (Progressive Web App) states
@@ -720,24 +722,30 @@ export default function App() {
         clearedIds = [];
       }
     }
-    return notifications
-      .filter(n => !clearedIds.includes(n.id))
-      .map(n => {
-        let message = n.message;
-        if (userName) {
-          message = message
-            .replace("Ravi Kumar's", `${userName}'s`)
-            .replace("Raju Krishnan's", `${userName}'s`)
-            .replace("Ravi Kumar", userName)
-            .replace("Raju Krishnan", userName);
-        }
-        if (userLocation) {
-          message = message
-            .replace(/Thirumanancheri,\s*Tamil\s*Nadu/gi, userLocation)
-            .replace(/Thirumanancheri/gi, userLocation);
-        }
-        return { ...n, message };
-      });
+    const filtered = notifications.filter(n => !clearedIds.includes(n.id));
+    // Sort latest first (newest notifications first)
+    const sorted = [...filtered].sort((a, b) => {
+      const timeA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+      const timeB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+      if (timeB !== timeA) return timeB - timeA;
+      return b.id.localeCompare(a.id, undefined, { numeric: true });
+    });
+    return sorted.map(n => {
+      let message = n.message;
+      if (userName) {
+        message = message
+          .replace("Ravi Kumar's", `${userName}'s`)
+          .replace("Raju Krishnan's", `${userName}'s`)
+          .replace("Ravi Kumar", userName)
+          .replace("Raju Krishnan", userName);
+      }
+      if (userLocation) {
+        message = message
+          .replace(/Thirumanancheri,\s*Tamil\s*Nadu/gi, userLocation)
+          .replace(/Thirumanancheri/gi, userLocation);
+      }
+      return { ...n, message };
+    });
   }, [notifications, userName, userLocation]);
 
   const resolvedActiveBannerNotification = useMemo(() => {
@@ -1083,9 +1091,9 @@ export default function App() {
   const [laborError, setLaborError] = useState("");
   const [isLaborRegistered, setIsLaborRegistered] = useState(false);
 
-  // Dynamic database-driven KYC requests derived from laborersList
+  // Dynamic database-driven KYC requests derived from laborersList (latest first)
   const kycRequests = useMemo(() => {
-    return laborersList
+    const list = laborersList
       .filter((l) => l.kycStatus && l.kycStatus !== "none")
       .map((l) => ({
         id: l.id,
@@ -1094,16 +1102,18 @@ export default function App() {
         document: l.kycDocName || "Aadhaar Card",
         status: l.kycStatus === "verified" ? ("approved" as const) : l.kycStatus === "rejected" ? ("rejected" as const) : ("pending" as const)
       }));
+    return [...list].sort((a, b) => b.id.localeCompare(a.id, undefined, { numeric: true }));
   }, [laborersList]);
 
-  // Dynamic database-driven Machinery approvals derived from equipmentList
+  // Dynamic database-driven Machinery approvals derived from equipmentList (latest first)
   const pendingEquipmentApprovals = useMemo(() => {
-    return equipmentList.map((eq) => ({
+    const list = equipmentList.map((eq) => ({
       id: eq.id,
       name: eq.name,
       owner: eq.ownerName,
       status: eq.verified ? ("approved" as const) : ("pending" as const)
     }));
+    return [...list].sort((a, b) => b.id.localeCompare(a.id, undefined, { numeric: true }));
   }, [equipmentList]);
 
   // Dynamic database-driven Platform Analytics
@@ -1674,6 +1684,9 @@ export default function App() {
   };
 
   const handleNotificationClick = (bookingId: string) => {
+    // Find the clicked notification to help identify correct role/target
+    const clickedNotif = notifications.find(n => n.bookingId === bookingId);
+
     // Mark specifically as read in both local state and database
     const unreadNotifs = notifications.filter(n => n.bookingId === bookingId && !n.isRead);
     unreadNotifs.forEach(notif => {
@@ -1686,11 +1699,25 @@ export default function App() {
     
     const b = resolvedBookings.find(x => x.id === bookingId);
     if (b) {
-      const isMyShift = b.type === "labor" && ((userMobile && b.itemId.includes(userMobile)) || b.itemId === "lb-4");
+      const isMyShift = b.type === "labor" && (
+        (userMobile && b.itemId.includes(userMobile)) || 
+        b.itemId === "lb-4" ||
+        (clickedNotif && (
+          clickedNotif.title.includes("New Job Offer") ||
+          clickedNotif.title.includes("Hire Request")
+        ))
+      );
+      
       const isOwnerBooking = b.type === "equipment" && (
         userRole === "owner" || 
         userRole === "admin" ||
-        ownerEquipment.some(eq => eq.id === b.itemId)
+        ownerEquipment.some(eq => eq.id === b.itemId) ||
+        (clickedNotif && (
+          clickedNotif.title.includes("New Machinery Rental Request") ||
+          clickedNotif.title.includes("New Review Received") ||
+          clickedNotif.message.includes("cancelled by the customer") ||
+          clickedNotif.message.includes("marked as completed")
+        ))
       );
 
       if (isMyShift) {
@@ -1745,14 +1772,23 @@ export default function App() {
     }
   };
 
-  // Filter My Bookings state tabs
+  // Filter My Bookings state tabs (latest first)
   const [bookingTab, setBookingTab] = useState<"upcoming" | "ongoing" | "completed" | "cancelled">("upcoming");
   const filteredBookings = useMemo(() => {
+    let filtered: Booking[] = [];
     if (userRole === "admin") {
-      return resolvedBookings.filter(b => b.status === bookingTab);
+      filtered = resolvedBookings.filter(b => b.status === bookingTab);
+    } else {
+      const effectiveMobile = userMobile || "9999999999";
+      filtered = resolvedBookings.filter(b => b.customerId === effectiveMobile && b.status === bookingTab);
     }
-    const effectiveMobile = userMobile || "9999999999";
-    return resolvedBookings.filter(b => b.customerId === effectiveMobile && b.status === bookingTab);
+    // Sort descending (newest first)
+    return [...filtered].sort((a, b) => {
+      const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      if (timeB !== timeA) return timeB - timeA;
+      return b.id.localeCompare(a.id, undefined, { numeric: true });
+    });
   }, [resolvedBookings, userMobile, bookingTab, userRole]);
 
   const receivedShiftBookings = useMemo(() => {
@@ -1768,19 +1804,34 @@ export default function App() {
       const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
       const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
       if (timeB !== timeA) return timeB - timeA;
-      return b.id.localeCompare(a.id);
+      return b.id.localeCompare(a.id, undefined, { numeric: true });
     });
   }, [resolvedBookings, userMobile]);
 
-  // Calculate Owner stats
+  // Calculate Owner stats (latest first)
   const ownerEquipment = useMemo(() => {
-    return resolvedEquipmentList.filter(eq => {
+    const list = resolvedEquipmentList.filter(eq => {
       if (userMobile) {
         return eq.ownerId === userMobile || eq.ownerId === "owner-1" || eq.ownerId === "8963556856";
       }
       return eq.ownerId === "owner-1" || eq.ownerId === "8963556856";
     });
+    return [...list].sort((a, b) => b.id.localeCompare(a.id, undefined, { numeric: true }));
   }, [resolvedEquipmentList, userMobile]);
+
+  const ownerBookings = useMemo(() => {
+    const filtered = resolvedBookings.filter(b => 
+      b.type === "equipment" && 
+      (userRole === "admin" ? true : ownerEquipment.some(eq => eq.id === b.itemId))
+    );
+    // Sort descending (newest first)
+    return [...filtered].sort((a, b) => {
+      const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      if (timeB !== timeA) return timeB - timeA;
+      return b.id.localeCompare(a.id, undefined, { numeric: true });
+    });
+  }, [resolvedBookings, ownerEquipment, userRole]);
 
   const ownerTotalEarnings = useMemo(() => {
     return resolvedBookings
@@ -3639,7 +3690,7 @@ export default function App() {
               <div className="bg-white p-4 rounded-3xl border border-[#E8E6E1] shadow-xs space-y-3">
                 <div className="flex justify-between items-center pb-2 border-b border-[#E8E6E1]">
                   <h3 className="font-extrabold text-xs text-[#2D2D2A] uppercase tracking-wider">
-                    Rent Bookings & Dispatches ({resolvedBookings.filter(b => b.type === "equipment" && (userRole === "admin" ? true : ownerEquipment.some(eq => eq.id === b.itemId))).length})
+                    Rent Bookings & Dispatches ({ownerBookings.length})
                   </h3>
                   <span className="bg-[#3E5C31]/10 text-[#3E5C31] text-[8px] font-black uppercase px-2 py-0.5 rounded truncate max-w-[120px]" title={userLocation}>
                     {userLocation.split(",")[0]} Hub
@@ -3647,7 +3698,7 @@ export default function App() {
                 </div>
 
                 <div className="space-y-3">
-                  {resolvedBookings.filter(b => b.type === "equipment" && (userRole === "admin" ? true : ownerEquipment.some(eq => eq.id === b.itemId))).map((b) => {
+                  {ownerBookings.map((b) => {
                     const equipment = resolvedEquipmentList.find(e => e.id === b.itemId);
                     const isDispatched = notifications.some(n => n.bookingId === b.id && n.type === "equipment_on_the_way");
                     const isHighlighted = highlightedBookingId === b.id;
