@@ -10,6 +10,7 @@ interface NotificationCenterProps {
   onClearAll: () => void;
   onClose: () => void;
   onNotificationClick: (bookingId: string) => void;
+  onDeleteNotification?: (id: string) => void;
 }
 
 export default function NotificationCenter({
@@ -18,7 +19,8 @@ export default function NotificationCenter({
   onMarkAllAsRead,
   onClearAll,
   onClose,
-  onNotificationClick
+  onNotificationClick,
+  onDeleteNotification
 }: NotificationCenterProps) {
   const unreadCount = notifications.filter((n) => !n.isRead).length;
 
@@ -116,9 +118,24 @@ export default function NotificationCenter({
                   <h4 className="font-extrabold text-[11px] text-[#2D2D2A] leading-tight pr-1">
                     {n.title}
                   </h4>
-                  <span className="text-[8px] text-[#8A867E] whitespace-nowrap font-medium">
-                    {n.timestamp}
-                  </span>
+                  <div className="flex items-center space-x-1 shrink-0">
+                    <span className="text-[8px] text-[#8A867E] whitespace-nowrap font-medium">
+                      {n.timestamp}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (onDeleteNotification) {
+                          onDeleteNotification(n.id);
+                        }
+                      }}
+                      className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-slate-400 hover:text-rose-600 transition-colors"
+                      title="Dismiss notification"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
                 </div>
                 <p className="text-[10px] text-[#5C5952] leading-relaxed">
                   {n.message}

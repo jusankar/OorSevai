@@ -774,9 +774,9 @@ export default function App() {
       const eq = equipmentList.find(e => e.id === b.itemId);
       return eq?.ownerId || "owner-1";
     } else {
-      const match = b.itemId.match(/lb-(\d+)-/);
-      if (match && match[1]) {
-        return match[1];
+      const parts = b.itemId.split("-");
+      if (parts.length >= 2 && !["1", "2", "3", "4"].includes(parts[1])) {
+        return parts[1];
       }
       if (b.itemId === "lb-4") {
         return "9876543210"; // Default Raju Krishnan mobile
@@ -1625,6 +1625,25 @@ export default function App() {
     }).catch(err => console.error("Failed to mark notification read on DB:", err));
 
     setNotifications(prev => prev.map(n => n.id === notifId ? { ...n, isRead: true } : n));
+  };
+
+  const handleDeleteNotification = (notifId: string) => {
+    fetch(`/api/notifications/${notifId}`, {
+      method: "DELETE"
+    }).catch(err => console.error("Failed to delete notification in DB:", err));
+
+    if (typeof window !== "undefined") {
+      try {
+        const savedCleared = localStorage.getItem("oorsevai_cleared_notifications");
+        const currentCleared: string[] = savedCleared ? JSON.parse(savedCleared) : [];
+        const updatedCleared = Array.from(new Set([...currentCleared, notifId]));
+        localStorage.setItem("oorsevai_cleared_notifications", JSON.stringify(updatedCleared));
+      } catch (e) {
+        console.error("Failed to save cleared notification to localStorage:", e);
+      }
+    }
+
+    setNotifications(prev => prev.filter(n => n.id !== notifId));
   };
 
   const handleMarkAllNotificationsRead = () => {
@@ -2527,11 +2546,15 @@ export default function App() {
                         id="notifications-toggle-btn"
                       >
                         <Bell className="h-4 w-4 text-white" />
-                        {resolvedNotifications.filter(n => !n.isRead).length > 0 && (
-                          <span className="absolute -top-1.5 -right-1.5 flex h-4 min-w-[16px] px-1 items-center justify-center rounded-full bg-rose-500 text-[8px] font-black text-white leading-none shadow-xs border border-white">
-                            {resolvedNotifications.filter(n => !n.isRead).length}
-                          </span>
-                        )}
+                        {(() => {
+                          const count = resolvedNotifications.filter(n => !n.isRead).length;
+                          if (count === 0) return null;
+                          return (
+                            <span className="absolute -top-1 -right-1 flex h-4 min-w-[16px] px-1 items-center justify-center rounded-full bg-red-600 text-[9px] font-bold text-white leading-none border border-white shadow-sm">
+                              {count}
+                            </span>
+                          );
+                        })()}
                       </button>
 
                       {/* Settings Icon Toggle */}
@@ -2671,6 +2694,7 @@ export default function App() {
               onClearAll={handleClearAllNotifications}
               onClose={() => setShowNotificationsDropdown(false)}
               onNotificationClick={handleNotificationClick}
+              onDeleteNotification={handleDeleteNotification}
             />
           )}
         </AnimatePresence>

@@ -458,4 +458,17 @@ export async function clearNotifications(recipientId?: string) {
   }
 }
 
+export async function deleteNotification(id: string) {
+  try {
+    const result = await db
+      .delete(appNotifications)
+      .where(eq(appNotifications.id, id))
+      .returning();
+    return result[0];
+  } catch (error) {
+    console.error(`Database deleteNotification failed for ${id}:`, error);
+    throw new Error("Failed to delete notification.", { cause: error });
+  }
+}
+
 

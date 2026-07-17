@@ -227,6 +227,15 @@ app.use(express.urlencoded({ limit: "10mb", extended: true }));
     }
   });
 
+  app.delete("/api/notifications/:id", async (req, res) => {
+    try {
+      const result = await dbService.deleteNotification(req.params.id);
+      res.json(result);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // AI Chatbot / Farming Advisory API
   app.post("/api/chat", async (req, res) => {
     try {
