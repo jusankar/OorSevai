@@ -411,13 +411,10 @@ export default function App() {
     }
   }, [darkMode]);
 
-  // Persist current active role and active tab, and ensure non-customer roles are routed to dashboard
+  // Persist current active role
   useEffect(() => {
     if (typeof window !== "undefined") {
       localStorage.setItem("oorsevai_active_role", userRole);
-    }
-    if (userRole !== "customer" && activeTab !== "dashboard") {
-      setActiveTab("dashboard");
     }
   }, [userRole]);
 
@@ -686,6 +683,33 @@ export default function App() {
   const [selectedLaborer, setSelectedLaborer] = useState<Laborer | null>(null);
   const [browseCategory, setBrowseCategory] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
+
+  // Ensure active roles and active tabs/views are always synchronized to prevent white screens
+  useEffect(() => {
+    if (userRole !== "customer") {
+      if (activeTab !== "dashboard") {
+        setActiveTab("dashboard");
+      }
+    } else {
+      // customer
+      if (activeTab === "dashboard") {
+        setActiveTab("home");
+        setActiveView("home");
+      } else if (activeTab === "home") {
+        // Guard sub-views that need selectedEquipment
+        if (
+          (activeView === "equipmentDetails" || activeView === "selectDate" || activeView === "bookingSummary") &&
+          !selectedEquipment
+        ) {
+          setActiveView("home");
+        }
+        // Guard sub-views that need selectedLaborer
+        if (activeView === "laborDetails" && !selectedLaborer) {
+          setActiveView("home");
+        }
+      }
+    }
+  }, [userRole, activeTab, activeView, selectedEquipment, selectedLaborer]);
 
   // Checkout Temp State
   const [selectedDate, setSelectedDate] = useState<string>("2026-07-10");
