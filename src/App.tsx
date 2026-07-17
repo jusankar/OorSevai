@@ -1655,13 +1655,25 @@ export default function App() {
   };
 
   const handleNotificationClick = (bookingId: string) => {
-    // Mark specifically as read
+    // Mark specifically as read in both local state and database
+    const unreadNotifs = notifications.filter(n => n.bookingId === bookingId && !n.isRead);
+    unreadNotifs.forEach(notif => {
+      fetch(`/api/notifications/${notif.id}/read`, {
+        method: "PUT",
+      }).catch(err => console.error("Failed to mark notification read on DB:", err));
+    });
     setNotifications(prev => prev.map(n => n.bookingId === bookingId ? { ...n, isRead: true } : n));
     setShowNotificationsDropdown(false);
     
     const b = resolvedBookings.find(x => x.id === bookingId);
     if (b) {
       const isMyShift = b.type === "labor" && ((userMobile && b.itemId.includes(userMobile)) || b.itemId === "lb-4");
+      const isOwnerBooking = b.type === "equipment" && (
+        userRole === "owner" || 
+        userRole === "admin" ||
+        ownerEquipment.some(eq => eq.id === b.itemId)
+      );
+
       if (isMyShift) {
         setUserRole("labor");
         setActiveTab("dashboard");
@@ -1675,6 +1687,19 @@ export default function App() {
             if (container) {
               container.scrollIntoView({ behavior: "smooth" });
             }
+          }
+        }, 300);
+        setTimeout(() => {
+          setHighlightedBookingId(null);
+        }, 5000);
+      } else if (isOwnerBooking) {
+        setUserRole("owner");
+        setActiveTab("dashboard");
+        setHighlightedBookingId(bookingId);
+        setTimeout(() => {
+          const element = document.getElementById(`owner-booking-${bookingId}`);
+          if (element) {
+            element.scrollIntoView({ behavior: "smooth", block: "center" });
           }
         }, 300);
         setTimeout(() => {
@@ -2503,9 +2528,8 @@ export default function App() {
                       >
                         <Bell className="h-4 w-4 text-white" />
                         {resolvedNotifications.filter(n => !n.isRead).length > 0 && (
-                          <span className="absolute -top-0.5 -right-0.5 flex h-2 w-2">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-                            <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
+                          <span className="absolute -top-1.5 -right-1.5 flex h-4 min-w-[16px] px-1 items-center justify-center rounded-full bg-rose-500 text-[8px] font-black text-white leading-none shadow-xs border border-white">
+                            {resolvedNotifications.filter(n => !n.isRead).length}
                           </span>
                         )}
                       </button>
@@ -3602,9 +3626,18 @@ export default function App() {
                   {resolvedBookings.filter(b => b.type === "equipment" && (userRole === "admin" ? true : ownerEquipment.some(eq => eq.id === b.itemId))).map((b) => {
                     const equipment = resolvedEquipmentList.find(e => e.id === b.itemId);
                     const isDispatched = notifications.some(n => n.bookingId === b.id && n.type === "equipment_on_the_way");
+                    const isHighlighted = highlightedBookingId === b.id;
                     
                     return (
-                      <div key={b.id} className="bg-[#FAF7F2] p-3 rounded-2xl border border-[#E8E6E1] space-y-2.5 text-xs">
+                      <div 
+                        key={b.id} 
+                        id={`owner-booking-${b.id}`}
+                        className={`p-3 rounded-2xl border space-y-2.5 text-xs transition-all duration-500 ${
+                          isHighlighted 
+                            ? "bg-white dark:bg-[#1A2320] border-[#3E5C31] dark:border-emerald-500 ring-4 ring-[#3E5C31]/25 dark:ring-emerald-500/25 scale-[1.01] shadow-md" 
+                            : "bg-[#FAF7F2] dark:bg-slate-800/40 border-[#E8E6E1] dark:border-slate-800"
+                        }`}
+                      >
                         <div className="flex justify-between items-center">
                           <div>
                             <span className="text-[8px] font-bold text-slate-400">Order #{b.id}</span>
