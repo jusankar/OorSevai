@@ -81,7 +81,7 @@ export function recordPaymentTxn(txn: OorsevaiPaymentTxn) {
 }
 
 // ==========================================
-// 1. CLEAN & SIMPLE PRICING BANNER
+// 1. SLICK & CLEAN PRICING BANNER
 // ==========================================
 
 interface PricingBannerProps {
@@ -102,57 +102,45 @@ export const OorsevaiPricingBanner: React.FC<PricingBannerProps> = ({
     return () => window.removeEventListener("storage", handleStorage);
   }, []);
 
-  const toggleTestMode = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (trialInfo.isFreeTrialActive) {
-      setTrialOverride("expired");
-    } else {
-      setTrialOverride("active");
-    }
-    setTrialInfo(getTrialInfo());
-  };
-
   return (
-    <div className="bg-gradient-to-r from-[#1E3316] via-[#2E4822] to-[#3E5C31] text-white p-3.5 rounded-2xl shadow-sm border border-amber-400/30 flex items-center justify-between gap-3 text-xs">
-      <div className="flex items-center space-x-3">
-        <div className="w-8 h-8 rounded-xl bg-amber-400/20 border border-amber-300/40 flex items-center justify-center shrink-0">
-          <Sparkles className="h-4 w-4 text-amber-300" />
+    <div className="relative overflow-hidden bg-gradient-to-r from-[#172B10] via-[#243F1A] to-[#36572A] text-white p-3.5 rounded-2xl border border-amber-400/30 shadow-xs flex items-center justify-between gap-3">
+      {/* Decorative background glow */}
+      <div className="absolute -right-8 -top-8 w-28 h-28 bg-amber-400/10 rounded-full blur-xl pointer-events-none" />
+
+      <div className="flex items-center space-x-3 z-10">
+        {/* Big Bold FREE Badge Icon */}
+        <div className="w-11 h-11 rounded-xl bg-amber-400 text-[#172B10] flex flex-col items-center justify-center shrink-0 shadow-xs border border-amber-300 leading-tight">
+          <span className="text-[8px] uppercase font-black tracking-tighter">10 DAYS</span>
+          <span className="text-xs font-black">FREE</span>
         </div>
-        <div>
-          <div className="flex items-center space-x-2">
-            <span className="bg-amber-400 text-[#1E3316] text-[9px] font-black uppercase px-2 py-0.5 rounded-md">
-              {language === "ta" ? "🎉 10 நாட்கள் இலவசம்" : "🎉 10 DAYS FREE TRIAL"}
+
+        <div className="space-y-0.5">
+          <div className="flex items-center space-x-2 flex-wrap">
+            <span className="text-sm font-black text-white tracking-tight">
+              {language === "ta" ? "முதல் 10 நாட்கள் 100% இலவசம்" : "First 10 Days 100% Free"}
             </span>
-            <span className="text-[10px] text-amber-200 font-extrabold">
-              {trialInfo.isFreeTrialActive
-                ? (language === "ta" ? `அடுத்து சேவைக்கு ₹1 மட்டும்` : `Then ₹1 / Service`)
-                : (language === "ta" ? `சேவைக்கு ₹1 திட்டம்` : `Standard Plan: ₹1 / Service`)}
+            <span className="bg-amber-400/20 text-amber-300 border border-amber-400/40 text-[9px] font-bold px-2 py-0.5 rounded-full">
+              {language === "ta" ? "பிறகு சேவைக்கு ₹1" : "Then ₹1 / service"}
             </span>
           </div>
-          <p className="text-[11px] text-emerald-100/90 font-medium mt-0.5">
+
+          <p className="text-[11px] text-emerald-100/80 font-medium">
             {language === "ta"
-              ? "முதல் 10 நாட்கள் ₹0! பிறகு ஒவ்வொரு சேவைக்கும் வெறும் ₹1 (GPay / UPI / Card)."
-              : "First 10 days 100% free! Then just Re 1 (₹1) per service via GPay, UPI or Card."}
+              ? "முன்பதிவு முடிவில் GPay, PhonePe அல்லது Card மூலம் செலுத்துங்கள்."
+              : "Pay Re 1 at booking completion via GPay, PhonePe, or Card after trial."}
           </p>
         </div>
       </div>
 
-      <div className="flex items-center space-x-2 shrink-0">
+      {onOpenLedger && (
         <button
-          onClick={toggleTestMode}
-          className="bg-white/10 hover:bg-white/20 text-amber-300 border border-amber-400/40 text-[9px] font-bold px-2.5 py-1.5 rounded-xl whitespace-nowrap transition-all cursor-pointer"
+          onClick={onOpenLedger}
+          className="z-10 bg-amber-400 hover:bg-amber-300 text-[#172B10] text-[10px] font-black px-3 py-2 rounded-xl whitespace-nowrap transition-all cursor-pointer shadow-xs flex items-center space-x-1.5 shrink-0"
         >
-          {trialInfo.isFreeTrialActive ? "Test Expired (₹1)" : "Test Free (₹0)"}
+          <Receipt className="h-3.5 w-3.5" />
+          <span>{language === "ta" ? "வரலாறு" : "Ledger"}</span>
         </button>
-        {onOpenLedger && (
-          <button
-            onClick={onOpenLedger}
-            className="bg-amber-400 hover:bg-amber-300 text-[#1E3316] text-[9px] font-black px-2.5 py-1.5 rounded-xl whitespace-nowrap transition-all cursor-pointer"
-          >
-            {language === "ta" ? "வரலாறு" : "Ledger"}
-          </button>
-        )}
-      </div>
+      )}
     </div>
   );
 };
