@@ -108,3 +108,17 @@ export interface AppNotification {
   isRead: boolean;
   timestamp: string;
 }
+
+export interface OorsevaiPaymentTxn {
+  id: string;
+  bookingId?: string;
+  role: "customer" | "owner" | "labor";
+  serviceName: string;
+  amount: number; // 0 for free trial, 1 for post-trial
+  isTrial: boolean;
+  paymentMethod: "gpay" | "upi" | "card" | "netbanking" | "trial_waiver";
+  paymentDetails?: string;
+  status: "success" | "pending" | "failed";
+  timestamp: string;
+}
+

@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { Equipment } from "../types";
 import { getTranslation, Language } from "../translate";
+import { OorsevaiPricingBanner } from "./OorsevaiPayment";
 
 // Helper function to interpret WMO weather codes and provide agricultural guidance
 const getWeatherDetails = (code: number, rainSum: number = 0) => {
@@ -636,8 +637,14 @@ export default function HomeView({
         </div>
       </div>
 
+      {/* Oorsevai Fancy 10-Day Free Trial & ₹1 Payment Banner */}
+      <div className="px-4">
+        <OorsevaiPricingBanner language={language || "ta"} role="customer" />
+      </div>
+
       {/* Main Categories Panel */}
       <div id="home-categories" className="px-4 space-y-3">
+
         <div className="flex justify-between items-center">
           <div>
             <h3 className="font-extrabold text-slate-900 dark:text-slate-100 text-base">{t("browse_categories")}</h3>

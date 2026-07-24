@@ -36,6 +36,13 @@ import GeofenceMap from "./components/GeofenceMap";
 import NotificationCenter from "./components/NotificationCenter";
 import { LaborerCalendar } from "./components/LaborerCalendar";
 import { getDistanceBetween, getDistanceBetweenCoords } from "./utils/geo";
+import { 
+  OorsevaiPricingBanner, 
+  OorsevaiPaymentModal, 
+  OorsevaiLedgerView, 
+  getTrialInfo, 
+  recordPaymentTxn 
+} from "./components/OorsevaiPayment";
 
 const getCategorySpecsConfig = (category: string) => {
   switch (category) {
@@ -171,6 +178,35 @@ export default function App() {
 
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showProviderPromptModal, setShowProviderPromptModal] = useState(false);
+  
+  // Oorsevai Payment Modal State
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [paymentPendingAction, setPaymentPendingAction] = useState<{
+    role: "customer" | "owner" | "labor";
+    serviceName: string;
+    bookingId?: string;
+    baseAmount?: number;
+    onSuccessCallback: () => void;
+  } | null>(null);
+
+  const requestServicePayment = (
+    role: "customer" | "owner" | "labor",
+    serviceName: string,
+    onSuccessCallback: () => void,
+    bookingId?: string,
+    baseAmount?: number
+  ) => {
+    // Open GPay / UPI / Card Payment Gateway Modal at the end of booking checkout
+    setPaymentPendingAction({
+      role,
+      serviceName,
+      bookingId,
+      baseAmount,
+      onSuccessCallback
+    });
+    setShowPaymentModal(true);
+  };
+
   
   // Custom Star Rating Dialog State
   const [showReviewModal, setShowReviewModal] = useState(false);
@@ -1276,93 +1312,116 @@ export default function App() {
     const subtotal = basePrice + operatorCost + transportCost;
     const fee = Math.round(subtotal * 0.1);
     const finalTotal = subtotal + fee;
+    const bookingId = `BK-${Math.floor(10000 + Math.random() * 90000)}`;
 
-    const newBooking: Booking = {
-      id: `BK-${Math.floor(10000 + Math.random() * 90000)}`,
-      type: "equipment",
-      itemId: selectedEquipment.id,
-      itemName: selectedEquipment.name,
-      itemImage: selectedEquipment.image,
-      startDate: selectedDate,
-      endDate: new Date(new Date(selectedDate).getTime() + rentalDuration * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      durationDays: rentalDuration,
-      totalAmount: finalTotal,
-      status: "upcoming",
-      customerName: userName || "Udaya Kumar",
-      customerId: userMobile || "9999999999",
-      location: customLocation,
-      deliveryMethod: deliveryMethod,
-      operatorOption: operatorOption,
-      paymentStatus: "paid",
-      dateBooked: new Date().toISOString().split('T')[0],
-      createdAt: new Date().toISOString()
+    const executeBooking = () => {
+      const newBooking: Booking = {
+        id: bookingId,
+        type: "equipment",
+        itemId: selectedEquipment.id,
+        itemName: selectedEquipment.name,
+        itemImage: selectedEquipment.image,
+        startDate: selectedDate,
+        endDate: new Date(new Date(selectedDate).getTime() + rentalDuration * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        durationDays: rentalDuration,
+        totalAmount: finalTotal,
+        status: "upcoming",
+        customerName: userName || "Udaya Kumar",
+        customerId: userMobile || "9999999999",
+        location: customLocation,
+        deliveryMethod: deliveryMethod,
+        operatorOption: operatorOption,
+        paymentStatus: "paid",
+        dateBooked: new Date().toISOString().split('T')[0],
+        createdAt: new Date().toISOString()
+      };
+
+      // Save to serverless PostgreSQL database
+      fetch("/api/bookings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newBooking)
+      }).catch(err => console.error("Failed to save booking to DB:", err));
+
+      setBookings((prev) => [newBooking, ...prev]);
+
+      // Trigger notification to the owner
+      triggerNotification(
+        newBooking.id,
+        getProviderMobileForBooking(newBooking),
+        "🚜 New Machinery Rental Request",
+        `${userName || "Udaya Kumar"} has requested to rent your ${selectedEquipment.name}. Please confirm the booking.`,
+        "general"
+      );
+
+      setActiveTab("bookings");
+      setActiveView("home");
     };
 
-    // Save to serverless PostgreSQL database
-    fetch("/api/bookings", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(newBooking)
-    }).catch(err => console.error("Failed to save booking to DB:", err));
-
-    setBookings((prev) => [newBooking, ...prev]);
-
-    // Trigger notification to the owner
-    triggerNotification(
-      newBooking.id,
-      getProviderMobileForBooking(newBooking),
-      "🚜 New Machinery Rental Request",
-      `${userName || "Udaya Kumar"} has requested to rent your ${selectedEquipment.name}. Please confirm the booking.`,
-      "general"
+    requestServicePayment(
+      "customer",
+      `Equipment Rental: ${selectedEquipment.name}`,
+      executeBooking,
+      bookingId,
+      finalTotal
     );
-
-    setActiveTab("bookings");
-    setActiveView("home");
   };
 
   // Hiring Laborer Action
   const handleHireLaborer = (lb: Laborer) => {
-    const newBooking: Booking = {
-      id: `BK-${Math.floor(10000 + Math.random() * 90000)}`,
-      type: "labor",
-      itemId: lb.id,
-      itemName: `Hire: ${lb.name} (${lb.category})`,
-      itemImage: lb.image,
-      startDate: new Date().toISOString().split('T')[0],
-      endDate: new Date().toISOString().split('T')[0],
-      durationDays: 1,
-      totalAmount: lb.pricePerDay,
-      status: "upcoming",
-      customerName: userName || "Udaya Kumar",
-      customerId: userMobile || "9999999999",
-      location: userLocation || lb.location,
-      paymentStatus: "paid",
-      dateBooked: new Date().toISOString().split('T')[0],
-      createdAt: new Date().toISOString()
+    const bookingId = `BK-${Math.floor(10000 + Math.random() * 90000)}`;
+
+    const executeHire = () => {
+      const newBooking: Booking = {
+        id: bookingId,
+        type: "labor",
+        itemId: lb.id,
+        itemName: `Hire: ${lb.name} (${lb.category})`,
+        itemImage: lb.image,
+        startDate: new Date().toISOString().split('T')[0],
+        endDate: new Date().toISOString().split('T')[0],
+        durationDays: 1,
+        totalAmount: lb.pricePerDay,
+        status: "upcoming",
+        customerName: userName || "Udaya Kumar",
+        customerId: userMobile || "9999999999",
+        location: userLocation || lb.location,
+        paymentStatus: "paid",
+        dateBooked: new Date().toISOString().split('T')[0],
+        createdAt: new Date().toISOString()
+      };
+
+      // Save to serverless PostgreSQL database
+      fetch("/api/bookings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newBooking)
+      }).catch(err => console.error("Failed to save booking to DB:", err));
+
+      setBookings((prev) => [newBooking, ...prev]);
+
+      // Trigger notification to the worker
+      triggerNotification(
+        newBooking.id,
+        getProviderMobileForBooking(newBooking),
+        "👷 New Job Offer / Hire Request",
+        `You have been hired by ${userName || "Udaya Kumar"} for ${lb.category} service! Click to view details.`,
+        "general"
+      );
+
+      setActiveTab("bookings");
+      setActiveView("home");
     };
 
-    // Save to serverless PostgreSQL database
-    fetch("/api/bookings", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(newBooking)
-    }).catch(err => console.error("Failed to save booking to DB:", err));
-
-    setBookings((prev) => [newBooking, ...prev]);
-
-    // Trigger notification to the worker
-    triggerNotification(
-      newBooking.id,
-      getProviderMobileForBooking(newBooking),
-      "👷 New Job Offer / Hire Request",
-      `You have been hired by ${userName || "Udaya Kumar"} for ${lb.category} service! Click to view details.`,
-      "general"
+    requestServicePayment(
+      "customer",
+      `Labor Service Hire: ${lb.name} (${lb.category})`,
+      executeHire,
+      bookingId,
+      lb.pricePerDay
     );
-
-    alert(`Successfully booked ${lb.name} for ${lb.category} service! They will contact you shortly.`);
-    setActiveTab("bookings");
-    setActiveView("home");
   };
+
 
   // Add Equipment Owner Action
   const handleAddEquipment = (e: React.FormEvent) => {
@@ -3695,6 +3754,10 @@ export default function App() {
                 </div>
               </div>
 
+              {/* Oorsevai Pricing Fancy Banner for Machinery Owners */}
+              <OorsevaiPricingBanner role="owner" />
+
+
               {/* Earnings & Utilization Overview widgets */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="bg-white p-4 rounded-2xl border border-[#E8E6E1] shadow-xs space-y-1">
@@ -3796,21 +3859,31 @@ export default function App() {
                               <button
                                 type="button"
                                 onClick={() => {
-                                  // Transition booking status to 'ongoing'
-                                  fetch(`/api/bookings/${b.id}`, {
-                                    method: "PUT",
-                                    headers: { "Content-Type": "application/json" },
-                                    body: JSON.stringify({ status: "ongoing" })
-                                  }).catch(err => console.error("Failed to update booking status:", err));
+                                  const executeDispatch = () => {
+                                    // Transition booking status to 'ongoing'
+                                    fetch(`/api/bookings/${b.id}`, {
+                                      method: "PUT",
+                                      headers: { "Content-Type": "application/json" },
+                                      body: JSON.stringify({ status: "ongoing" })
+                                    }).catch(err => console.error("Failed to update booking status:", err));
 
-                                  setBookings(prev => prev.map(x => x.id === b.id ? { ...x, status: "ongoing" } : x));
-                                  // Push notification
-                                  triggerNotification(
+                                    setBookings(prev => prev.map(x => x.id === b.id ? { ...x, status: "ongoing" } : x));
+                                    // Push notification
+                                    triggerNotification(
+                                      b.id,
+                                      b.customerId || "9999999999",
+                                      "🚚 Equipment On The Way",
+                                      `${userName || "The owner"}'s ${b.itemName} has been dispatched and is on the way to your site at ${b.location}! Track delivery fees: ₹${b.deliveryMethod === 'delivery' ? deliveryFee : 0}.`,
+                                      "equipment_on_the_way"
+                                    );
+                                  };
+
+                                  requestServicePayment(
+                                    "owner",
+                                    `Machinery Dispatch: ${b.itemName}`,
+                                    executeDispatch,
                                     b.id,
-                                    b.customerId || "9999999999",
-                                    "🚚 Equipment On The Way",
-                                    `${userName || "The owner"}'s ${b.itemName} has been dispatched and is on the way to your site at ${b.location}! Track delivery fees: ₹${b.deliveryMethod === 'delivery' ? deliveryFee : 0}.`,
-                                    "equipment_on_the_way"
+                                    Math.round(b.totalAmount * 0.9)
                                   );
                                 }}
                                 className="bg-[#3E5C31] text-white border-[#3E5C31] hover:bg-[#3E5C31]/95 text-[9px] font-black px-3 py-1.5 rounded-lg border transition-all cursor-pointer flex items-center gap-1 shadow-xs"
@@ -3818,6 +3891,7 @@ export default function App() {
                                 <Truck className="h-3 w-3" />
                                 Dispatch 🚚
                               </button>
+
                             </div>
                           )}
 
@@ -4513,6 +4587,10 @@ export default function App() {
                 </div>
               </div>
 
+              {/* Oorsevai Pricing Fancy Banner for Workers */}
+              <OorsevaiPricingBanner role="labor" />
+
+
               {/* Status and Active Jobs widgets */}
               <div className="bg-white p-4 rounded-3xl border border-[#E8E6E1] shadow-xs space-y-3">
                 <div className="flex justify-between items-center">
@@ -4776,21 +4854,31 @@ export default function App() {
                                         type="button"
                                         disabled={isNotified}
                                         onClick={() => {
-                                          // Transition booking status to 'ongoing'
-                                          fetch(`/api/bookings/${b.id}`, {
-                                            method: "PUT",
-                                            headers: { "Content-Type": "application/json" },
-                                            body: JSON.stringify({ status: "ongoing" })
-                                          }).catch(err => console.error("Failed to update booking status:", err));
+                                          const executeShiftStart = () => {
+                                            // Transition booking status to 'ongoing'
+                                            fetch(`/api/bookings/${b.id}`, {
+                                              method: "PUT",
+                                              headers: { "Content-Type": "application/json" },
+                                              body: JSON.stringify({ status: "ongoing" })
+                                            }).catch(err => console.error("Failed to update booking status:", err));
 
-                                          setBookings(prev => prev.map(x => x.id === b.id ? { ...x, status: "ongoing" } : x));
-                                          // Push notification
-                                          triggerNotification(
+                                            setBookings(prev => prev.map(x => x.id === b.id ? { ...x, status: "ongoing" } : x));
+                                            // Push notification
+                                            triggerNotification(
+                                              b.id,
+                                              b.customerId || "9999999999",
+                                              "⏰ Labor Shift Starting",
+                                              `${userName || "Raju Krishnan"}'s shift at ${b.location} is starting in 30 minutes! Please prepare the workspace.`,
+                                              "labor_shift_start"
+                                            );
+                                          };
+
+                                          requestServicePayment(
+                                            "labor",
+                                            `Job Shift Acceptance: ${b.itemName}`,
+                                            executeShiftStart,
                                             b.id,
-                                            b.customerId || "9999999999",
-                                            "⏰ Labor Shift Starting",
-                                            `${userName || "Raju Krishnan"}'s shift at ${b.location} is starting in 30 minutes! Please prepare the workspace.`,
-                                            "labor_shift_start"
+                                            b.totalAmount
                                           );
                                         }}
                                         className={`text-[9px] font-black px-3 py-1.5 rounded-lg border transition-all cursor-pointer flex items-center gap-1 ${
@@ -4802,6 +4890,7 @@ export default function App() {
                                         <Clock className="h-3 w-3" />
                                         {isNotified ? "Starting Notified" : "Notify Shift Starting ⏰"}
                                       </button>
+
                                     </div>
                                   )}
 
@@ -6007,7 +6096,13 @@ export default function App() {
                     </div>
                   </div>
 
+                  {/* Oorsevai Subscription Ledger & Service Payment History */}
+                  <div className="pt-2 border-t border-[#E8E6E1] dark:border-slate-800">
+                    <OorsevaiLedgerView />
+                  </div>
+
                   {/* Admin Passcode section */}
+
                   <div className="border border-[#E8E6E1] dark:border-slate-800 rounded-xl p-3 bg-white dark:bg-[#161F1C]">
                     <div className="flex justify-between items-center mb-1.5">
                       <span className="text-xs font-bold text-[#2D2D2A] dark:text-slate-200 flex items-center gap-1">
@@ -6312,8 +6407,29 @@ export default function App() {
           )}
         </AnimatePresence>
 
+        {/* ==================== OORSEVAI SERVICE PAYMENT MODAL ==================== */}
+        {showPaymentModal && paymentPendingAction && (
+          <OorsevaiPaymentModal
+            role={paymentPendingAction.role}
+            serviceName={paymentPendingAction.serviceName}
+            bookingId={paymentPendingAction.bookingId}
+            baseAmount={paymentPendingAction.baseAmount}
+            onSuccess={() => {
+              setShowPaymentModal(false);
+              const action = paymentPendingAction.onSuccessCallback;
+              setPaymentPendingAction(null);
+              action();
+            }}
+            onCancel={() => {
+              setShowPaymentModal(false);
+              setPaymentPendingAction(null);
+            }}
+          />
+        )}
+
       </div>
 
     </div>
   );
 }
+
